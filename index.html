@@ -513,6 +513,25 @@ function agregarAlCarrito(termino, cantidad){
   saveCart(); renderCart();
 }
 
+
+function normalizeStr(s){
+  return s ? s.toString().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim() : "";
+}
+function encontrarProducto(term){
+  if(!term) return null;
+  term = normalizeStr(term);
+  // try exact code match (normalized)
+  let p = productos.find(x => normalizeStr(x.codigo) === term);
+  if(p) return p;
+  // try numeric match if the term is numeric (handles codes stored as numbers)
+  if(/^[0-9]+$/.test(term)){
+    p = productos.find(x => String(x.codigo) === term || normalizeStr(String(x.codigo)) === term);
+    if(p) return p;
+  }
+  // fallback: search by normalized name substring
+  p = productos.find(x => normalizeStr(x.nombre).includes(term));
+  return p || null;
+}
 /* FIND PRODUCT */
 function encontrarProducto(term){
   if(!term) return null;
@@ -706,124 +725,40 @@ async function exportHistorialCSV(){
 if(btnExportCSV) btnExportCSV.addEventListener('click', exportHistorialCSV);
 
 /* SCANNER modal */
-
-function ensureHtml5QrcodeReady(callback, attempts = 0) {
-  if (typeof Html5Qrcode !== 'undefined') {
-    callback();
-  } else if (attempts < 10) {
-    setTimeout(() => ensureHtml5QrcodeReady(callback, attempts + 1), 200);
-  } else {
-    document.getElementById('scanner').textContent = 'No se pudo iniciar la cámara. Verifica tu conexión o permisos.';
-  }
-}
-
-
-function ensureHtml5QrcodeReady(callback, attempts = 0) {
-  if (typeof Html5Qrcode !== 'undefined') {
-    callback();
-  } else if (attempts < 10) {
-    setTimeout(() => ensureHtml5QrcodeReady(callback, attempts + 1), 200);
-  } else {
-    document.getElementById('scanner').textContent = 'No se pudo iniciar la cámara. Verifica tu conexión o permisos.';
-  }
-}
-
 function openScannerModal(targetInput){
   closeScannerModal();
   scanTargetInput = targetInput;
-  scannerModal = document.createElement('div'); 
-  scannerModal.className='modal';
-  const box = document.createElement('div'); 
-  box.className='modal-box';
-  box.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <strong>Escanear código</strong>
-      <button id="closeScannerBtn" class="btn btn-outline btn-small">Cerrar</button>
-    </div>
-    <div id="cameraSelectContainer" style="margin-bottom:8px;display:none;">
-      <label for="cameraSelect">Seleccionar cámara:</label>
-      <select id="cameraSelect" class="input"></select>
-      <button id="startScanBtn" class="btn btn-primary btn-small" style="margin-top:5px;">Iniciar escaneo</button>
-    </div>
-    <div id="scanner" class="scanner-area">Cargando cámara...</div>
-    <div style="display:flex;justify-content:flex-end;margin-top:8px">
-      <button id="btnUseKeyboard" class="btn btn-outline btn-small">Usar lector físico / teclado</button>
-    </div>`;
-  scannerModal.appendChild(box); 
-  document.body.appendChild(scannerModal);
-
+  scannerModal = document.createElement('div'); scannerModal.className='modal';
+  const box = document.createElement('div'); box.className='modal-box';
+  box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>Escanear código</strong><button id="closeScannerBtn" class="btn btn-outline btn-small">Cerrar</button></div>
+                   <div id="scanner" class="scanner-area">Cargando cámara...</div>
+                   <div style="display:flex;justify-content:flex-end;margin-top:8px"><button id="btnUseKeyboard" class="btn btn-outline btn-small">Usar lector físico / teclado</button></div>`;
+  scannerModal.appendChild(box); document.body.appendChild(scannerModal);
   document.getElementById('closeScannerBtn').addEventListener('click', closeScannerModal);
-  document.getElementById('btnUseKeyboard').addEventListener('click', ()=>{ 
-    closeScannerModal(); 
-    targetInput.focus(); 
-    alert('Enfoque el campo y escanee con su lector físico o escriba el código.'); 
-  });
-
-  ensureHtml5QrcodeReady(() => {
-    html5QrcodeScanner = new Html5Qrcode("scanner");
-    const config = {
-      fps: 10,
-      qrbox: {width: 300, height: 200},
-      formatsToSupport: [
-        Html5QrcodeSupportedFormats.QR_CODE,
-        Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.UPC_A,
-        Html5QrcodeSupportedFormats.CODE_39,
-        Html5QrcodeSupportedFormats.CODE_128,
-        Html5QrcodeSupportedFormats.ITF
-      ]
-    };
-
-    Html5Qrcode.getCameras().then(cameras => {
-      if (cameras && cameras.length) {
-        const cameraSelectContainer = document.getElementById('cameraSelectContainer');
-        const cameraSelect = document.getElementById('cameraSelect');
-        const startScanBtn = document.getElementById('startScanBtn');
-
-        cameraSelectContainer.style.display = 'block';
-        cameraSelect.innerHTML = '';
-
-        cameras.forEach(cam => {
-          const option = document.createElement('option');
-          option.value = cam.id;
-          option.textContent = cam.label || 'Cámara sin nombre';
-          cameraSelect.appendChild(option);
-        });
-
-        startScanBtn.addEventListener('click', () => {
-          const selectedId = cameraSelect.value;
-          html5QrcodeScanner.start(
-            selectedId, config,
-            qrCodeMessage => {
-              if (scanTargetInput) {
-                scanTargetInput.value = qrCodeMessage;
-                scanTargetInput.dispatchEvent(new Event('input', { bubbles: true }));
-                scanTargetInput.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
-              }
-              closeScannerModal();
-            }
-          ).catch(err => {
-            alert('No se pudo iniciar la cámara. Verifica tu conexión o permisos.');
-            closeScannerModal();
-          });
-        });
-
-        if (cameras.length === 1) {
-          startScanBtn.click(); // inicia automáticamente si solo hay una
+  document.getElementById('btnUseKeyboard').addEventListener('click', ()=>{ closeScannerModal(); targetInput.focus(); alert('Enfoque el campo y escanee con su lector físico o escriba el código.'); });
+  if(typeof Html5Qrcode === 'undefined'){ document.getElementById('scanner').textContent = 'Necesita conexión para cargar librería de escaneo.'; return; }
+  html5QrcodeScanner = new Html5Qrcode("scanner");
+  const config = { fps: 10, qrbox: {width: 300, height: 200},
+    formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.ITF ] };
+  Html5Qrcode.getCameras().then(cameras => {
+    if(cameras && cameras.length){
+      const cameraId = cameras[0].id;
+      html5QrcodeScanner.start(cameraId, config, qrCodeMessage => {
+        if(scanTargetInput){
+          scanTargetInput.value = qrCodeMessage;
+          scanTargetInput.dispatchEvent(new Event('input', { bubbles: true }));
+          scanTargetInput.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
         }
-      } else {
-        alert('No se encontró cámara disponible.');
         closeScannerModal();
-      }
-    }).catch(err => { 
-      alert('No se pudo iniciar la cámara. Verifica tu conexión o permisos.');
-      closeScannerModal(); 
-    });
-  });
+      }).catch(err => {
+        alert('No se pudo iniciar la cámara: ' + err);
+        closeScannerModal();
+      });
+    } else { alert('No se encontró cámara disponible.'); closeScannerModal(); }
+  }).catch(err => { alert('Error al acceder a cámaras: ' + err); closeScannerModal(); });
 }
-
-
 function closeScannerModal(){
   if(html5QrcodeScanner){
     try{ html5QrcodeScanner.stop().then(()=> html5QrcodeScanner.clear()).catch(()=>{}); }catch(e){}
