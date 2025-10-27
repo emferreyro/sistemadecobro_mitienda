@@ -717,6 +717,17 @@ function ensureHtml5QrcodeReady(callback, attempts = 0) {
   }
 }
 
+
+function ensureHtml5QrcodeReady(callback, attempts = 0) {
+  if (typeof Html5Qrcode !== 'undefined') {
+    callback();
+  } else if (attempts < 10) {
+    setTimeout(() => ensureHtml5QrcodeReady(callback, attempts + 1), 200);
+  } else {
+    document.getElementById('scanner').textContent = 'No se pudo iniciar la cámara. Verifica tu conexión o permisos.';
+  }
+}
+
 function openScannerModal(targetInput){
   closeScannerModal();
   scanTargetInput = targetInput;
@@ -728,6 +739,11 @@ function openScannerModal(targetInput){
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <strong>Escanear código</strong>
       <button id="closeScannerBtn" class="btn btn-outline btn-small">Cerrar</button>
+    </div>
+    <div id="cameraSelectContainer" style="margin-bottom:8px;display:none;">
+      <label for="cameraSelect">Seleccionar cámara:</label>
+      <select id="cameraSelect" class="input"></select>
+      <button id="startScanBtn" class="btn btn-primary btn-small" style="margin-top:5px;">Iniciar escaneo</button>
     </div>
     <div id="scanner" class="scanner-area">Cargando cámara...</div>
     <div style="display:flex;justify-content:flex-end;margin-top:8px">
@@ -761,21 +777,41 @@ function openScannerModal(targetInput){
 
     Html5Qrcode.getCameras().then(cameras => {
       if (cameras && cameras.length) {
-        const cameraId = cameras[0].id;
-        html5QrcodeScanner.start(
-          cameraId, config,
-          qrCodeMessage => {
-            if (scanTargetInput) {
-              scanTargetInput.value = qrCodeMessage;
-              scanTargetInput.dispatchEvent(new Event('input', { bubbles: true }));
-              scanTargetInput.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
-            }
-            closeScannerModal();
-          }
-        ).catch(err => {
-          alert('No se pudo iniciar la cámara. Verifica tu conexión o permisos.');
-          closeScannerModal();
+        const cameraSelectContainer = document.getElementById('cameraSelectContainer');
+        const cameraSelect = document.getElementById('cameraSelect');
+        const startScanBtn = document.getElementById('startScanBtn');
+
+        cameraSelectContainer.style.display = 'block';
+        cameraSelect.innerHTML = '';
+
+        cameras.forEach(cam => {
+          const option = document.createElement('option');
+          option.value = cam.id;
+          option.textContent = cam.label || 'Cámara sin nombre';
+          cameraSelect.appendChild(option);
         });
+
+        startScanBtn.addEventListener('click', () => {
+          const selectedId = cameraSelect.value;
+          html5QrcodeScanner.start(
+            selectedId, config,
+            qrCodeMessage => {
+              if (scanTargetInput) {
+                scanTargetInput.value = qrCodeMessage;
+                scanTargetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                scanTargetInput.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
+              }
+              closeScannerModal();
+            }
+          ).catch(err => {
+            alert('No se pudo iniciar la cámara. Verifica tu conexión o permisos.');
+            closeScannerModal();
+          });
+        });
+
+        if (cameras.length === 1) {
+          startScanBtn.click(); // inicia automáticamente si solo hay una
+        }
       } else {
         alert('No se encontró cámara disponible.');
         closeScannerModal();
@@ -786,6 +822,7 @@ function openScannerModal(targetInput){
     });
   });
 }
+
 
 function closeScannerModal(){
   if(html5QrcodeScanner){
