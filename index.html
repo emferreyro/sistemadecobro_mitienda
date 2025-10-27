@@ -267,11 +267,11 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 </div>
 
 <!-- html5-qrcode (QR + barcode) opcion; si no la necesitas, puedes eliminar esta línea -->
-<script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"></script>
 
 <script>
 /* CONFIG y KEYS */
-const ADMIN_PASSWORD = 'admin987';
+const ADMIN_PASSWORD = 'admin123';
 const KEY_PRODUCTS = 'sistemacobro_products_v2';
 const KEY_CART = 'sistemacobro_cart_v2';
 const KEY_HISTORY = 'sistemacobro_history_v2';
@@ -281,7 +281,7 @@ const MANUAL_MAX_PER_SALE = 5; // <-- nueva limitación: máximo 5 productos sin
 
 /* DEFAULT PRODUCTS */
 const DEFAULT_PRODUCTS = [
-  { codigo: "000001", nombre: "producto X marca X ", precio: 1.00 },
+  { codigo: "75004699", nombre: "Refresco Coca-Cola vidrio 500ml", precio: 18.00 },
 ];
 
 /* STATE */
@@ -513,37 +513,37 @@ function agregarAlCarrito(termino, cantidad){
   saveCart(); renderCart();
 }
 
-
-function normalizeStr(s){
-  return s ? s.toString().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim() : "";
-}
-function encontrarProducto(term){
-  if(!term) return null;
-  term = normalizeStr(term);
-  // try exact code match (normalized)
-  let p = productos.find(x => normalizeStr(x.codigo) === term);
-  if(p) return p;
-  // try numeric match if the term is numeric (handles codes stored as numbers)
-  if(/^[0-9]+$/.test(term)){
-    p = productos.find(x => String(x.codigo) === term || normalizeStr(String(x.codigo)) === term);
-    if(p) return p;
-  }
-  // fallback: search by normalized name substring
-  p = productos.find(x => normalizeStr(x.nombre).includes(term));
-  return p || null;
-}
 /* FIND PRODUCT */
-function encontrarProducto(term){
-  if(!term) return null;
-  term = term.toString().trim().toLowerCase();
-  let p = productos.find(x=> x.codigo === term);
-  if(p) return p;
-  p = productos.find(x=> x.nombre.toLowerCase().includes(term));
-  return p || null;
+
+function encontrarProducto(termino){
+  // Busca un producto por código o por nombre.
+  // - acepta código numérico como string o number
+  // - acepta fragmento de nombre (case-insensitive)
+  if(termino === null || typeof termino === 'undefined') return null;
+  const t = String(termino).trim();
+  if(t.length === 0) return null;
+  // 1) intento de coincidencia exacta por código (como string)
+  let prod = productos.find(p => String(p.codigo) === t);
+  if(prod) return prod;
+  // 2) intento por número (por si hay ceros o formatos)
+  const n = Number(t);
+  if(!Number.isNaN(n)){
+    prod = productos.find(p => Number(p.codigo) === n);
+    if(prod) return prod;
+  }
+  // 3) coincidencia por nombre (contains, case-insensitive)
+  const lower = t.toLowerCase();
+  prod = productos.find(p => (p.nombre || '').toString().toLowerCase().includes(lower));
+  if(prod) return prod;
+  // 4) fallback: buscar por token (primer término)
+  const token = t.split(/\\s+/)[0];
+  prod = productos.find(p => String(p.codigo) === token || (p.nombre||'').toString().toLowerCase().includes(token.toLowerCase()));
+  return prod || null;
 }
+
 
 /* EVENTS - cart */
-btnAgregar.addEventListener('click', ()=> { agregarAlCarrito(buscarInput.value, cantidadInput.value); buscarInput.value=''; cantidadInput.value=1; buscarInput.focus(); });
+btnAgregar.addEventListener('click', ()=> { agregarAlCarrito(buscarInput.value.trim(), cantidadInput.value); buscarInput.value=''; cantidadInput.value=1; buscarInput.focus(); });
 /* LIMPIAR: ensure it clears buscar, cantidad, pago and cambio */
 if(btnLimpiar){
   btnLimpiar.addEventListener('click', ()=> {
@@ -747,7 +747,7 @@ function openScannerModal(targetInput){
       const cameraId = cameras[0].id;
       html5QrcodeScanner.start(cameraId, config, qrCodeMessage => {
         if(scanTargetInput){
-          scanTargetInput.value = qrCodeMessage;
+          scanTargetInput.value = qrCodeMessage.trim();
           scanTargetInput.dispatchEvent(new Event('input', { bubbles: true }));
           scanTargetInput.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
         }
@@ -922,7 +922,7 @@ btnAdminLogout.addEventListener('click', ()=> { if(!confirm('Cerrar sesión de a
 if(btnContacto){
   btnContacto.addEventListener('click', ()=> {
     // número +52 5548669275
-    const phone = '5548669275';
+    const phone = '5215548669275';
     const text = encodeURIComponent('Hola, necesito ayuda con Mi Tienda');
     window.open(`https://wa.me/52${phone}?text=${text}`, '_blank');
   });
