@@ -399,6 +399,23 @@ if (typeof btnCamaraVenta !== 'undefined' && btnCamaraVenta) {
   });
 }
 
+
+// Deshabilitar el botón de cámara hasta que la librería esté lista
+document.addEventListener('DOMContentLoaded', () => {
+  const btnCamara = document.getElementById('btnCamaraVenta');
+  if (btnCamara) {
+    btnCamara.disabled = true;
+    btnCamara.style.opacity = '0.6';
+    const interval = setInterval(() => {
+      if (typeof Html5Qrcode !== 'undefined') {
+        clearInterval(interval);
+        btnCamara.disabled = false;
+        btnCamara.style.opacity = '1';
+      }
+    }, 500);
+  }
+});
+
 </script>
 
 <script>
@@ -1409,6 +1426,23 @@ if (typeof btnCamaraVenta !== 'undefined' && btnCamaraVenta) {
     iniciarEscanerConCamara(buscarInput);
   });
 }
+
+
+// Deshabilitar el botón de cámara hasta que la librería esté lista
+document.addEventListener('DOMContentLoaded', () => {
+  const btnCamara = document.getElementById('btnCamaraVenta');
+  if (btnCamara) {
+    btnCamara.disabled = true;
+    btnCamara.style.opacity = '0.6';
+    const interval = setInterval(() => {
+      if (typeof Html5Qrcode !== 'undefined') {
+        clearInterval(interval);
+        btnCamara.disabled = false;
+        btnCamara.style.opacity = '1';
+      }
+    }, 500);
+  }
+});
 
 </script>
 </body>
