@@ -75,6 +75,7 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
   box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
 
+.search-wrap{display:flex;gap:8px;align-items:center;}
 </style>
 </head>
 <body>
@@ -123,22 +124,11 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
             <div style="flex:1;display:flex;gap:8px;align-items:end">
               <div style="flex:1">
                 
-<!-- ZONA LECTOR USB y BOTON CAMARA (insertado por mejora) -->
-<div id="zonaEscaneoUSB" style="margin-bottom:8px">
-  <label for="scanInput">Escanear código (lector USB)</label>
-  <input id="scanInput" type="text" placeholder="Apunta el lector aquí" autocomplete="off" />
-</div>
-<div style="margin-bottom:8px">
-  <button id="btnActivarCamara" class="btn btn-outline" type="button">📷 Escanear con cámara</button>
-</div>
-<div id="zonaCamara" style="display:none; margin-top:10px;"></div>
-<!-- FIN ZONA LECTOR USB y BOTON CAMARA -->
-<label for="buscar">Buscar producto (código o nombre)</label>
-                <input id="buscar" type="text" placeholder="Ej: 101 o coca" autocomplete="off" />
-              </div>
-              <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
-                <button id="btnScanVenta" class="btn btn-outline">📷 Escanear código</button>
-                <div class="small">Cámara / Lector</div>
+<label for="buscar">Buscar o escanear (código o nombre)</label>
+                <div class="search-wrap">
+                  <input id="buscar" type="text" placeholder="Ej: 101 o coca" autocomplete="off" />
+                  <button id="btnCamaraVenta" class="btn btn-outline" aria-label="Escanear con cámara" title="Escanear con cámara">📷</button>
+                </div>
               </div>
             </div>
 
@@ -806,6 +796,23 @@ if(btnScanVenta) btnScanVenta.addEventListener('click', ()=> {
   if(confirm('¿Usar cámara para escanear? Acepta = cámara, Cancelar = lector físico (enfocar campo).')) openScannerModal(buscarInput);
   else { buscarInput.focus(); alert('Listo para escanear con lector físico o escribir el código.'); }
 });
+
+/* Botón de cámara integrado a la derecha del campo de búsqueda */
+const btnCamaraVenta = document.getElementById('btnCamaraVenta');
+if(btnCamaraVenta){
+  btnCamaraVenta.addEventListener('click', ()=> {
+    if(typeof openScannerModal === 'function'){ 
+      openScannerModal(buscarInput);
+    } else {
+      // Carga condicional de la librería y reintenta
+      if(typeof loadHtml5QrcodeIfNeeded === 'function'){
+        loadHtml5QrcodeIfNeeded(()=> { if(typeof openScannerModal === 'function') openScannerModal(buscarInput); });
+      } else {
+        alert('Escáner no disponible.');
+      }
+    }
+  });
+}
 if(btnScanProd) btnScanProd.addEventListener('click', ()=> {
   if(confirm('¿Usar cámara para escanear? Acepta = cámara, Cancelar = lector físico (enfocar campo).')) openScannerModal(prodCodigo);
   else { prodCodigo.focus(); alert('Listo para escanear con lector físico o escribir el código.'); }
