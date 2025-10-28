@@ -122,18 +122,7 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
           <div class="venta-top">
             <div style="flex:1;display:flex;gap:8px;align-items:end">
               <div style="flex:1">
-                
-<!-- ZONA LECTOR USB y BOTON CAMARA (insertado por mejora) -->
-<div id="zonaEscaneoUSB" style="margin-bottom:8px">
-  <label for="scanInput">Escanear código (lector USB)</label>
-  <input id="scanInput" type="text" placeholder="Apunta el lector aquí" autocomplete="off" />
-</div>
-<div style="margin-bottom:8px">
-  <button id="btnActivarCamara" class="btn btn-outline" type="button">📷 Escanear con cámara</button>
-</div>
-<div id="zonaCamara" style="display:none; margin-top:10px;"></div>
-<!-- FIN ZONA LECTOR USB y BOTON CAMARA -->
-<label for="buscar">Buscar producto (código o nombre)</label>
+                <label for="buscar">Buscar producto (código o nombre)</label>
                 <input id="buscar" type="text" placeholder="Ej: 101 o coca" autocomplete="off" />
               </div>
               <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
@@ -278,11 +267,11 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 </div>
 
 <!-- html5-qrcode (QR + barcode) opcion; si no la necesitas, puedes eliminar esta línea -->
-<script src="https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"></script>
+<script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
 
 <script>
 /* CONFIG y KEYS */
-const ADMIN_PASSWORD = 'admin123';
+const ADMIN_PASSWORD = 'admin987';
 const KEY_PRODUCTS = 'sistemacobro_products_v2';
 const KEY_CART = 'sistemacobro_cart_v2';
 const KEY_HISTORY = 'sistemacobro_history_v2';
@@ -292,7 +281,7 @@ const MANUAL_MAX_PER_SALE = 5; // <-- nueva limitación: máximo 5 productos sin
 
 /* DEFAULT PRODUCTS */
 const DEFAULT_PRODUCTS = [
-  { codigo: "75004699", nombre: "Refresco Coca-Cola vidrio 500ml", precio: 18.00 },
+  { codigo: "000001", nombre: "producto X marca X ", precio: 1.00 },
 ];
 
 /* STATE */
@@ -514,34 +503,9 @@ btnAddProd.addEventListener('click', ()=>{
 });
 
 /* ADD TO CART */
-function agregarAlCarrito(termino, cantidad, desdeLector){
+function agregarAlCarrito(termino, cantidad){
   const prod = encontrarProducto(termino);
-  if(!prod){
-    // Si proviene de un lector (USB o cámara) mostramos aviso no intrusivo + beep.
-    if(desdeLector){
-      try { console.warn("Código no encontrado:", termino); } catch(e){}
-      const aviso = document.getElementById('avisoLectura');
-      if(aviso){
-        aviso.textContent = 'Código ' + termino + ' no encontrado';
-        aviso.classList.add('visible');
-        setTimeout(()=> aviso.classList.remove('visible'), 3000);
-      }
-      // beep suave corto (150 ms)
-      try{
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.type = 'square'; osc.frequency.value = 600;
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        osc.start(); osc.stop(ctx.currentTime + 0.15);
-      }catch(e){ console.log('Audio no disponible', e); }
-      return;
-    } else {
-      alert('Producto no encontrado: ' + termino);
-      return;
-    }
-  }
+  if(!prod){ alert('Producto no encontrado: ' + termino); return; }
   const qty = Math.max(1, Number(cantidad) || 1);
   const existente = carrito.find(x=> x.codigo === prod.codigo);
   if(existente){ existente.cantidad += qty; existente.subtotal = Number((existente.cantidad * existente.precio).toFixed(2)); }
@@ -549,37 +513,37 @@ function agregarAlCarrito(termino, cantidad, desdeLector){
   saveCart(); renderCart();
 }
 
-/* FIND PRODUCT */
 
-function encontrarProducto(termino){
-  // Busca un producto por código o por nombre.
-  // - acepta código numérico como string o number
-  // - acepta fragmento de nombre (case-insensitive)
-  if(termino === null || typeof termino === 'undefined') return null;
-  const t = String(termino).trim();
-  if(t.length === 0) return null;
-  // 1) intento de coincidencia exacta por código (como string)
-  let prod = productos.find(p => String(p.codigo) === t);
-  if(prod) return prod;
-  // 2) intento por número (por si hay ceros o formatos)
-  const n = Number(t);
-  if(!Number.isNaN(n)){
-    prod = productos.find(p => Number(p.codigo) === n);
-    if(prod) return prod;
+function normalizeStr(s){
+  return s ? s.toString().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim() : "";
+}
+function encontrarProducto(term){
+  if(!term) return null;
+  term = normalizeStr(term);
+  // try exact code match (normalized)
+  let p = productos.find(x => normalizeStr(x.codigo) === term);
+  if(p) return p;
+  // try numeric match if the term is numeric (handles codes stored as numbers)
+  if(/^[0-9]+$/.test(term)){
+    p = productos.find(x => String(x.codigo) === term || normalizeStr(String(x.codigo)) === term);
+    if(p) return p;
   }
-  // 3) coincidencia por nombre (contains, case-insensitive)
-  const lower = t.toLowerCase();
-  prod = productos.find(p => (p.nombre || '').toString().toLowerCase().includes(lower));
-  if(prod) return prod;
-  // 4) fallback: buscar por token (primer término)
-  const token = t.split(/\\s+/)[0];
-  prod = productos.find(p => String(p.codigo) === token || (p.nombre||'').toString().toLowerCase().includes(token.toLowerCase()));
-  return prod || null;
+  // fallback: search by normalized name substring
+  p = productos.find(x => normalizeStr(x.nombre).includes(term));
+  return p || null;
+}
+/* FIND PRODUCT */
+function encontrarProducto(term){
+  if(!term) return null;
+  term = term.toString().trim().toLowerCase();
+  let p = productos.find(x=> x.codigo === term);
+  if(p) return p;
+  p = productos.find(x=> x.nombre.toLowerCase().includes(term));
+  return p || null;
 }
 
-
 /* EVENTS - cart */
-btnAgregar.addEventListener('click', ()=> { agregarAlCarrito(buscarInput.value.trim(), cantidadInput.value); buscarInput.value=''; cantidadInput.value=1; buscarInput.focus(); });
+btnAgregar.addEventListener('click', ()=> { agregarAlCarrito(buscarInput.value, cantidadInput.value); buscarInput.value=''; cantidadInput.value=1; buscarInput.focus(); });
 /* LIMPIAR: ensure it clears buscar, cantidad, pago and cambio */
 if(btnLimpiar){
   btnLimpiar.addEventListener('click', ()=> {
@@ -783,7 +747,7 @@ function openScannerModal(targetInput){
       const cameraId = cameras[0].id;
       html5QrcodeScanner.start(cameraId, config, qrCodeMessage => {
         if(scanTargetInput){
-          scanTargetInput.value = qrCodeMessage.trim();
+          scanTargetInput.value = qrCodeMessage;
           scanTargetInput.dispatchEvent(new Event('input', { bubbles: true }));
           scanTargetInput.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
         }
@@ -958,7 +922,7 @@ btnAdminLogout.addEventListener('click', ()=> { if(!confirm('Cerrar sesión de a
 if(btnContacto){
   btnContacto.addEventListener('click', ()=> {
     // número +52 5548669275
-    const phone = '5215548669275';
+    const phone = '5548669275';
     const text = encodeURIComponent('Hola, necesito ayuda con Mi Tienda');
     window.open(`https://wa.me/52${phone}?text=${text}`, '_blank');
   });
@@ -1078,81 +1042,6 @@ window.addEventListener('load', ()=>{
 /* ensure Enter behavior */
 buscarInput && buscarInput.addEventListener('keydown', e=> { if(e.key==='Enter') btnAgregar.click(); });
 prodCodigo && prodCodigo.addEventListener('keydown', e=> { if(e.key==='Enter') prodNombre.focus(); });
-
-
-
-/* --- MEJORAS: manejo lector USB, carga condicional html5-qrcode y avisos --- */
-
-// aviso visual (insertado al cargar si no existe)
-(function ensureAvisoElement(){
-  if(!document.getElementById('avisoLectura')){
-    const div = document.createElement('div'); div.id='avisoLectura'; div.className='aviso';
-    document.body.appendChild(div);
-    // styles for aviso (minimal, non-intrusive)
-    const style = document.createElement('style');
-    style.innerHTML = ".aviso{position:fixed;bottom:20px;right:20px;background:#333;color:#fff;padding:10px 15px;border-radius:8px;opacity:0;transition:opacity 0.3s;font-family:sans-serif;font-size:14px;z-index:9999}.aviso.visible{opacity:1;}";
-    document.head.appendChild(style);
-  }
-})();
-
-// helper: load html5-qrcode dynamically if needed
-function loadHtml5QrcodeIfNeeded(callback){
-  if(typeof Html5Qrcode !== 'undefined'){
-    callback && callback();
-    return;
-  }
-  if(!navigator.onLine){
-    const aviso = document.getElementById('avisoLectura');
-    if(aviso){ aviso.textContent = 'Modo cámara deshabilitado (sin conexión). Usa el lector USB.'; aviso.classList.add('visible'); setTimeout(()=>aviso.classList.remove('visible'),4000); }
-    return;
-  }
-  // inject script
-  const src = 'https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js';
-  const s = document.createElement('script');
-  s.src = src;
-  s.onload = function(){ setTimeout(()=>{ if(typeof Html5Qrcode !== 'undefined'){ callback && callback(); } else { const aviso = document.getElementById('avisoLectura'); if(aviso){ aviso.textContent = 'No se pudo inicializar el escáner.'; aviso.classList.add('visible'); setTimeout(()=>aviso.classList.remove('visible'),4000);} } }, 200); };
-  s.onerror = function(){ const aviso = document.getElementById('avisoLectura'); if(aviso){ aviso.textContent = 'No se pudo cargar la librería de cámara.'; aviso.classList.add('visible'); setTimeout(()=>aviso.classList.remove('visible'),4000);} };
-  document.head.appendChild(s);
-}
-
-// Wire UI: scanInput, btnActivarCamara behavior
-window.addEventListener('load', ()=>{
-  const scanInput = document.getElementById('scanInput');
-  const btnCam = document.getElementById('btnActivarCamara');
-  // If scanInput exists, listen for Enter (USB scanner typically sends Enter)
-  if(scanInput){
-    scanInput.addEventListener('keydown', e=>{
-      if(e.key === 'Enter'){
-        const code = scanInput.value.trim();
-        if(code) { agregarAlCarrito(code, 1, true); }
-        scanInput.value = '';
-        e.preventDefault();
-      }
-    });
-    // also on paste (some scanners paste)
-    scanInput.addEventListener('paste', e=>{
-      setTimeout(()=>{
-        const code = scanInput.value.trim();
-        if(code){ agregarAlCarrito(code,1,true); scanInput.value=''; }
-      }, 50);
-    });
-  }
-  if(btnCam){
-    btnCam.addEventListener('click', ()=>{
-      loadHtml5QrcodeIfNeeded(()=>{
-        // open modal scanner targeting the scanInput if present, otherwise buscarInput
-        const target = document.getElementById('scanInput') || document.getElementById('buscar');
-        if(target){
-          openScannerModal(target);
-        } else {
-          const aviso = document.getElementById('avisoLectura');
-          if(aviso){ aviso.textContent = 'No se encontró el campo de destino para el escáner.'; aviso.classList.add('visible'); setTimeout(()=>aviso.classList.remove('visible'),3000); }
-        }
-      });
-    });
-  }
-});
-/* --- FIN MEJORAS --- */
 
 </script>
 </body>
