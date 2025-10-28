@@ -268,7 +268,29 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 </div>
 
 <!-- html5-qrcode (QR + barcode) opcion; si no la necesitas, puedes eliminar esta línea -->
-<script src="https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js">
+// Esperar que la librería Html5Qrcode esté cargada antes de usarla
+async function waitForHtml5Qrcode(retries = 10, delay = 500) {
+  for (let i = 0; i < retries; i++) {
+    if (typeof Html5Qrcode !== 'undefined') return true;
+    await new Promise(res => setTimeout(res, delay));
+  }
+  alert('La cámara tardó demasiado en inicializar. Intenta de nuevo.');
+  return false;
+}
+
+if (typeof btnCamaraVenta !== 'undefined' && btnCamaraVenta) {
+  btnCamaraVenta.addEventListener('click', async () => {
+    const ready = await waitForHtml5Qrcode();
+    if (ready && typeof openScannerModal === 'function') {
+      openScannerModal(buscarInput);
+    } else if (ready) {
+      alert('Escáner no disponible.');
+    }
+  });
+}
+
+</script>
 
 <script>
 /* CONFIG y KEYS */
@@ -1148,6 +1170,28 @@ window.addEventListener('load', ()=>{
 });
 
 /* --- FIN MEJORAS --- */
+
+// Esperar que la librería Html5Qrcode esté cargada antes de usarla
+async function waitForHtml5Qrcode(retries = 10, delay = 500) {
+  for (let i = 0; i < retries; i++) {
+    if (typeof Html5Qrcode !== 'undefined') return true;
+    await new Promise(res => setTimeout(res, delay));
+  }
+  alert('La cámara tardó demasiado en inicializar. Intenta de nuevo.');
+  return false;
+}
+
+if (typeof btnCamaraVenta !== 'undefined' && btnCamaraVenta) {
+  btnCamaraVenta.addEventListener('click', async () => {
+    const ready = await waitForHtml5Qrcode();
+    if (ready && typeof openScannerModal === 'function') {
+      openScannerModal(buscarInput);
+    } else if (ready) {
+      alert('Escáner no disponible.');
+    }
+  });
+}
+
 </script>
 </body>
 </html>
