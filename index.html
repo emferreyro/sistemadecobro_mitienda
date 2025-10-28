@@ -23,7 +23,7 @@ header{background:#f5e131;color:#1f1f1f;font-weight:700;box-shadow:var(--sombra)
 main{flex:1;display:flex;align-items:stretch;justify-content:center;padding:18px;}
 .container{width:1200px;max-width:calc(100% - 40px);display:grid;grid-template-columns:1fr 380px;gap:18px;align-items:start;}
 .panel{background:var(--blanco);border-radius:var(--radio);padding:14px;box-shadow:var(--sombra);border:1px solid rgba(0,0,0,0.03);}
-.venta-top{display:flex;gap:10px;align-items:end;}
+.venta-top{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;}
 label{font-size:13px;color:#6b7280;margin-bottom:6px;}
 input[type="text"], input[type="number"], input[type="file"], textarea{padding:10px 12px;border-radius:10px;border:1px solid #e6e7ea;font-size:15px;outline:none;}
 input:focus, textarea:focus{box-shadow:0 6px 18px rgba(253,216,53,0.12);border-color:var(--amarillo);}
@@ -75,12 +75,32 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
   box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
 
+/* === NUEVA ZONA DE VENTA SIMPLIFICADA (CSS complementario) === */
+#inputBusqueda {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #e6e7ea;
+  border-radius: 10px;
+  font-size: 15px;
+  outline: none;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+#inputBusqueda:focus {
+  border-color: var(--amarillo);
+  box-shadow: 0 4px 12px rgba(245, 225, 49, 0.15);
+}
+#btnEscanear { white-space: nowrap; height: 42px; }
+@media (max-width: 768px) {
+  .venta-top { flex-direction: column; align-items: stretch; }
+  #btnEscanear, #btnAgregar, #btnLimpiar { width: 100%; }
+  #cantidad { width: 100%; }
+}
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-  <div class=\"header-center\">
+  <div class="header-center">
     <img src="https://upload.wikimedia.org/wikipedia/commons/f/fc/Flag_of_Mexico.svg" alt="Bandera de México" class="bandera-mx">
   </div>
 
@@ -114,31 +134,20 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <div>
               <strong>Nueva venta</strong>
-              <div class="small">Busca por código o nombre. Agrega varios productos.</div>
+              <div class="small">Busca o escanea el producto con un solo campo.</div>
             </div>
             <div class="small">Moneda: MXN</div>
           </div>
 
           <div class="venta-top">
-            <div style="flex:1;display:flex;gap:8px;align-items:end">
-              <div style="flex:1">
-                
-<!-- ZONA LECTOR USB y BOTON CAMARA (insertado por mejora) -->
-<div id="zonaEscaneoUSB" style="margin-bottom:8px">
-  <label for="scanInput">Escanear código (lector USB)</label>
-  <input id="scanInput" type="text" placeholder="Apunta el lector aquí" autocomplete="off" />
-</div>
-<div style="margin-bottom:8px">
-  <button id="btnActivarCamara" class="btn btn-outline" type="button">📷 Escanear con cámara</button>
-</div>
-<div id="zonaCamara" style="display:none; margin-top:10px;"></div>
-<!-- FIN ZONA LECTOR USB y BOTON CAMARA -->
-<label for="buscar">Buscar producto (código o nombre)</label>
-                <input id="buscar" type="text" placeholder="Ej: 101 o coca" autocomplete="off" />
+            <div style="flex:1">
+              <label for="inputBusqueda">Buscar o escanear producto</label>
+              <div style="display:flex; gap:8px; align-items:center">
+                <input id="inputBusqueda" type="text" placeholder="Escribe o escanea el código o nombre del producto" autocomplete="off" />
+                <button id="btnEscanear" class="btn btn-outline" type="button">📷 Cámara</button>
               </div>
-              <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
-                <button id="btnScanVenta" class="btn btn-outline">📷 Escanear código</button>
-                <div class="small">Cámara / Lector</div>
+              <div class="small" style="margin-top:4px;color:#6b7280">
+                Puedes escribir, escanear con lector o usar la cámara.
               </div>
             </div>
 
@@ -174,7 +183,7 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
                     <div id="total" class="total-amount">$0.00</div>
                   </div>
 
-                  <!-- Su pago y Cambio en la misma fila (opción A) -->
+                  <!-- Su pago y Cambio en la misma fila -->
                   <div class="pay-change-row" style="margin-left:12px;">
                     <div class="pay-field">
                       <label for="pago">Su pago $</label>
@@ -315,7 +324,6 @@ const navHistorial = document.getElementById('nav-historial');
 const panelVenta = document.getElementById('panel-venta');
 const panelProductos = document.getElementById('panel-productos');
 const panelHistorial = document.getElementById('panel-historial');
-const buscarInput = document.getElementById('buscar');
 const cantidadInput = document.getElementById('cantidad');
 const btnAgregar = document.getElementById('btnAgregar');
 const btnLimpiar = document.getElementById('btnLimpiar');
@@ -333,7 +341,6 @@ const prodPrecio = document.getElementById('prod-precio');
 const btnAddProd = document.getElementById('btn-add-prod');
 const btnClearAll = document.getElementById('btn-clear-all');
 const btnExportCSV = document.getElementById('btnExportCSV');
-const btnScanVenta = document.getElementById('btnScanVenta');
 const btnScanProd = document.getElementById('btnScanProd');
 const btnAdminLogout = document.getElementById('btnAdminLogout');
 const adminControls = document.getElementById('adminControls');
@@ -349,6 +356,10 @@ const inputImportProd = document.getElementById('inputImportProd');
 const pagoInput = document.getElementById('pago');
 const cambioLabel = document.getElementById('cambio');
 
+/* NUEVOS refs de la zona unificada */
+const inputBusqueda = document.getElementById('inputBusqueda');
+const btnEscanear = document.getElementById('btnEscanear');
+
 /* UTIL */
 function formatMXN(n){ return '$' + Number(n).toFixed(2); }
 function escapeHtml(str){ if(!str) return ''; return str.replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -363,7 +374,6 @@ function loadState(){
   productos = p ? JSON.parse(p) : (localStorage.setItem(KEY_PRODUCTS, JSON.stringify(DEFAULT_PRODUCTS.slice())), DEFAULT_PRODUCTS.slice());
   carrito = JSON.parse(localStorage.getItem(KEY_CART) || '[]');
   historial = JSON.parse(localStorage.getItem(KEY_HISTORY) || '[]');
-  // logo fijo: if there's a saved logo we respect it but primary is imagenes/logo.png
   const logo = localStorage.getItem(KEY_LOGO);
   if(logo){ logoImg.src = logo; } else { logoImg.src = 'imagenes/logo.png'; logoImg.alt = 'Mi Tienda'; }
 }
@@ -377,7 +387,6 @@ function showPanel(panel){
   if(panel === panelProductos) navProductos.classList.add('active');
   if(panel === panelHistorial) navHistorial.classList.add('active');
 
-  // Si abren panel de productos, verificar límite y mostrar aviso (además de deshabilitar el botón Agregar si aplica)
   if(panel === panelProductos){
     checkProductLimitOnOpen();
   }
@@ -402,10 +411,8 @@ function renderCart(){
   currentTotal = carrito.reduce((s,it)=> s + it.subtotal, 0);
   totalLabel.textContent = formatMXN(currentTotal);
 
-  // Update payment/change display whenever cart changes
   updatePaymentChange();
 
-  // events
   document.querySelectorAll('.btn-remove').forEach(b=> b.addEventListener('click', e=>{
     const c = e.currentTarget.getAttribute('data-codigo');
     carrito = carrito.filter(x => x.codigo !== c);
@@ -440,7 +447,6 @@ function renderProducts(){
     small.innerHTML = `<div><strong>${p.codigo}</strong> ${escapeHtml(p.nombre)}</div><div class="small">${formatMXN(p.precio)}</div>`;
     rightProducts.appendChild(small);
   });
-  // add events
   document.querySelectorAll('.btn-add-to-cart').forEach(b=> b.addEventListener('click', e=> { const c = e.currentTarget.getAttribute('data-codigo'); agregarAlCarrito(c,1); showPanel(panelVenta); }));
   if(isAdmin){
     document.querySelectorAll('.btn-edit').forEach(b=> b.addEventListener('click', e=> {
@@ -454,31 +460,25 @@ function renderProducts(){
       const i = Number(e.currentTarget.getAttribute('data-idx'));
       if(!confirm('Eliminar producto ' + productos[i].codigo + ' ?')) return;
       productos.splice(i,1); saveProducts(); renderProducts();
-      // al eliminar, re-evaluar límite
       checkProductLimitOnOpen();
     }));
   }
 }
 
-/* Mensaje límite personalizado */
-const LIMIT_MESSAGE = "Esta versión de sistema de cobro es gratuita pero solo te permite el registro de 50 productos.\n\nSi te gustó y quieres hacer más registros contáctanos para obtener una mejor versión.";
+const LIMIT_MESSAGE = "Esta versión de sistema de cobro es gratuita pero solo te permite el registro de 50 productos.\\n\\nSi te gustó y quieres hacer más registros contáctanos para obtener una mejor versión.";
 
-/* Función que muestra aviso y deshabilita botón de agregar si se alcanzó límite */
 function checkProductLimitOnOpen(){
   productsWarningArea.innerHTML = '';
   if(productos.length >= MAX_PRODUCTS){
-    // mostrar aviso en el panel
     const div = document.createElement('div');
     div.className = 'notice-limit';
     div.textContent = LIMIT_MESSAGE;
     productsWarningArea.appendChild(div);
-    // deshabilitar inputs de agregar (si no admin no necesitan)
     if(btnAddProd) btnAddProd.disabled = true;
     if(prodCodigo) prodCodigo.disabled = true;
     if(prodNombre) prodNombre.disabled = true;
     if(prodPrecio) prodPrecio.disabled = true;
   } else {
-    // habilitar inputs
     if(btnAddProd) btnAddProd.disabled = false;
     if(prodCodigo) prodCodigo.disabled = false;
     if(prodNombre) prodNombre.disabled = false;
@@ -486,16 +486,13 @@ function checkProductLimitOnOpen(){
   }
 }
 
-/* ADD PRODUCT with LIMIT */
 btnAddProd.addEventListener('click', ()=>{
   const codigo = (prodCodigo.value || '').toString().trim();
   const nombre = (prodNombre.value || '').toString().trim();
   const precio = Number(prodPrecio.value) || 0;
   if(!codigo || !nombre || precio <= 0){ alert('Completa código, nombre y precio válidos'); return; }
-  // limit check: if trying to add new (not edit) and already at limit -> show custom message and block
   if(typeof prodCodigo.dataset.editIndex === 'undefined' && productos.length >= MAX_PRODUCTS){
     alert(LIMIT_MESSAGE);
-    // ensure button stays disabled
     if(btnAddProd) btnAddProd.disabled = true;
     return;
   }
@@ -509,15 +506,12 @@ btnAddProd.addEventListener('click', ()=>{
   }
   saveProducts(); renderProducts();
   prodCodigo.value=''; prodNombre.value=''; prodPrecio.value=''; prodCodigo.focus();
-  // re-evaluate limit (in case we just hit it)
   checkProductLimitOnOpen();
 });
 
-/* ADD TO CART */
 function agregarAlCarrito(termino, cantidad, desdeLector){
   const prod = encontrarProducto(termino);
   if(!prod){
-    // Si proviene de un lector (USB o cámara) mostramos aviso no intrusivo + beep.
     if(desdeLector){
       try { console.warn("Código no encontrado:", termino); } catch(e){}
       const aviso = document.getElementById('avisoLectura');
@@ -526,7 +520,6 @@ function agregarAlCarrito(termino, cantidad, desdeLector){
         aviso.classList.add('visible');
         setTimeout(()=> aviso.classList.remove('visible'), 3000);
       }
-      // beep suave corto (150 ms)
       try{
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
@@ -549,73 +542,87 @@ function agregarAlCarrito(termino, cantidad, desdeLector){
   saveCart(); renderCart();
 }
 
-/* FIND PRODUCT */
-
 function encontrarProducto(termino){
-  // Busca un producto por código o por nombre.
-  // - acepta código numérico como string o number
-  // - acepta fragmento de nombre (case-insensitive)
   if(termino === null || typeof termino === 'undefined') return null;
   const t = String(termino).trim();
   if(t.length === 0) return null;
-  // 1) intento de coincidencia exacta por código (como string)
   let prod = productos.find(p => String(p.codigo) === t);
   if(prod) return prod;
-  // 2) intento por número (por si hay ceros o formatos)
   const n = Number(t);
   if(!Number.isNaN(n)){
     prod = productos.find(p => Number(p.codigo) === n);
     if(prod) return prod;
   }
-  // 3) coincidencia por nombre (contains, case-insensitive)
   const lower = t.toLowerCase();
   prod = productos.find(p => (p.nombre || '').toString().toLowerCase().includes(lower));
   if(prod) return prod;
-  // 4) fallback: buscar por token (primer término)
   const token = t.split(/\\s+/)[0];
   prod = productos.find(p => String(p.codigo) === token || (p.nombre||'').toString().toLowerCase().includes(token.toLowerCase()));
   return prod || null;
 }
 
-
-/* EVENTS - cart */
-btnAgregar.addEventListener('click', ()=> { agregarAlCarrito(buscarInput.value.trim(), cantidadInput.value); buscarInput.value=''; cantidadInput.value=1; buscarInput.focus(); });
-/* LIMPIAR: ensure it clears buscar, cantidad, pago and cambio */
-if(btnLimpiar){
-  btnLimpiar.addEventListener('click', ()=> {
-    if(buscarInput) buscarInput.value = '';
-    if(cantidadInput) cantidadInput.value = 1;
-    if(pagoInput) pagoInput.value = '';
-    if(cambioLabel) {
+/* Eventos zona de venta unificada */
+if (btnEscanear){
+  btnEscanear.addEventListener('click', ()=>{
+    if(confirm('¿Usar cámara para escanear el código?')){
+      if(typeof openScannerModal === 'function'){
+        openScannerModal(inputBusqueda);
+      } else {
+        alert('No se pudo iniciar el escáner de cámara.');
+      }
+    } else {
+      inputBusqueda && inputBusqueda.focus();
+      alert('Listo para escanear con lector físico o escribir manualmente.');
+    }
+  });
+}
+if (inputBusqueda){
+  inputBusqueda.addEventListener('keydown', e=>{
+    if(e.key === 'Enter'){
+      const term = inputBusqueda.value.trim();
+      if(term){
+        agregarAlCarrito(term, cantidadInput.value, true);
+        inputBusqueda.value='';
+        cantidadInput.value=1;
+      }
+    }
+  });
+  inputBusqueda.addEventListener('paste', e=>{
+    setTimeout(()=>{
+      const term = inputBusqueda.value.trim();
+      if(term){
+        agregarAlCarrito(term, cantidadInput.value, true);
+        inputBusqueda.value='';
+      }
+    }, 50);
+  });
+}
+if (btnAgregar){
+  btnAgregar.addEventListener('click', ()=>{
+    const term = (inputBusqueda && inputBusqueda.value.trim()) || '';
+    if(!term){ alert('Escribe o escanea un producto para agregarlo.'); return; }
+    agregarAlCarrito(term, cantidadInput.value);
+    inputBusqueda.value='';
+    cantidadInput.value=1;
+  });
+}
+if (btnLimpiar){
+  btnLimpiar.addEventListener('click', ()=>{
+    if(inputBusqueda) inputBusqueda.value='';
+    if(cantidadInput) cantidadInput.value=1;
+    if(pagoInput) pagoInput.value='';
+    if(cambioLabel){
       cambioLabel.textContent = formatMXN(0);
       cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
     }
-    if(buscarInput) buscarInput.focus();
-  });
-} else {
-  // fallback: attach later if button appears
-  document.addEventListener('DOMContentLoaded', ()=> {
-    const b = document.getElementById('btnLimpiar');
-    if(b) b.addEventListener('click', ()=> {
-      if(buscarInput) buscarInput.value = '';
-      if(cantidadInput) cantidadInput.value = 1;
-      if(pagoInput) pagoInput.value = '';
-      if(cambioLabel) {
-        cambioLabel.textContent = formatMXN(0);
-        cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
-      }
-      if(buscarInput) buscarInput.focus();
-    });
+    inputBusqueda && inputBusqueda.focus();
   });
 }
-buscarInput.addEventListener('keydown', e => { if(e.key === 'Enter') btnAgregar.click(); });
 
 /* Payment & Change logic (real-time) */
 function updatePaymentChange(){
-  // currentTotal already updated in renderCart()
   const pago = Math.max(0, Number(pagoInput.value) || 0);
-  const diff = Number((pago - currentTotal).toFixed(2)); // positive => change to give
-  // set display: simply the monto (no prefix), color and blink
+  const diff = Number((pago - currentTotal).toFixed(2));
   cambioLabel.textContent = formatMXN(Math.abs(diff));
   cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
   if(diff >= 0){
@@ -624,11 +631,8 @@ function updatePaymentChange(){
     cambioLabel.classList.add('change-low','blink-red');
   }
 }
-pagoInput && pagoInput.addEventListener('input', ()=> {
-  updatePaymentChange();
-});
+pagoInput && pagoInput.addEventListener('input', ()=> { updatePaymentChange(); });
 
-/* Finalize sale: require pago >= total */
 btnFinalizar.addEventListener('click', ()=> {
   const pago = Math.max(0, Number(pagoInput.value) || 0);
   if(carrito.length === 0){ alert('El carrito está vacío.'); return; }
@@ -640,19 +644,16 @@ btnFinalizar.addEventListener('click', ()=> {
   const total = currentTotal;
   const venta = { id: historial.length + 1, fecha: new Date().toLocaleString(), total: Number(total.toFixed(2)), items: carrito.map(x=> ({...x})) , pago: pago, cambio: Number((pago - total).toFixed(2)) };
   historial.unshift(venta);
-  // clear cart and payment fields
   carrito = [];
   saveHistory(); saveCart();
   renderCart();
   renderHistorial();
-  // reset payment UI
   pagoInput.value = '';
   cambioLabel.textContent = formatMXN(0);
   cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
   showPanel(panelHistorial);
 });
 
-/* Cancel sale: clears cart and payment */
 btnCancelar.addEventListener('click', ()=> {
   if(!confirm('¿Cancelar venta actual? Se borrará el carrito.')) return;
   carrito = []; saveCart(); renderCart();
@@ -661,8 +662,7 @@ btnCancelar.addEventListener('click', ()=> {
   cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
 });
 
-/* MANUAL PRODUCT (sin código) - ahora con límite a MANUAL_MAX_PER_SALE */
-function ensureManual(){ /* noop placeholder if needed */ }
+function ensureManual(){ /* noop */ }
 function nextManualCode(){ const d = new Date(); const ts = d.getTime(); return 'M-'+String(Math.floor(Math.random()*900)+100)+'-'+String(ts).slice(-4); }
 
 function openManualModal(){
@@ -677,15 +677,11 @@ function openManualModal(){
     const cantidad = Math.max(1, Number(document.getElementById('manual-cantidad').value) || 1);
     const precio = Number(document.getElementById('manual-precio').value) || 0;
     if(!nombre || precio <= 0){ alert('Ingresa nombre y precio válidos.'); return; }
-
-    // New: enforce per-sale manual limit (count items in cart with manual flag)
     const manualCount = carrito.filter(it=> it.manual ).length;
     if(manualCount >= MANUAL_MAX_PER_SALE){
       alert(`Has alcanzado el límite de ${MANUAL_MAX_PER_SALE} productos sin código en esta venta.`);
       return;
     }
-
-    // check global products limit too (productos + manual in cart)
     if(productos.length + carrito.filter(it=> it.manual).length >= MAX_PRODUCTS){
       alert(LIMIT_MESSAGE);
       return;
@@ -700,7 +696,6 @@ function openManualModal(){
 }
 document.getElementById('btnSinCodigo') && document.getElementById('btnSinCodigo').addEventListener('click', openManualModal);
 
-/* HISTORY */
 function renderHistorial(){
   historyList.innerHTML = '';
   if(historial.length === 0){ const p = document.createElement('div'); p.className='small'; p.textContent='No hay ventas registradas aún.'; historyList.appendChild(p); return; }
@@ -716,7 +711,6 @@ function renderHistorial(){
   });
 }
 
-/* CLEAR ALL (admin) */
 if(btnClearAll){
   btnClearAll.addEventListener('click', ()=> {
     if(!confirm('¿Borrar todo el historial y productos? Esta acción es irreversible.')) return;
@@ -732,12 +726,11 @@ if(btnClearAll){
   });
 }
 
-/* EXPORT CSV */
 async function exportHistorialCSV(){
   if(historial.length === 0){ alert('No hay historial para exportar.'); return; }
   let rows=[['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal']];
   historial.forEach(v=>{ v.items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre,it.cantidad,it.precio,it.subtotal])); });
-  const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',') ).join('\r\n');
+  const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',') ).join('\\r\\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const ts = new Date(); const fname = 'Historial_'+ ts.getFullYear() + '-' + String(ts.getMonth()+1).padStart(2,'0') + '-' + String(ts.getDate()).padStart(2,'0') + '_' + String(ts.getHours()).padStart(2,'0') + '-' + String(ts.getMinutes()).padStart(2,'0') + '-' + String(ts.getSeconds()).padStart(2,'0') + '.csv';
   try {
@@ -758,7 +751,8 @@ async function exportHistorialCSV(){
   const a = document.createElement('a'); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   alert('💾 Respaldo descargado (revisa tu carpeta de Descargas).');
 }
-if(btnExportCSV) btnExportCSV.addEventListener('click', exportHistorialCSV);
+const btnExportCSVEl = document.getElementById('btnExportCSV');
+btnExportCSVEl && btnExportCSVEl.addEventListener('click', exportHistorialCSV);
 
 /* SCANNER modal */
 function openScannerModal(targetInput){
@@ -802,17 +796,12 @@ function closeScannerModal(){
   }
   if(scannerModal){ scannerModal.remove(); scannerModal = null; scanTargetInput = null; }
 }
-if(btnScanVenta) btnScanVenta.addEventListener('click', ()=> {
-  if(confirm('¿Usar cámara para escanear? Acepta = cámara, Cancelar = lector físico (enfocar campo).')) openScannerModal(buscarInput);
-  else { buscarInput.focus(); alert('Listo para escanear con lector físico o escribir el código.'); }
-});
 if(btnScanProd) btnScanProd.addEventListener('click', ()=> {
   if(confirm('¿Usar cámara para escanear? Acepta = cámara, Cancelar = lector físico (enfocar campo).')) openScannerModal(prodCodigo);
   else { prodCodigo.focus(); alert('Listo para escanear con lector físico o escribir el código.'); }
 });
 
-/* BACKUP: Export / Import productos (siempre visibles, discretos) */
-/* Export current products to JSON file with date */
+/* BACKUP: Export / Import productos */
 function exportProductsToJson(){
   try {
     const data = JSON.stringify(productos, null, 2);
@@ -833,8 +822,6 @@ function exportProductsToJson(){
     alert('Error al exportar productos.');
   }
 }
-
-/* Import products from a selected JSON file (with confirmation), replace all products */
 function handleImportFile(file){
   if(!file) return;
   const reader = new FileReader();
@@ -846,7 +833,6 @@ function handleImportFile(file){
         alert('Archivo inválido: debe contener un array de productos.');
         return;
       }
-      // basic validation: each item should have codigo and nombre, precio number
       const cleaned = [];
       for(const it of parsed){
         if(!it || typeof it !== 'object') continue;
@@ -860,9 +846,7 @@ function handleImportFile(file){
         alert('No se encontraron productos válidos en el archivo.');
         return;
       }
-      // confirm replacement
       if(!confirm(`Esto reemplazará los ${productos.length} productos actuales por ${cleaned.length} productos del archivo. ¿Continuar?`)) return;
-      // enforce MAX_PRODUCTS: if cleaned > MAX_PRODUCTS, ask to confirm truncation or abort
       if(cleaned.length > MAX_PRODUCTS){
         if(!confirm(`El archivo contiene ${cleaned.length} productos pero la versión gratuita limita a ${MAX_PRODUCTS}. Se importarán los primeros ${MAX_PRODUCTS}. ¿Continuar?`)) return;
         productos = cleaned.slice(0, MAX_PRODUCTS);
@@ -880,8 +864,6 @@ function handleImportFile(file){
   };
   reader.readAsText(file, 'utf-8');
 }
-
-/* Wire export/import buttons */
 if(btnExportProd) btnExportProd.addEventListener('click', exportProductsToJson);
 if(btnImportProd && inputImportProd){
   btnImportProd.addEventListener('click', ()=> inputImportProd.click());
@@ -889,7 +871,6 @@ if(btnImportProd && inputImportProd){
     const f = e.target.files && e.target.files[0];
     if(!f) return;
     handleImportFile(f);
-    // reset input so same file can be reselected later if needed
     inputImportProd.value = '';
   });
 }
@@ -898,12 +879,6 @@ if(btnImportProd && inputImportProd){
 navVenta.addEventListener('click', ()=> showPanel(panelVenta));
 navProductos.addEventListener('click', ()=> showPanel(panelProductos));
 navHistorial.addEventListener('click', ()=> { showPanel(panelHistorial); renderHistorial(); });
-document.querySelectorAll('.card').forEach(c => c.addEventListener('click', e => {
-  const a = c.getAttribute('data-action');
-  if(a==='venta') showPanel(panelVenta);
-  if(a==='productos') showPanel(panelProductos);
-  if(a==='historial') { showPanel(panelHistorial); renderHistorial(); }
-}));
 shortcutVenta && shortcutVenta.addEventListener('click', ()=> showPanel(panelVenta));
 shortcutProd && shortcutProd.addEventListener('click', ()=> showPanel(panelProductos));
 shortcutHist && shortcutHist.addEventListener('click', ()=> { showPanel(panelHistorial); renderHistorial(); });
@@ -926,163 +901,34 @@ function adminSignedOut(){
   alert('Sesión de administrador cerrada.');
 }
 
-// mouse events
+let logoPressTimer = null;
 logoImg.addEventListener('mousedown', ()=> {
   logoPressTimer = setTimeout(()=>{
     const pass = prompt('Ingresa contraseña de administrador:');
-    if(pass === ADMIN_PASSWORD){
-      adminSignedIn();
-    } else {
-      alert('Contraseña incorrecta.');
-    }
+    if(pass === ADMIN_PASSWORD){ adminSignedIn(); } else { alert('Contraseña incorrecta.'); }
   }, 3000);
 });
 logoImg.addEventListener('mouseup', ()=> { if(logoPressTimer) clearTimeout(logoPressTimer); });
 logoImg.addEventListener('mouseleave', ()=> { if(logoPressTimer) clearTimeout(logoPressTimer); });
-// touch events for mobile
 logoImg.addEventListener('touchstart', ()=> {
   logoPressTimer = setTimeout(()=>{
     const pass = prompt('Ingresa contraseña de administrador:');
-    if(pass === ADMIN_PASSWORD){
-      adminSignedIn();
-    } else {
-      alert('Contraseña incorrecta.');
-    }
+    if(pass === ADMIN_PASSWORD){ adminSignedIn(); } else { alert('Contraseña incorrecta.'); }
   }, 3000);
 });
 logoImg.addEventListener('touchend', ()=> { if(logoPressTimer) clearTimeout(logoPressTimer); });
 
 btnAdminLogout.addEventListener('click', ()=> { if(!confirm('Cerrar sesión de administrador?')) return; adminSignedOut(); });
 
-/* CONTACT (WhatsApp) */
 if(btnContacto){
   btnContacto.addEventListener('click', ()=> {
-    // número +52 5548669275
     const phone = '5215548669275';
     const text = encodeURIComponent('Hola, necesito ayuda con Mi Tienda');
     window.open(`https://wa.me/52${phone}?text=${text}`, '_blank');
   });
 }
 
-/* BACKUP: Export / Import productos (siempre visibles, discretos) */
-
-/* Export current products to JSON file with date */
-function exportProductsToJson(){
-  try {
-    const data = JSON.stringify(productos, null, 2);
-    const now = new Date();
-    const fname = `productos_backup_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}.json`;
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fname;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    alert('✅ Lista de productos exportada: ' + fname);
-  } catch (e) {
-    console.error(e);
-    alert('Error al exportar productos.');
-  }
-}
-
-/* Import products from a selected JSON file (with confirmation), replace all products */
-function handleImportFile(file){
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(ev){
-    try {
-      const text = ev.target.result;
-      const parsed = JSON.parse(text);
-      if(!Array.isArray(parsed)){
-        alert('Archivo inválido: debe contener un array de productos.');
-        return;
-      }
-      // basic validation: each item should have codigo and nombre, precio number
-      const cleaned = [];
-      for(const it of parsed){
-        if(!it || typeof it !== 'object') continue;
-        const codigo = (it.codigo || '').toString().trim();
-        const nombre = (it.nombre || '').toString().trim();
-        const precio = Number(it.precio) || 0;
-        if(!codigo || !nombre || precio <= 0) continue;
-        cleaned.push({ codigo, nombre, precio });
-      }
-      if(cleaned.length === 0){
-        alert('No se encontraron productos válidos en el archivo.');
-        return;
-      }
-      // confirm replacement
-      if(!confirm(`Esto reemplazará los ${productos.length} productos actuales por ${cleaned.length} productos del archivo. ¿Continuar?`)) return;
-      // enforce MAX_PRODUCTS: if cleaned > MAX_PRODUCTS, ask to confirm truncation or abort
-      if(cleaned.length > MAX_PRODUCTS){
-        if(!confirm(`El archivo contiene ${cleaned.length} productos pero la versión gratuita limita a ${MAX_PRODUCTS}. Se importarán los primeros ${MAX_PRODUCTS}. ¿Continuar?`)) return;
-        productos = cleaned.slice(0, MAX_PRODUCTS);
-      } else {
-        productos = cleaned;
-      }
-      saveProducts();
-      renderProducts();
-      checkProductLimitOnOpen();
-      alert(`✅ Lista de productos cargada correctamente. Se actualizaron ${productos.length} productos.`);
-    } catch (err){
-      console.error(err);
-      alert('Error al procesar el archivo. Asegúrate de que sea un JSON válido.');
-    }
-  };
-  reader.readAsText(file, 'utf-8');
-}
-
-/* Wire export/import buttons */
-if(btnExportProd) btnExportProd.addEventListener('click', exportProductsToJson);
-if(btnImportProd && inputImportProd){
-  btnImportProd.addEventListener('click', ()=> inputImportProd.click());
-  inputImportProd.addEventListener('change', (e)=>{
-    const f = e.target.files && e.target.files[0];
-    if(!f) return;
-    handleImportFile(f);
-    // reset input so same file can be reselected later if needed
-    inputImportProd.value = '';
-  });
-}
-
-/* SHORTCUTS & NAV */
-navVenta.addEventListener('click', ()=> showPanel(panelVenta));
-navProductos.addEventListener('click', ()=> showPanel(panelProductos));
-navHistorial.addEventListener('click', ()=> { showPanel(panelHistorial); renderHistorial(); });
-document.querySelectorAll('.card').forEach(c => c.addEventListener('click', e => {
-  const a = c.getAttribute('data-action');
-  if(a==='venta') showPanel(panelVenta);
-  if(a==='productos') showPanel(panelProductos);
-  if(a==='historial') { showPanel(panelHistorial); renderHistorial(); }
-}));
-shortcutVenta && shortcutVenta.addEventListener('click', ()=> showPanel(panelVenta));
-shortcutProd && shortcutProd.addEventListener('click', ()=> showPanel(panelProductos));
-shortcutHist && shortcutHist.addEventListener('click', ()=> { showPanel(panelHistorial); renderHistorial(); });
-
-/* INITIALIZE */
-/* INITIALIZE */
-window.addEventListener('load', ()=>{
-  loadState();
-  renderProducts();
-  renderCart();
-  renderHistorial();
-  showPanel(panelVenta);
-  buscarInput && buscarInput.focus();
-  // Ensure product limit is enforced on load if products already >= MAX
-  checkProductLimitOnOpen();
-});
-
-/* ensure Enter behavior */
-buscarInput && buscarInput.addEventListener('keydown', e=> { if(e.key==='Enter') btnAgregar.click(); });
-prodCodigo && prodCodigo.addEventListener('keydown', e=> { if(e.key==='Enter') prodNombre.focus(); });
-
-
-
-/* --- MEJORAS: manejo lector USB, carga condicional html5-qrcode y avisos --- */
-
+/* --- MEJORAS lector USB/cámara: avisos --- */
 (function ensureAvisoElement(){
   if(!document.getElementById('avisoLectura')){
     const div = document.createElement('div'); div.id='avisoLectura'; div.className='aviso';
@@ -1126,13 +972,13 @@ window.addEventListener('load', ()=>{
   if(btnCam){
     btnCam.addEventListener('click', ()=>{
       loadHtml5QrcodeIfNeeded(()=>{
-        const target = document.getElementById('scanInput') || document.getElementById('buscar');
+        const target = document.getElementById('inputBusqueda');
         if(target){ 
           if(typeof openScannerModal === 'function'){ openScannerModal(target); }
           else if(typeof Html5Qrcode !== 'undefined'){
             const zona = document.getElementById('zonaCamara');
             if(zona){ zona.style.display='block'; zona.innerHTML = '<div id="reader" style="width:300px"></div>'; }
-            try{ const scanner = new Html5Qrcode('reader'); scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: 250 }, (decoded)=>{ agregarAlCarrito(decoded,1,true); scanner.stop().catch(()=>{}); zona.style.display='none'; zona.innerHTML=''; }, (err)=>{ /* ignore scan errors */ }).catch(err=>{ const aviso = document.getElementById('avisoLectura'); if(aviso){ aviso.textContent = 'No se pudo iniciar la cámara: ' + err; aviso.classList.add('visible'); setTimeout(()=>aviso.classList.remove('visible'),4000); } }); }catch(e){ const aviso = document.getElementById('avisoLectura'); if(aviso){ aviso.textContent = 'Error al inicializar escáner: ' + e; aviso.classList.add('visible'); setTimeout(()=>aviso.classList.remove('visible'),4000); } }
+            try{ const scanner = new Html5Qrcode('reader'); scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: 250 }, (decoded)=>{ agregarAlCarrito(decoded,1,true); scanner.stop().catch(()=>{}); zona.style.display='none'; zona.innerHTML=''; }, (err)=>{  }).catch(err=>{ const aviso = document.getElementById('avisoLectura'); if(aviso){ aviso.textContent = 'No se pudo iniciar la cámara: ' + err; aviso.classList.add('visible'); setTimeout(()=>aviso.classList.remove('visible'),4000); } }); }catch(e){ const aviso = document.getElementById('avisoLectura'); if(aviso){ aviso.textContent = 'Error al inicializar escáner: ' + e; aviso.classList.add('visible'); setTimeout(()=>aviso.classList.remove('visible'),4000); } }
           }
         } else { const aviso = document.getElementById('avisoLectura'); if(aviso){ aviso.textContent = 'No se encontró el campo de destino para el escáner.'; aviso.classList.add('visible'); setTimeout(()=>aviso.classList.remove('visible'),3000); } }
       });
@@ -1140,7 +986,18 @@ window.addEventListener('load', ()=>{
   }
 });
 
-/* --- FIN MEJORAS --- */
+window.addEventListener('load', ()=>{
+  loadState();
+  renderProducts();
+  renderCart();
+  renderHistorial();
+  showPanel(panelVenta);
+  inputBusqueda && inputBusqueda.focus();
+  checkProductLimitOnOpen();
+});
+
+/* ensure Enter behavior para prodCodigo */
+prodCodigo && prodCodigo.addEventListener('keydown', e=> { if(e.key==='Enter') prodNombre.focus(); });
 </script>
 </body>
 </html>
