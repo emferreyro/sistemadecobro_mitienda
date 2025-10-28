@@ -270,7 +270,7 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 <!-- html5-qrcode (QR + barcode) opcion; si no la necesitas, puedes eliminar esta línea -->
 <script src="https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js">
 // Esperar que la librería Html5Qrcode esté cargada antes de usarla
-async function waitForHtml5Qrcode(retries = 10, delay = 500) {
+async function waitForHtml5QrcodeOld(retries = 10, delay = 500) {
   for (let i = 0; i < retries; i++) {
     if (typeof Html5Qrcode !== 'undefined') return true;
     await new Promise(res => setTimeout(res, delay));
@@ -281,7 +281,52 @@ async function waitForHtml5Qrcode(retries = 10, delay = 500) {
 
 if (typeof btnCamaraVenta !== 'undefined' && btnCamaraVenta) {
   btnCamaraVenta.addEventListener('click', async () => {
-    const ready = await waitForHtml5Qrcode();
+    const ready = await waitForHtml5QrcodeOld();
+    if (ready && typeof openScannerModal === 'function') {
+      openScannerModal(buscarInput);
+    } else if (ready) {
+      alert('Escáner no disponible.');
+    }
+  });
+}
+
+
+// Indicador visual de carga de cámara y espera extendida
+async function waitForHtml5QrcodeExtended(retries = 30, delay = 500) {
+  const buscarInput = document.getElementById('buscar');
+  let loadingMsg = document.createElement('div');
+  loadingMsg.id = 'loadingCamMsg';
+  loadingMsg.style.position = 'fixed';
+  loadingMsg.style.top = '0';
+  loadingMsg.style.left = '0';
+  loadingMsg.style.width = '100%';
+  loadingMsg.style.height = '100%';
+  loadingMsg.style.background = 'rgba(0,0,0,0.6)';
+  loadingMsg.style.color = '#fff';
+  loadingMsg.style.display = 'flex';
+  loadingMsg.style.alignItems = 'center';
+  loadingMsg.style.justifyContent = 'center';
+  loadingMsg.style.fontSize = '20px';
+  loadingMsg.style.zIndex = '9999';
+  loadingMsg.textContent = '🔄 Inicializando cámara...';
+  document.body.appendChild(loadingMsg);
+
+  for (let i = 0; i < retries; i++) {
+    if (typeof Html5Qrcode !== 'undefined') {
+      document.body.removeChild(loadingMsg);
+      return true;
+    }
+    await new Promise(res => setTimeout(res, delay));
+  }
+
+  loadingMsg.textContent = '⚠️ No se pudo acceder a la cámara. Revisa permisos o intenta nuevamente.';
+  setTimeout(() => { if (document.body.contains(loadingMsg)) document.body.removeChild(loadingMsg); }, 4000);
+  return false;
+}
+
+if (typeof btnCamaraVenta !== 'undefined' && btnCamaraVenta) {
+  btnCamaraVenta.addEventListener('click', async () => {
+    const ready = await waitForHtml5QrcodeExtended();
     if (ready && typeof openScannerModal === 'function') {
       openScannerModal(buscarInput);
     } else if (ready) {
@@ -1172,7 +1217,7 @@ window.addEventListener('load', ()=>{
 /* --- FIN MEJORAS --- */
 
 // Esperar que la librería Html5Qrcode esté cargada antes de usarla
-async function waitForHtml5Qrcode(retries = 10, delay = 500) {
+async function waitForHtml5QrcodeOld(retries = 10, delay = 500) {
   for (let i = 0; i < retries; i++) {
     if (typeof Html5Qrcode !== 'undefined') return true;
     await new Promise(res => setTimeout(res, delay));
@@ -1183,7 +1228,52 @@ async function waitForHtml5Qrcode(retries = 10, delay = 500) {
 
 if (typeof btnCamaraVenta !== 'undefined' && btnCamaraVenta) {
   btnCamaraVenta.addEventListener('click', async () => {
-    const ready = await waitForHtml5Qrcode();
+    const ready = await waitForHtml5QrcodeOld();
+    if (ready && typeof openScannerModal === 'function') {
+      openScannerModal(buscarInput);
+    } else if (ready) {
+      alert('Escáner no disponible.');
+    }
+  });
+}
+
+
+// Indicador visual de carga de cámara y espera extendida
+async function waitForHtml5QrcodeExtended(retries = 30, delay = 500) {
+  const buscarInput = document.getElementById('buscar');
+  let loadingMsg = document.createElement('div');
+  loadingMsg.id = 'loadingCamMsg';
+  loadingMsg.style.position = 'fixed';
+  loadingMsg.style.top = '0';
+  loadingMsg.style.left = '0';
+  loadingMsg.style.width = '100%';
+  loadingMsg.style.height = '100%';
+  loadingMsg.style.background = 'rgba(0,0,0,0.6)';
+  loadingMsg.style.color = '#fff';
+  loadingMsg.style.display = 'flex';
+  loadingMsg.style.alignItems = 'center';
+  loadingMsg.style.justifyContent = 'center';
+  loadingMsg.style.fontSize = '20px';
+  loadingMsg.style.zIndex = '9999';
+  loadingMsg.textContent = '🔄 Inicializando cámara...';
+  document.body.appendChild(loadingMsg);
+
+  for (let i = 0; i < retries; i++) {
+    if (typeof Html5Qrcode !== 'undefined') {
+      document.body.removeChild(loadingMsg);
+      return true;
+    }
+    await new Promise(res => setTimeout(res, delay));
+  }
+
+  loadingMsg.textContent = '⚠️ No se pudo acceder a la cámara. Revisa permisos o intenta nuevamente.';
+  setTimeout(() => { if (document.body.contains(loadingMsg)) document.body.removeChild(loadingMsg); }, 4000);
+  return false;
+}
+
+if (typeof btnCamaraVenta !== 'undefined' && btnCamaraVenta) {
+  btnCamaraVenta.addEventListener('click', async () => {
+    const ready = await waitForHtml5QrcodeExtended();
     if (ready && typeof openScannerModal === 'function') {
       openScannerModal(buscarInput);
     } else if (ready) {
