@@ -14,14 +14,30 @@
 html,body{height:100%;margin:0;background:var(--gris);color:var(--texto);}
 .app{min-height:100%;display:flex;flex-direction:column;}
 /* ⬇️ Encabezado centrado */
-header{background:#f5e131;color:#1f1f1f;font-weight:700;box-shadow:var(--sombra);padding:12px 18px;border-bottom:1px solid rgba(0,0,0,0.04);display:flex;align-items:center;justify-content:center;gap:12px;}
+header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: #f5e131;
+  color: #1f1f1f;
+  font-weight: 700;
+  box-shadow: var(--sombra);
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
 .header-left{display:flex;align-items:center;gap:12px;justify-content:center;flex:1;}
 .logo-img{max-width:120px;max-height:48px;object-fit:contain;border-radius:8px;cursor:pointer;}
 .title{font-size:18px;font-weight:700;}
 .nav{display:flex;gap:8px;}
 .nav button{background:transparent;border:none;padding:8px 12px;border-radius:10px;font-weight:600;cursor:pointer;color:var(--texto);}
 .nav button.active{background:linear-gradient(180deg,var(--rojo),#c62828);color:var(--blanco);box-shadow:0 6px 16px rgba(229,57,53,0.14);}
-main{flex:1;display:flex;align-items:stretch;justify-content:center;padding:18px;}
+main {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 80px 18px 18px;
+}
 .container{width:1200px;max-width:calc(100% - 40px);display:grid;grid-template-columns:1fr 380px;gap:18px;align-items:start;}
 .panel{background:var(--blanco);border-radius:var(--radio);padding:14px;box-shadow:var(--sombra);border:1px solid rgba(0,0,0,0.03);}
 .venta-top{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;}
@@ -64,7 +80,7 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 .small-muted{font-size:12px;color:#9ca3af;}
 
 .header-center { display: none; }
-.bandera-mx { height: 48px; width: auto; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
+.bandera-mx { height: 48px; width: auto; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); margin-right: 420px;}
 
 /* === NUEVA ZONA DE VENTA SIMPLIFICADA (CSS complementario) === */
 #inputBusqueda {
@@ -86,19 +102,45 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 
 /* ⬇️ Atajos centrados */
 #atajos-botones { display:flex; gap:8px; margin-top:10px; justify-content:center; }
+
+.header-container {
+  width: 1200px;
+  max-width: calc(100% - 40px);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 </style>
 </head>
 <body>
 <div class="app">
-  <header>
+  
+<header>
+  <div class="header-container">
     <div class="header-left">
+      <img src="imagenes/bandera-mx.png" alt="Bandera de México" class="bandera-mx" />
       <img id="logoImg" class="logo-img" src="imagenes/logo.png" alt="Mi Tienda" />
       <div>
         <div class="title">Mi Tienda</div>
         <div class="small">Sistema de cobro / Haciendo fácil tu día</div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:10px">
+    <div class="header-right">
       <div class="nav" role="navigation" aria-label="Navegación">
         <button id="nav-venta" class="active">Ventas</button>
         <button id="nav-productos">Productos</button>
@@ -108,7 +150,9 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
         <button id="btnAdminLogout" class="btn btn-outline" style="display:none">🚪 Salir</button>
       </div>
     </div>
-  </header>
+  </div>
+</header>
+
 
   <main>
     <div class="container">
