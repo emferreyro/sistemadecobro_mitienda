@@ -104,13 +104,15 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 #atajos-botones { display:flex; gap:8px; margin-top:10px; justify-content:center; }
 
 .header-container {
-  width: 1200px;
-  max-width: calc(100% - 40px);
+  width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding: 0 12px;
+  box-sizing: border-box;
 }
 
 .header-left {
@@ -123,6 +125,39 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+
+@media (max-width: 600px) {
+  header {
+    padding: 10px 0;
+    text-align: center;
+  }
+  .header-container {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .header-left {
+    flex-direction: column;
+    align-items: center;
+  }
+  .header-right {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .nav {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .nav button {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+  .bandera-mx {
+    height: 36px;
+  }
 }
 
 </style>
@@ -327,7 +362,7 @@ const KEY_PRODUCTS = 'sistemacobro_products_v2';
 const KEY_CART = 'sistemacobro_cart_v2';
 const KEY_HISTORY = 'sistemacobro_history_v2';
 const KEY_LOGO = 'sistemacobro_logo_v2';
-const MAX_PRODUCTS = 20;
+const MAX_PRODUCTS = 50;
 const MANUAL_MAX_PER_SALE = 5;
 
 /* DEFAULT PRODUCTS */
