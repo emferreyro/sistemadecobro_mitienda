@@ -253,6 +253,80 @@ header {
   }
 }
 
+
+/* === Ajuste fino del encabezado para tabletas === */
+@media (max-width: 1024px) {
+  .header-container {
+    flex-wrap: nowrap;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap; /* evita salto de línea */
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .title {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    line-height: 1.2;
+    max-width: 200px; /* evita desborde horizontal */
+  }
+
+  .title br {
+    display: none; /* quita saltos de línea forzados */
+  }
+
+  .header-right {
+    flex-shrink: 0;
+  }
+
+  .nav {
+    flex-wrap: nowrap;
+  }
+
+  .nav button {
+    flex: 1 1 auto;
+  }
+
+  .logo-img {
+    max-height: 42px;
+  }
+
+  .bandera-mx {
+    height: 36px;
+  }
+}
+
+/* === En pantallas pequeñas, que el título sí se apile === */
+@media (max-width: 600px) {
+  .header-container {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .title br {
+    display: inline;
+  }
+
+  .title {
+    max-width: none;
+  }
+
+  .header-left {
+    justify-content: center;
+  }
+}
+
 </style>
 </head>
 <body>
