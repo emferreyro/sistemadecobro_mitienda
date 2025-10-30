@@ -398,6 +398,119 @@ header {
   .title { white-space: normal; text-align: center; }
 }
 
+
+/* === HEADER FIX FINAL Y RESPONSIVO === */
+header {
+  background: #f5e131;
+  color: #1f1f1f;
+  box-shadow: var(--sombra);
+  padding: 10px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.header-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.logo-img {
+  max-width: 110px;
+  max-height: 48px;
+}
+
+.bandera-mx {
+  height: 40px;
+  margin-right: 6px;
+  border-radius: 4px;
+}
+
+/* ✅ Bloque del título */
+.title {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.1;
+  min-width: 0;
+}
+
+.title strong {
+  font-size: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+/* ✅ Botones centrados y visibles */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* === Tablets === */
+@media (max-width: 1024px) {
+  .header-container {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .header-left {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .header-right {
+    justify-content: center;
+  }
+
+  .title strong,
+  .subtitle {
+    text-align: center;
+  }
+
+  .subtitle {
+    white-space: normal;
+  }
+}
+
+/* === Móviles === */
+@media (max-width: 600px) {
+  .header-container {
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -410,7 +523,7 @@ header {
       <img id="logoImg" class="logo-img" src="imagenes/logo.png" alt="Mi Tienda" />
       <div>
         <div class="title"><strong>Mi Tienda</strong><span class="subtitle">Sistema de cobro — Haciendo fácil tu día</span></div>
-        <div class="small">Sistema de cobro / Haciendo fácil tu día</div>
+        
       </div>
     </div>
     <div class="header-right">
