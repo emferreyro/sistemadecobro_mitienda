@@ -125,6 +125,38 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
   gap: 10px;
 }
 
+/* === TEMA OSCURO ESTABLE (no altera layout) === */
+html.dark,
+body.dark {
+  background-color: #0d0d0d;
+  color: #f1f1f1;
+}
+body.dark header {
+  background: #202020;
+  color: #f5f5f5;
+  border-bottom-color: #333;
+}
+body.dark .panel,
+body.dark .product-item,
+body.dark .history-item {
+  background: #181818;
+  color: #f1f1f1;
+  border-color: #2c2c2c;
+}
+body.dark input,
+body.dark textarea,
+body.dark select {
+  background: #222;
+  border-color: #444;
+  color: #f5f5f5;
+}
+body.dark .btn-outline { border-color: #666; color: #f1f1f1; }
+body.dark .btn-rojo { background: #d32f2f; color: #fff; }
+body.dark .btn-amarillo { background: #f5e131; color: #111; }
+body.dark .nav button.active { background: linear-gradient(180deg, #b71c1c, #8b0000); color: #fff; }
+body.dark .footer-note { color: #aaa; }
+body.dark table th { color: #ccc; }
+body.dark .small, body.dark .small-muted { color: #aaa; }
 </style>
 </head>
 <body>
@@ -148,6 +180,8 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
       </div>
       <div id="adminArea" style="display:flex;align-items:center;gap:8px">
         <button id="btnAdminLogout" class="btn btn-outline" style="display:none">🚪 Salir</button>
+        <!-- 🆕 Botón de tema -->
+        <button id="btnToggleTheme" class="btn btn-outline" title="Cambiar tema">🌓 Tema</button>
       </div>
     </div>
   </div>
@@ -302,7 +336,7 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 
         <div class="panel">
           <strong>Ayúdanos a mejorar</strong>
-          <div class="small" style="margin-top:8px; color:#222; font-weight:600;">
+          <div class="small" style="margin-top:8px; color: inherit; font-weight:600;">
             Esta APP ayuda a pequeños comercios. Los primeros 50 registros no tienen costo.
             Si te funciona y es de utilidad contáctanos para obtener la versión sin límites.
             <p>Correo: emf_soporte@outlook.com</p>
@@ -807,7 +841,7 @@ async function exportHistorialCSV(){
   if(historial.length === 0){ alert('No hay historial para exportar.'); return; }
   let rows=[['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal']];
   historial.forEach(v=>{ v.items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre,it.cantidad,it.precio,it.subtotal])); });
-  const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',') ).join('\r\n');
+  const csv = rows.map(r=> r.map(c=> '"' + String(c).replace(/"/g,'""') + '"').join(',') ).join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const ts = new Date(); const fname = 'Historial_'+ ts.getFullYear() + '-' + String(ts.getMonth()+1).padStart(2,'0') + '-' + String(ts.getDate()).padStart(2,'0') + '_' + String(ts.getHours()).padStart(2,'0') + '-' + String(ts.getMinutes()).padStart(2,'0') + '-' + String(ts.getSeconds()).padStart(2,'0') + '.csv';
   try {
@@ -1033,8 +1067,28 @@ if(btnContacto){
   }
 })();
 
+/* === 🌙 Toggle de tema (inicia en claro) === */
+const btnToggleTheme=document.getElementById('btnToggleTheme');
+const THEME_KEY='sistemacobro_theme_v2';
+function applyTheme(theme){
+  if(theme==='dark'){
+    document.body.classList.add('dark');
+    document.documentElement.classList.add('dark'); // ⬅️ también <html>
+  } else {
+    document.body.classList.remove('dark');
+    document.documentElement.classList.remove('dark');
+  }
+  localStorage.setItem(THEME_KEY,theme);
+}
+function detectPreferredTheme(){
+  const saved=localStorage.getItem(THEME_KEY);
+  if(saved) return saved;
+  return 'light'; // inicia en claro
+}
 /* Inicialización */
 window.addEventListener('load', ()=>{
+  const theme=detectPreferredTheme();
+  applyTheme(theme);
   loadState();
   renderProducts();
   renderCart();
@@ -1043,9 +1097,10 @@ window.addEventListener('load', ()=>{
   inputBusqueda && inputBusqueda.focus();
   checkProductLimitOnOpen();
 });
-
-/* Enter en prodCodigo → enfoca nombre */
-prodCodigo && prodCodigo.addEventListener('keydown', e=> { if(e.key==='Enter') prodNombre.focus(); });
+btnToggleTheme.addEventListener('click',()=>{
+  const isDark=document.body.classList.contains('dark');
+  applyTheme(isDark?'light':'dark');
+});
 </script>
 </body>
 </html>
