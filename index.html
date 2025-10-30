@@ -80,7 +80,7 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 .small-muted{font-size:12px;color:#9ca3af;}
 
 .header-center { display: none; }
-.bandera-mx { height: 48px; width: auto; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); margin-right: 420px;}
+.bandera-mx { height: 48px; width: auto; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); margin-right: 8px; }
 
 /* === NUEVA ZONA DE VENTA SIMPLIFICADA (CSS complementario) === */
 #inputBusqueda {
@@ -234,9 +234,7 @@ header {
     max-width: 100px;
   }
 
-  .bandera-mx {
-    height: 34px;
-  }
+  .bandera-mx { height: 48px; width: auto; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); margin-right: 8px; }
 }
 
 /* === Ajustes para móviles pequeños === */
@@ -302,9 +300,7 @@ header {
     max-height: 42px;
   }
 
-  .bandera-mx {
-    height: 36px;
-  }
+  .bandera-mx { height: 48px; width: auto; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); margin-right: 8px; }
 }
 
 /* === En pantallas pequeñas, que el título sí se apile === */
@@ -327,6 +323,81 @@ header {
   }
 }
 
+
+/* === Título y subtítulo responsivo === */
+.title {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  line-height: 1.2;
+}
+
+.title strong {
+  font-size: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.subtitle {
+  font-size: 13px;
+  font-weight: 400;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+/* En móviles pequeños, permitir salto */
+@media (max-width: 600px) {
+  .subtitle {
+    white-space: normal;
+    text-align: center;
+  }
+}
+
+
+/* === HOTFIX HEADER TABLET === */
+@media (min-width: 700px) and (max-width: 1100px) {
+  .header-container {
+    display: grid;
+    grid-template-columns: auto 1fr auto; /* bandera+logo | título/nav | botones derecha */
+    align-items: center;
+    gap: 12px;
+    max-width: 100%;
+    width: 100%;
+    padding: 0 12px;
+  }
+  .header-left {
+    min-width: 0;
+    display: grid;
+    grid-auto-flow: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .title {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+  .title br { display: none !important; } /* fuerza una sola línea del título */
+  .nav {
+    justify-self: center;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .nav button { flex: 0 0 auto; }
+  #adminArea { justify-self: end; }
+  .bandera-mx { height: 34px; margin-right: 8px !important; }
+  .logo-img { max-height: 40px; }
+}
+
+/* móviles pequeños */
+@media (max-width: 699px) {
+  .header-container { gap: 8px; padding: 0 12px; }
+  .title { white-space: normal; text-align: center; }
+}
+
 </style>
 </head>
 <body>
@@ -338,7 +409,7 @@ header {
       <img src="imagenes/bandera-mx.png" alt="Bandera de México" class="bandera-mx" />
       <img id="logoImg" class="logo-img" src="imagenes/logo.png" alt="Mi Tienda" />
       <div>
-        <div class="title">Mi Tienda</div>
+        <div class="title"><strong>Mi Tienda</strong><span class="subtitle">Sistema de cobro — Haciendo fácil tu día</span></div>
         <div class="small">Sistema de cobro / Haciendo fácil tu día</div>
       </div>
     </div>
