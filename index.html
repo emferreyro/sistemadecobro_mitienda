@@ -25,13 +25,7 @@ header {
   padding: 12px 0;
   border-bottom: 1px solid rgba(0,0,0,0.04);
 }
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  justify-content: flex-start;
-  flex: 0 1 auto;
-}
+.header-left{display:flex;align-items:center;gap:12px;justify-content:center;flex:1;}
 .logo-img{max-width:120px;max-height:48px;object-fit:contain;border-radius:8px;cursor:pointer;}
 .title{font-size:18px;font-weight:700;}
 .nav{display:flex;gap:8px;}
@@ -86,13 +80,7 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 .small-muted{font-size:12px;color:#9ca3af;}
 
 .header-center { display: none; }
-.bandera-mx {
-  height: 48px;
-  width: auto;
-  border-radius: 4px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-  margin-right: 12px;
-}
+.bandera-mx { height: 48px; width: auto; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); margin-right: 420px;}
 
 /* === NUEVA ZONA DE VENTA SIMPLIFICADA (CSS complementario) === */
 #inputBusqueda {
@@ -116,23 +104,19 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 #atajos-botones { display:flex; gap:8px; margin-top:10px; justify-content:center; }
 
 .header-container {
-  width: 100%;
-  max-width: 1200px;
+  width: 1200px;
+  max-width: calc(100% - 40px);
   margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 12px;
-  box-sizing: border-box;
 }
 
 .header-left {
   display: flex;
   align-items: center;
   gap: 12px;
-  justify-content: flex-start;
-  flex: 0 1 auto;
 }
 
 .header-right {
@@ -141,17 +125,38 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
   gap: 10px;
 }
 
-
-@media (max-width: 600px) {
-  header { padding: 10px 0; text-align: center; }
-  .header-container { flex-direction: column; align-items: center; gap: 8px; }
-  .header-left { flex-direction: column; align-items: center; }
-  .header-right { flex-direction: column; align-items: center; gap: 6px; }
-  .nav { flex-wrap: wrap; justify-content: center; }
-  .nav button { padding: 6px 10px; font-size: 14px; }
-  .bandera-mx { height: 36px; }
+/* === TEMA OSCURO ESTABLE (no altera layout) === */
+html.dark,
+body.dark {
+  background-color: #0d0d0d;
+  color: #f1f1f1;
 }
-
+body.dark header {
+  background: #202020;
+  color: #f5f5f5;
+  border-bottom-color: #333;
+}
+body.dark .panel,
+body.dark .product-item,
+body.dark .history-item {
+  background: #181818;
+  color: #f1f1f1;
+  border-color: #2c2c2c;
+}
+body.dark input,
+body.dark textarea,
+body.dark select {
+  background: #222;
+  border-color: #444;
+  color: #f5f5f5;
+}
+body.dark .btn-outline { border-color: #666; color: #f1f1f1; }
+body.dark .btn-rojo { background: #d32f2f; color: #fff; }
+body.dark .btn-amarillo { background: #f5e131; color: #111; }
+body.dark .nav button.active { background: linear-gradient(180deg, #b71c1c, #8b0000); color: #fff; }
+body.dark .footer-note { color: #aaa; }
+body.dark table th { color: #ccc; }
+body.dark .small, body.dark .small-muted { color: #aaa; }
 </style>
 </head>
 <body>
@@ -175,6 +180,8 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
       </div>
       <div id="adminArea" style="display:flex;align-items:center;gap:8px">
         <button id="btnAdminLogout" class="btn btn-outline" style="display:none">🚪 Salir</button>
+        <!-- 🆕 Botón de tema -->
+        <button id="btnToggleTheme" class="btn btn-outline" title="Cambiar tema">🌓 Tema</button>
       </div>
     </div>
   </div>
@@ -329,7 +336,7 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 
         <div class="panel">
           <strong>Ayúdanos a mejorar</strong>
-          <div class="small" style="margin-top:8px; color:#222; font-weight:600;">
+          <div class="small" style="margin-top:8px; color: inherit; font-weight:600;">
             Esta APP ayuda a pequeños comercios. Los primeros 50 registros no tienen costo.
             Si te funciona y es de utilidad contáctanos para obtener la versión sin límites.
             <p>Correo: emf_soporte@outlook.com</p>
@@ -344,7 +351,8 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
   <div class="footer-note">Sistema de cobro Mi-Tienda — by Erick M. Ferreyro</div>
 </div>
 
-<!-- Librería de escaneo por cámara (CDN estable) -->
+<!-- Librería de escaneo por cámara -->
+<script>if(typeof Html5Qrcode==="undefined"){alert("⚠️ Error: no se pudo cargar la librería de escaneo. Verifica tu conexión a internet.");}else{console.log("✅ Librería html5-qrcode cargada correctamente desde Cloudflare.");}</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 
 <script>
@@ -585,7 +593,23 @@ btnAddProd.addEventListener('click', ()=>{
     productos.push({ codigo, nombre, precio });
   }
   saveProducts(); renderProducts();
-  prodCodigo.value=''; prodNombre.value=''; prodPrecio.value=''; prodCodigo.focus();
+  
+  // 🔊 Beep de confirmación (producto registrado)
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(800, ctx.currentTime);
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.2);
+  } catch (e) {
+    console.warn('Audio no disponible:', e);
+  }
+prodCodigo.value=''; prodNombre.value=''; prodPrecio.value=''; prodCodigo.focus();
   checkProductLimitOnOpen();
 });
 
@@ -817,7 +841,7 @@ async function exportHistorialCSV(){
   if(historial.length === 0){ alert('No hay historial para exportar.'); return; }
   let rows=[['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal']];
   historial.forEach(v=>{ v.items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre,it.cantidad,it.precio,it.subtotal])); });
-  const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',') ).join('\r\n');
+  const csv = rows.map(r=> r.map(c=> '"' + String(c).replace(/"/g,'""') + '"').join(',') ).join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const ts = new Date(); const fname = 'Historial_'+ ts.getFullYear() + '-' + String(ts.getMonth()+1).padStart(2,'0') + '-' + String(ts.getDate()).padStart(2,'0') + '_' + String(ts.getHours()).padStart(2,'0') + '-' + String(ts.getMinutes()).padStart(2,'0') + '-' + String(ts.getSeconds()).padStart(2,'0') + '.csv';
   try {
@@ -867,7 +891,23 @@ function openScannerModal(targetInput){
           scanTargetInput.dispatchEvent(new Event('input', { bubbles: true }));
           scanTargetInput.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
         }
-        closeScannerModal();
+        
+  // 🔊 Beep de confirmación (escaneo exitoso)
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1000, ctx.currentTime);
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+  } catch (e) {
+    console.warn('Audio no disponible:', e);
+  }
+closeScannerModal();
       }).catch(err => {
         alert('No se pudo iniciar la cámara: ' + err);
         closeScannerModal();
@@ -1027,8 +1067,28 @@ if(btnContacto){
   }
 })();
 
+/* === 🌙 Toggle de tema (inicia en claro) === */
+const btnToggleTheme=document.getElementById('btnToggleTheme');
+const THEME_KEY='sistemacobro_theme_v2';
+function applyTheme(theme){
+  if(theme==='dark'){
+    document.body.classList.add('dark');
+    document.documentElement.classList.add('dark'); // ⬅️ también <html>
+  } else {
+    document.body.classList.remove('dark');
+    document.documentElement.classList.remove('dark');
+  }
+  localStorage.setItem(THEME_KEY,theme);
+}
+function detectPreferredTheme(){
+  const saved=localStorage.getItem(THEME_KEY);
+  if(saved) return saved;
+  return 'light'; // inicia en claro
+}
 /* Inicialización */
 window.addEventListener('load', ()=>{
+  const theme=detectPreferredTheme();
+  applyTheme(theme);
   loadState();
   renderProducts();
   renderCart();
@@ -1037,9 +1097,10 @@ window.addEventListener('load', ()=>{
   inputBusqueda && inputBusqueda.focus();
   checkProductLimitOnOpen();
 });
-
-/* Enter en prodCodigo → enfoca nombre */
-prodCodigo && prodCodigo.addEventListener('keydown', e=> { if(e.key==='Enter') prodNombre.focus(); });
+btnToggleTheme.addEventListener('click',()=>{
+  const isDark=document.body.classList.contains('dark');
+  applyTheme(isDark?'light':'dark');
+});
 </script>
 </body>
 </html>
