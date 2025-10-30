@@ -125,192 +125,19 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
   gap: 10px;
 }
 
-/* === TEMA OSCURO ESTABLE (no altera layout) === */
-body.dark {
-  background-color: #0d0d0d;
-  color: #f1f1f1;
-}
-body.dark header {
-  background: #202020;
-  color: #f5f5f5;
-  border-bottom-color: #333;
-}
-body.dark .panel,
-body.dark .product-item,
-body.dark .history-item {
-  background: #181818;
-  color: #f1f1f1;
-  border-color: #2c2c2c;
-}
-body.dark input,
-body.dark textarea,
-body.dark select {
-  background: #222;
-  border-color: #444;
-  color: #f5f5f5;
-}
-body.dark .btn-outline { border-color: #666; color: #f1f1f1; }
-body.dark .btn-rojo { background: #d32f2f; color: #fff; }
-body.dark .btn-amarillo { background: #f5e131; color: #222; }
-body.dark .nav button.active { background: linear-gradient(180deg, #b71c1c, #8b0000); color: #fff; }
-body.dark .footer-note { color: #aaa; }
-body.dark table th { color: #ccc; }
-body.dark .small, body.dark .small-muted { color: #aaa; }
-
-/* === ENCABEZADO ESTABLE (mantiene amarillo original) === */
-.header-container {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 8px 16px;
-  gap: 8px;
-}
-.header-left { display:flex; align-items:center; gap:8px; min-width:0; }
-.bandera-mx { height:40px; border-radius:4px; }
-.logo-img { height:42px; max-width:120px; }
-.title { display:flex; flex-direction:column; justify-content:center; line-height:1.1; min-width:0; }
-.title strong { font-size:18px; font-weight:700; white-space:nowrap; }
-.subtitle { font-size:13px; font-weight:500; opacity:0.9; white-space:nowrap; }
-
-.header-right { justify-self:end; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.nav { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; }
-.nav button { font-size:14px; padding:6px 10px; border-radius:6px; cursor:pointer; }
-
-@media (max-width: 1024px) {
-  .header-container { grid-template-columns: 1fr; text-align:center; }
-  .header-left { justify-content:center; flex-wrap:wrap; }
-  .header-right { justify-self:center; }
-  .nav { justify-content:center; }
-  .subtitle { white-space:normal; }
-}
-
-
-/* === CORRECCIÓN VISUAL FINAL DEL ENCABEZADO === */
-header {
-  background: #f5e131;
-  color: #1f1f1f;
-  box-shadow: var(--sombra);
-  padding: 10px 0;
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-}
-
-.header-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: nowrap;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 16px;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 1;
-  min-width: 0;
-}
-
-.bandera-mx {
-  height: 40px;
-  border-radius: 4px;
-}
-
-.logo-img {
-  height: 44px;
-  max-width: 120px;
-  object-fit: contain;
-}
-
-.title {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  line-height: 1.1;
-  white-space: nowrap;
-}
-
-.title strong {
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.subtitle {
-  font-size: 13px;
-  font-weight: 500;
-  opacity: 0.9;
-}
-
-/* Botones alineados a la derecha */
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.nav {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-/* === TABLETS === */
-@media (max-width: 1024px) {
-  .header-container {
-    flex-direction: column;
-    text-align: center;
-    gap: 6px;
-  }
-
-  .header-left,
-  .header-right {
-    justify-content: center;
-  }
-
-  .title {
-    align-items: center;
-  }
-
-  .subtitle {
-    white-space: normal;
-  }
-}
-
-/* === MÓVILES === */
-@media (max-width: 600px) {
-  .logo-img {
-    height: 38px;
-  }
-
-  .nav button {
-    font-size: 13px;
-    padding: 5px 8px;
-  }
-}
-
 </style>
 </head>
 <body>
 <div class="app">
   
-
 <header>
   <div class="header-container">
     <div class="header-left">
       <img src="imagenes/bandera-mx.png" alt="Bandera de México" class="bandera-mx" />
       <img id="logoImg" class="logo-img" src="imagenes/logo.png" alt="Mi Tienda" />
-      <div class="title">
-        <strong>Mi Tienda</strong>
-        <span class="subtitle">Sistema de cobro — Haciendo fácil tu día</span>
+      <div>
+        <div class="title">Mi Tienda</div>
+        <div class="small">Sistema de cobro / Haciendo fácil tu día</div>
       </div>
     </div>
     <div class="header-right">
@@ -321,12 +148,10 @@ header {
       </div>
       <div id="adminArea" style="display:flex;align-items:center;gap:8px">
         <button id="btnAdminLogout" class="btn btn-outline" style="display:none">🚪 Salir</button>
-        <button id="btnToggleTheme" class="btn btn-outline" title="Cambiar tema">🌓 Tema</button>
       </div>
     </div>
   </div>
 </header>
-
 
 
   <main>
@@ -1221,28 +1046,6 @@ window.addEventListener('load', ()=>{
 
 /* Enter en prodCodigo → enfoca nombre */
 prodCodigo && prodCodigo.addEventListener('keydown', e=> { if(e.key==='Enter') prodNombre.focus(); });
-
-/* === 🌙 Toggle de tema (inicia en claro) === */
-const btnToggleTheme=document.getElementById('btnToggleTheme');
-const THEME_KEY='sistemacobro_theme_v2';
-function applyTheme(theme){
-  if(theme==='dark') document.body.classList.add('dark');
-  else document.body.classList.remove('dark');
-  localStorage.setItem(THEME_KEY,theme);
-}
-function detectPreferredTheme(){
-  const saved=localStorage.getItem(THEME_KEY);
-  if(saved) return saved;
-  return 'light'; // inicia en claro
-}
-window.addEventListener('DOMContentLoaded',()=>{
-  const theme=detectPreferredTheme();
-  applyTheme(theme);
-});
-btnToggleTheme.addEventListener('click',()=>{
-  const isDark=document.body.classList.contains('dark');
-  applyTheme(isDark?'light':'dark');
-});
 </script>
 </body>
 </html>
