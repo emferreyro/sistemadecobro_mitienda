@@ -1,11 +1,10 @@
-<!DOCTYPE html>
-
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Mi Tienda — Sistema de cobro</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
 <style>
 :root{
   --rojo:#e53935; --rojo-dark:#b71c1c; --amarillo:#f5e131; --blanco:#ffffff; --gris:#d7d8db;
@@ -260,178 +259,200 @@ header {
 </head>
 <body>
 <div class="app">
+  
 <header>
-<div class="header-container">
-<div class="header-left">
-<img alt="Bandera de México" class="bandera-mx" src="imagenes/bandera-mx.png"/>
-<img alt="Mi Tienda" class="logo-img" id="logoImg" src="imagenes/logo.png"/>
-<div>
-<div class="title">Mi Tienda</div>
-<div class="small">Sistema de cobro / Haciendo fácil tu día</div>
-</div>
-</div>
-<div class="header-right">
-<div aria-label="Navegación" class="nav" role="navigation">
-<button class="active" id="nav-venta">Ventas</button>
-<button id="nav-productos">Productos</button>
-<button id="nav-historial">Historial</button>
-</div>
-<div id="adminArea" style="display:flex;align-items:center;gap:8px">
-<button class="btn btn-outline" id="btnAdminLogout" style="display:none">🚪 Salir</button>
-<!-- 🆕 Botón de tema -->
-<button class="btn btn-outline" id="btnToggleTheme" title="Cambiar tema">🌓 Tema</button>
-</div>
-<!-- 🆕 Botones de versión -->
-<button class="btn btn-outline" id="btnVersionFull" title="Versión completa">🔐 Versión completa</button>
-<!-- 🆕 Botón accesorios (antes del de Sin Internet) -->
-<button class="btn btn-outline" id="btnAccesorios" title="Accesorios para tu negocio">🛠️ Articulos</button>
-<button class="btn btn-outline" id="btnVersionOffline" title="Versión sin internet">💾 V. offline</button>
-</div>
-</div>
+  <div class="header-container">
+    <div class="header-left">
+      <img src="imagenes/bandera-mx.png" alt="Bandera de México" class="bandera-mx" />
+      <img id="logoImg" class="logo-img" src="imagenes/logo.png" alt="Mi Tienda" />
+      <div>
+        <div class="title">Mi Tienda</div>
+        <div class="small">Sistema de cobro / Haciendo fácil tu día</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="nav" role="navigation" aria-label="Navegación">
+        <button id="nav-venta" class="active">Ventas</button>
+        <button id="nav-productos">Productos</button>
+        <button id="nav-historial">Historial</button>
+      </div>
+      <div id="adminArea" style="display:flex;align-items:center;gap:8px">
+        <button id="btnAdminLogout" class="btn btn-outline" style="display:none">🚪 Salir</button>
+        <!-- 🆕 Botón de tema -->
+        <button id="btnToggleTheme" class="btn btn-outline" title="Cambiar tema">🌓 Tema</button>
+      </div>
+      <!-- 🆕 Botones de versión -->
+      <button id="btnVersionFull" class="btn btn-outline" title="Versión completa">🔐 Versión completa</button>
+      <!-- 🆕 Botón accesorios (antes del de Sin Internet) -->
+      <button id="btnAccesorios" class="btn btn-outline" title="Accesorios para tu negocio">🛠️ Articulos</button>
+      <button id="btnVersionOffline" class="btn btn-outline" title="Versión sin internet">💾 V. offline</button>
+    </div>
+  </div>
 </header>
-<main>
-<div class="container">
-<!-- Left -->
-<div id="mainLeft">
-<!-- VENTAS -->
-<div class="panel" id="panel-venta">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-<div>
-<strong>Nueva venta</strong>
-<div class="small">Busca o escanea el producto con un solo campo.</div>
-</div>
-<div class="small">Moneda: MXN</div>
-</div>
-<div class="venta-top">
-<div style="flex:1">
-<label for="inputBusqueda">Buscar o escanear producto</label>
-<div style="display:flex; gap:8px; align-items:center">
-<input autocomplete="off" id="inputBusqueda" placeholder="Escribe o escanea el código o nombre del producto" type="text"/>
-<button class="btn btn-outline" id="btnEscanear" type="button">📷 Cámara</button>
-</div>
-<div class="small" style="margin-top:4px;color:#6b7280">
+
+  <main>
+    <div class="container">
+      <!-- Left -->
+      <div id="mainLeft">
+        <!-- VENTAS -->
+        <div id="panel-venta" class="panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div>
+              <strong>Nueva venta</strong>
+              <div class="small">Busca o escanea el producto con un solo campo.</div>
+            </div>
+            <div class="small">Moneda: MXN</div>
+          </div>
+
+          <div class="venta-top">
+            <div style="flex:1">
+              <label for="inputBusqueda">Buscar o escanear producto</label>
+              <div style="display:flex; gap:8px; align-items:center">
+                <input id="inputBusqueda" type="text" placeholder="Escribe o escanea el código o nombre del producto" autocomplete="off" />
+                <button id="btnEscanear" class="btn btn-outline" type="button">📷 Cámara</button>
+              </div>
+              <div class="small" style="margin-top:4px;color:#6b7280">
                 Puedes escribir, escanear con lector o usar la cámara.
               </div>
-</div>
-<div style="width:200px">
-<label for="cantidad">Cantidad</label>
-<input id="cantidad" min="1" type="number" value="1"/>
-</div>
-<div style="display:flex;gap:8px">
-<button class="btn btn-rojo" id="btnAgregar" style="height:44px;margin-top:22px">Agregar</button>
-<button class="btn btn-outline" id="btnLimpiar" style="height:44px;margin-top:22px">Limpiar</button>
-</div>
-</div>
-<div style="margin-top:10px">
-<button class="btn-rojo" id="btnSinCodigo">➕ Agregar producto sin código</button>
-</div>
-<div style="margin-top:14px">
-<table aria-describedby="cart-desc" class="table">
-<thead>
-<tr><th>Código</th><th>Nombre</th><th style="width:88px">Cant.</th><th style="width:120px">Precio</th><th style="width:120px">Subtotal</th><th></th></tr>
-</thead>
-<tbody id="cart-body"></tbody>
-</table>
-<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px">
-<div class="small">Artículos: <span id="cart-count">0</span></div>
-<div style="display:flex;flex-direction:column;align-items:flex-end">
-<div class="total-wrap">
-<div style="text-align:right">
-<div class="small">Total</div>
-<div class="total-amount" id="total">$0.00</div>
-</div>
-<div class="pay-change-row" style="margin-left:12px;">
-<div class="pay-field">
-<label for="pago">Su pago $</label>
-<input id="pago" min="0" placeholder="0.00" step="0.01" type="number"/>
-</div>
-<div class="pay-field" style="min-width:120px">
-<label>Cambio $</label>
-<div aria-live="polite" class="change-amount" id="cambio">$0.00</div>
-</div>
-</div>
-</div>
-<div style="display:flex;gap:12px;align-items:center;margin-top:8px">
-<button class="btn btn-outline" id="btnCancelar">Cancelar</button>
-<button class="btn btn-amarillo" id="btnFinalizar">Finalizar venta</button>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- PRODUCTOS -->
-<div class="panel" id="panel-productos" style="display:none">
-<div id="products-warning-area"></div>
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-<div><strong>Productos</strong><div class="small">Agregar o editar productos (admin)</div></div>
-<div id="adminControls" style="display:none"></div>
-</div>
-<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
-<div style="display:flex;gap:8px;align-items:center">
-<input id="prod-codigo" placeholder="Código numérico"/>
-<button class="btn btn-outline" id="btnScanProd">📷 Escanear código</button>
-</div>
-<input id="prod-nombre" placeholder="Nombre del producto" style="flex:1"/>
-<input id="prod-precio" placeholder="Precio" step="0.01" style="width:120px" type="number"/>
-<button class="btn btn-rojo" id="btn-add-prod">Agregar</button>
-</div>
-<div class="right-controls" style="margin-bottom:8px">
-<button class="btn btn-outline btn-small" id="btnExportProd">📤 Guardar lista</button>
-<button class="btn btn-outline btn-small" id="btnImportProd">📥 Cargar lista</button>
-<input accept=".json,application/json" id="inputImportProd" style="display:none" type="file"/>
-</div>
-<div class="products-list" id="products-list"></div>
-</div>
-<!-- HISTORIAL -->
-<div class="panel" id="panel-historial" style="display:none">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-<div><strong>Historial de ventas</strong><div class="small">Ventas guardadas localmente</div></div>
-<div id="adminHistControls" style="display:none">
-<button class="btn btn-outline" id="btn-clear-all">Borrar todo</button>
-<button class="btn btn-outline" id="btnExportCSV">Reporte Ventas</button>
-</div>
-</div>
-<div id="history-list" style="display:flex;flex-direction:column;gap:8px"></div>
-</div>
-</div>
-<!-- Right column -->
-<div class="panel-right">
-<div class="panel">
-<strong>Atajos</strong>
-<div class="small" style="margin-top:6px">Presiona <em>Enter</em> en el buscador para agregar. Puedes usar cámara o lector físico.</div>
-<!-- ⬇️ Atajos centrados -->
-<div id="atajos-botones">
-<button class="btn btn-rojo" id="shortcut-venta">Ventas</button>
-<button class="btn btn-rojo" id="shortcut-productos">Productos</button>
-<button class="btn btn-rojo" id="shortcut-hist">Historial</button>
-</div>
-</div>
-<div class="panel">
-<strong>Productos de ejemplo</strong>
-<div class="products-list" id="right-products" style="margin-top:8px"></div>
-</div>
-<div class="panel">
-<strong>Contacto</strong>
-<div style="margin-top:6px">
-<div class="small-muted">Soporte por WhatsApp</div>
-<button class="btn btn-amarillo" id="btnContacto" style="margin-top:8px">💬 WhatsApp</button>
-</div>
-</div>
-<div class="panel">
-<strong>Ayúdanos a mejorar</strong>
-<div class="small" style="margin-top:8px; color: inherit; font-weight:600;">
+            </div>
+
+            <div style="width:200px">
+              <label for="cantidad">Cantidad</label>
+              <input id="cantidad" type="number" min="1" value="1" />
+            </div>
+
+            <div style="display:flex;gap:8px">
+              <button id="btnAgregar" class="btn btn-rojo" style="height:44px;margin-top:22px">Agregar</button>
+              <button id="btnLimpiar" class="btn btn-outline" style="height:44px;margin-top:22px">Limpiar</button>
+            </div>
+          </div>
+
+          <div style="margin-top:10px">
+            <button id="btnSinCodigo" class="btn-rojo">➕ Agregar producto sin código</button>
+          </div>
+
+          <div style="margin-top:14px">
+            <table class="table" aria-describedby="cart-desc">
+              <thead>
+                <tr><th>Código</th><th>Nombre</th><th style="width:88px">Cant.</th><th style="width:120px">Precio</th><th style="width:120px">Subtotal</th><th></th></tr>
+              </thead>
+              <tbody id="cart-body"></tbody>
+            </table>
+
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px">
+              <div class="small">Artículos: <span id="cart-count">0</span></div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end">
+                <div class="total-wrap">
+                  <div style="text-align:right">
+                    <div class="small">Total</div>
+                    <div id="total" class="total-amount">$0.00</div>
+                  </div>
+
+                  <div class="pay-change-row" style="margin-left:12px;">
+                    <div class="pay-field">
+                      <label for="pago">Su pago $</label>
+                      <input id="pago" type="number" step="0.01" min="0" placeholder="0.00" />
+                    </div>
+                    <div class="pay-field" style="min-width:120px">
+                      <label>Cambio $</label>
+                      <div id="cambio" class="change-amount" aria-live="polite">$0.00</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
+                  <button id="btnCancelar" class="btn btn-outline">Cancelar</button>
+                  <button id="btnFinalizar" class="btn btn-amarillo">Finalizar venta</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PRODUCTOS -->
+        <div id="panel-productos" class="panel" style="display:none">
+          <div id="products-warning-area"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div><strong>Productos</strong><div class="small">Agregar o editar productos (admin)</div></div>
+            <div id="adminControls" style="display:none"></div>
+          </div>
+
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+            <div style="display:flex;gap:8px;align-items:center">
+              <input id="prod-codigo" placeholder="Código numérico" />
+              <button id="btnScanProd" class="btn btn-outline">📷 Escanear código</button>
+            </div>
+            <input id="prod-nombre" placeholder="Nombre del producto" style="flex:1" />
+            <input id="prod-precio" placeholder="Precio" type="number" step="0.01" style="width:120px" />
+            <button id="btn-add-prod" class="btn btn-rojo">Agregar</button>
+          </div>
+
+          <div class="right-controls" style="margin-bottom:8px">
+            <button id="btnExportProd" class="btn btn-outline btn-small">📤 Guardar lista</button>
+            <button id="btnImportProd" class="btn btn-outline btn-small">📥 Cargar lista</button>
+            <input type="file" id="inputImportProd" accept=".json,application/json" style="display:none" />
+          </div>
+
+          <div class="products-list" id="products-list"></div>
+        </div>
+
+        <!-- HISTORIAL -->
+        <div id="panel-historial" class="panel" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div><strong>Historial de ventas</strong><div class="small">Ventas guardadas localmente</div></div>
+            <div id="adminHistControls" style="display:none">
+              <button id="btn-clear-all" class="btn btn-outline">Borrar todo</button>
+              <button id="btnExportCSV" class="btn btn-outline">Reporte Ventas</button>
+            </div>
+          </div>
+
+          <div id="history-list" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <div class="panel-right">
+        <div class="panel">
+          <strong>Atajos</strong>
+          <div class="small" style="margin-top:6px">Presiona <em>Enter</em> en el buscador para agregar. Puedes usar cámara o lector físico.</div>
+          <!-- ⬇️ Atajos centrados -->
+          <div id="atajos-botones">
+            <button id="shortcut-venta" class="btn btn-rojo">Ventas</button>
+            <button id="shortcut-productos" class="btn btn-rojo">Productos</button>
+            <button id="shortcut-hist" class="btn btn-rojo">Historial</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <strong>Productos de ejemplo</strong>
+          <div id="right-products" class="products-list" style="margin-top:8px"></div>
+        </div>
+
+        <div class="panel">
+          <strong>Contacto</strong>
+          <div style="margin-top:6px">
+            <div class="small-muted">Soporte por WhatsApp</div>
+            <button id="btnContacto" class="btn btn-amarillo" style="margin-top:8px">💬 WhatsApp</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <strong>Ayúdanos a mejorar</strong>
+          <div class="small" style="margin-top:8px; color: inherit; font-weight:600;">
             Esta APP ayuda a pequeños comercios. Los primeros 50 registros no tienen costo.
             Si te funciona y es de utilidad contáctanos para obtener la versión sin límites.
             <p>Correo: emf_soporte@outlook.com</p>
-<p>WhatsApp: 55 48666 9275</p>
-<p>Erick M. Ferreyro</p>
+            <p>WhatsApp: 55 48666 9275</p>
+            <p>Erick M. Ferreyro</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="footer-note">Sistema de cobro Mi-Tienda — by Erick M. Ferreyro</div>
 </div>
-</div>
-</div>
-</div>
-</main>
-<div class="footer-note">Sistema de cobro Mi-Tienda — by Erick M. Ferreyro</div>
-</div>
+
 <!-- Librería de escaneo por cámara -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script>
@@ -441,6 +462,7 @@ if (typeof Html5Qrcode === "undefined") {
   console.log("✅ Librería html5-qrcode cargada correctamente desde Cloudflare.");
 }
 </script>
+
 <script>
 /* CONFIG y KEYS */
 const ADMIN_PASSWORD = 'admin123';
@@ -1210,9 +1232,9 @@ function handleLoginConfirm(){
   const pass = (document.getElementById('loginPass').value||'').trim();
   const VALID_USER='admin', VALID_PASS='full123';
   if(user===VALID_USER && pass===VALID_PASS){
-    alert('✅ Acceso concedido. Redirigiendo a versión completa...');
+    
     document.getElementById('login-modal')?.remove();
-    handleLoginConfirm();
+    window.location.href='fullv.html';
   }else{
     alert('❌ Usuario o contraseña incorrectos.');
     const inp=document.getElementById('loginPass'); if(inp){ inp.value=''; inp.focus(); }
