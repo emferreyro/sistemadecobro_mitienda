@@ -157,6 +157,104 @@ body.dark .nav button.active { background: linear-gradient(180deg, #b71c1c, #8b0
 body.dark .footer-note { color: #aaa; }
 body.dark table th { color: #ccc; }
 body.dark .small, body.dark .small-muted { color: #aaa; }
+/* ⬇️ Modal en tema oscuro */
+body.dark .modal-box { background:#181818; color:#f1f1f1; border-color:#2c2c2c; }
+
+/* === Ajustes responsivos del encabezado === */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: #f5e131;
+  color: #1f1f1f;
+  font-weight: 700;
+  box-shadow: var(--sombra);
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+
+.header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
+  flex: 1 1 auto;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.nav button {
+  padding: 6px 12px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* === Ajustes para tablets === */
+@media (max-width: 992px) {
+  .header-container {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .header-left,
+  .header-right {
+    justify-content: center;
+    flex: 1 1 100%;
+  }
+
+  .nav {
+    justify-content: center;
+  }
+
+  .logo-img {
+    max-width: 100px;
+  }
+
+  .bandera-mx {
+    height: 34px;
+  }
+}
+
+/* === Ajustes para móviles pequeños === */
+@media (max-width: 600px) {
+  .header-container {
+    padding: 4px;
+  }
+  .nav button {
+    font-size: 13px;
+    padding: 5px 10px;
+  }
+  .title {
+    font-size: 16px;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -183,6 +281,11 @@ body.dark .small, body.dark .small-muted { color: #aaa; }
         <!-- 🆕 Botón de tema -->
         <button id="btnToggleTheme" class="btn btn-outline" title="Cambiar tema">🌓 Tema</button>
       </div>
+      <!-- 🆕 Botones de versión -->
+      <button id="btnVersionFull" class="btn btn-outline" title="Versión completa">🔐 Versión completa</button>
+      <!-- 🆕 Botón accesorios (antes del de Sin Internet) -->
+      <button id="btnAccesorios" class="btn btn-outline" title="Accesorios para tu negocio">🛠️ Articulos</button>
+      <button id="btnVersionOffline" class="btn btn-outline" title="Versión sin internet">💾 V. offline</button>
     </div>
   </div>
 </header>
@@ -368,7 +471,7 @@ const KEY_PRODUCTS = 'sistemacobro_products_v2';
 const KEY_CART = 'sistemacobro_cart_v2';
 const KEY_HISTORY = 'sistemacobro_history_v2';
 const KEY_LOGO = 'sistemacobro_logo_v2';
-const MAX_PRODUCTS = 50;
+const MAX_PRODUCTS = 5;
 const MANUAL_MAX_PER_SALE = 5;
 
 /* DEFAULT PRODUCTS */
@@ -431,6 +534,11 @@ const cambioLabel = document.getElementById('cambio');
 /* NUEVOS refs de la zona unificada */
 const inputBusqueda = document.getElementById('inputBusqueda');
 const btnEscanear = document.getElementById('btnEscanear');
+
+/* 🆕 refs de botones versión */
+const btnVersionFull = document.getElementById('btnVersionFull');
+const btnVersionOffline = document.getElementById('btnVersionOffline');
+const btnAccesorios = document.getElementById('btnAccesorios');
 
 /* UTIL */
 function formatMXN(n){ return '$' + Number(n).toFixed(2); }
@@ -1030,7 +1138,7 @@ function adminSignedOut(){
   if(adminHistControls) adminHistControls.style.display = 'none';
   btnAdminLogout.style.display = 'none';
   renderProducts();
-  alert('Sesión de administrador cerrada.');
+  alert('Sesión de administrador cerrada.');s
 }
 
 /* Mantener pulsado el logo 3s para admin */
@@ -1091,6 +1199,59 @@ function detectPreferredTheme(){
   if(saved) return saved;
   return 'light'; // inicia en claro
 }
+
+/* === 🆕 Versión completa (modal login) & Versión sin internet (descarga) === */
+function openLoginModal(){
+  if(document.getElementById('login-modal')) return;
+  const modal = document.createElement('div'); modal.className='modal'; modal.id='login-modal';
+  const box = document.createElement('div'); box.className='modal-box';
+  box.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <strong>🔐 Acceso a versión completa</strong>
+      <button id="login-close" class="btn btn-outline btn-small">Cerrar</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <input id="loginUser" type="text" placeholder="Usuario" autocomplete="off" />
+      <input id="loginPass" type="password" placeholder="Contraseña" />
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+        <button id="btnLoginCancel" class="btn btn-outline">Cancelar</button>
+        <button id="btnLoginConfirm" class="btn btn-amarillo">Entrar</button>
+      </div>
+    </div>
+  `;
+  modal.appendChild(box); document.body.appendChild(modal);
+
+  const closeFn = ()=> { modal.remove(); };
+  document.getElementById('login-close').addEventListener('click', closeFn);
+  document.getElementById('btnLoginCancel').addEventListener('click', closeFn);
+  document.getElementById('btnLoginConfirm').addEventListener('click', handleLoginConfirm);
+  document.getElementById('loginPass').addEventListener('keydown', (e)=>{ if(e.key==='Enter') handleLoginConfirm(); });
+  document.getElementById('loginUser').focus();
+}
+function handleLoginConfirm(){
+  const user = (document.getElementById('loginUser').value||'').trim();
+  const pass = (document.getElementById('loginPass').value||'').trim();
+  const VALID_USER='admin', VALID_PASS='full123';
+  if(user===VALID_USER && pass===VALID_PASS){
+    alert('✅ Acceso concedido. Redirigiendo a versión completa...');
+    document.getElementById('login-modal')?.remove();
+    window.location.href='fullv.html';
+  }else{
+    alert('❌ Usuario o contraseña incorrectos.');
+    const inp=document.getElementById('loginPass'); if(inp){ inp.value=''; inp.focus(); }
+  }
+}
+/* Listeners de botones de versión */
+btnVersionFull && btnVersionFull.addEventListener('click', openLoginModal);
+btnVersionOffline && btnVersionOffline.addEventListener('click', ()=>{
+  const ok = confirm('¿Deseas descargar la versión sin internet (archivo ZIP)?');
+  if(ok){ window.location.href='Sistemadecobro_Mitienda.zip'; }
+});
+/* 🆕 Listener botón accesorios: nueva pestaña */
+btnAccesorios && btnAccesorios.addEventListener('click', ()=>{
+  window.open('Productos.html','_blank');
+});
+
 /* Inicialización */
 window.addEventListener('load', ()=>{
   const theme=detectPreferredTheme();
@@ -1110,4 +1271,3 @@ btnToggleTheme.addEventListener('click',()=>{
 </script>
 </body>
 </html>
-
