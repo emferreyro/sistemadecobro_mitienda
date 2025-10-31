@@ -363,7 +363,7 @@ body.dark .small, body.dark .small-muted { color: #aaa; }
 <div><strong>Historial de ventas</strong><div class="small">Ventas guardadas localmente</div></div>
 <div id="adminHistControls" style="display:none">
 <button class="btn btn-outline" id="btn-clear-all">Borrar todo</button>
-<button class="btn btn-outline" id="btnExportCSV">Exportar CSV</button>
+<button class="btn btn-outline" id="btnExportCSV">Reporte Ventas</button>
 </div>
 </div>
 <div id="history-list" style="display:flex;flex-direction:column;gap:8px"></div>
@@ -419,7 +419,7 @@ const MANUAL_MAX_PER_SALE = 5;
 
 /* DEFAULT PRODUCTS */
 const DEFAULT_PRODUCTS = [
-  { codigo: "75004699", nombre: "Refresco Coca-Cola vidrio 500ml", precio: 18.00 },
+  { codigo: "001", nombre: "Descripción del prodcuto", precio: 1.00 },
 ];
 
 /* STATE */
@@ -1068,7 +1068,7 @@ function adminSignedIn(){
   if(adminHistControls) adminHistControls.style.display = 'block';
   btnAdminLogout.style.display = 'inline-block';
   renderProducts();
-  alert('Registro Mod. ADMIN.');
+  alert('Reg. Modo ADMIN.');
   showPanel(panelProductos);
 }
 function adminSignedOut(){
