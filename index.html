@@ -290,6 +290,7 @@ header {
   </div>
 </header>
 
+
   <main>
     <div class="container">
       <!-- Left -->
@@ -1232,7 +1233,7 @@ function handleLoginConfirm(){
   const pass = (document.getElementById('loginPass').value||'').trim();
   const VALID_USER='admin', VALID_PASS='full123';
   if(user===VALID_USER && pass===VALID_PASS){
-    
+    alert('✅ Acceso concedido. Redirigiendo a versión completa...');
     document.getElementById('login-modal')?.remove();
     window.location.href='fullv.html';
   }else{
