@@ -1,9 +1,16 @@
 {
   "autorizados": [
     {
-      "id": "52e7be78f0fce222bf3957a318056c7a",
       "user": "admin",
-      "vencimiento": "2026-11-01"
+      "pass": "full123",
+      "id": "REEMPLAZA_CON_FINGERPRINT_PC_ADMIN",
+      "vencimiento": "2026-10-31"
+    },
+    {
+      "user": "vendedor1",
+      "pass": "ventas001",
+      "id": "REEMPLAZA_CON_FINGERPRINT_TABLET_VENDEDOR",
+      "vencimiento": "2025-06-30"
     }
   ]
 }
