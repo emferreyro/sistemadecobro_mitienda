@@ -317,7 +317,7 @@ header {
               </div>
             </div>
 
-            <div style="width:120px">
+            <div style="width:200px">
               <label for="cantidad">Cantidad</label>
               <input id="cantidad" type="number" min="1" value="1" />
             </div>
@@ -476,7 +476,7 @@ const MANUAL_MAX_PER_SALE = 5;
 
 /* DEFAULT PRODUCTS */
 const DEFAULT_PRODUCTS = [
-  { codigo: "75004699", nombre: "Refresco Coca-Cola vidrio 500ml", precio: 18.00 },
+  { codigo: "001", nombre: "Descripción del producto", precio: 1.00 },
 ];
 
 /* STATE */
@@ -580,7 +580,7 @@ function renderCart(){
     tr.innerHTML = `
       <td>${item.codigo || ''}</td>
       <td>${escapeHtml(item.nombre)}</td>
-      <td><input type="number" min="1" value="${item.cantidad}" data-codigo="${item.codigo}" style="width:64px;padding:6px;border-radius:6px;border:1px solid #e6e7ea" class="inp-cant" /></td>
+      <td><input type="number" min="1" value="${item.cantidad}" data-codigo="${item.codigo}" style="width:10px;padding:6px;border-radius:6px;border:1px solid #e6e7ea" class="inp-cant" /></td>
       <td>${formatMXN(item.precio)}</td>
       <td>${formatMXN(item.subtotal)}</td>
       <td><button data-codigo="${item.codigo}" class="btn btn-outline btn-small btn-remove">Quitar</button></td>
