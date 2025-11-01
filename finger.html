@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ver Fingerprint — Mi Tienda</title>
+  <link rel="icon" href="logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(180deg, #fdfdfd 0%, #e6f3ff 100%);
+      color: #333;
+    }
+    h1 {
+      font-size: 1.6rem;
+      color: #0078d7;
+    }
+    #fp {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #007b00;
+      margin-top: 20px;
+      background: #f5f5f5;
+      padding: 12px 18px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      word-break: break-all;
+    }
+    p {
+      max-width: 400px;
+      text-align: center;
+      color: #555;
+    }
+    footer {
+      position: absolute;
+      bottom: 15px;
+      font-size: 0.85rem;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔐 Identificador del dispositivo</h1>
+  <p>Este es el código único de tu navegador o equipo.<br>
+     Agrégalo en <code>autorizados.json</code> para habilitar el acceso.</p>
+
+  <div id="fp">Generando ID...</div>
+
+  <footer>Mi Tienda — Sistema de Cobro © 2025</footer>
+
+  <script>
+    (async () => {
+      try {
+        const fp = await FingerprintJS.load();
+        const result = await fp.get();
+        const fingerprint = result.visitorId;
+        document.getElementById("fp").textContent = fingerprint;
+        console.log("🟢 Fingerprint:", fingerprint);
+      } catch (err) {
+        document.getElementById("fp").textContent = "⚠️ No se pudo generar fingerprint.";
+        console.error("Error:", err);
+      }
+    })();
+  </script>
+</body>
+</html>
