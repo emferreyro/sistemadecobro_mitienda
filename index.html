@@ -1231,7 +1231,7 @@ function openLoginModal(){
 function handleLoginConfirm(){
   const user = (document.getElementById('loginUser').value||'').trim();
   const pass = (document.getElementById('loginPass').value||'').trim();
-  const VALID_USER='admin', VALID_PASS='full123';
+  const VALID_USER='admin', VALID_PASS='mitienda';
   if(user===VALID_USER && pass===VALID_PASS){
     alert('✅ Acceso concedido. Redirigiendo a versión completa...');
     document.getElementById('login-modal')?.remove();
