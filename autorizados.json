@@ -1,9 +1,0 @@
-{
-  "autorizados": [
-    {
-      "id": "fingerprint_de_ejemplo",
-      "user": "admin",
-      "vencimiento": "2026-10-31"
-    }
-  ]
-}
