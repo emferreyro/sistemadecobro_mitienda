@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Ver Fingerprint — Mi Tienda</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4/dist/fp.min.js"></script>
+<style>
+body {
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+  background: #f9fafb;
+  color: #1f2937;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
+  text-align: center;
+}
+h1 {
+  color: #1f1f1f;
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+p {
+  max-width: 420px;
+  color: #4b5563;
+  font-size: 15px;
+}
+#fingerprint {
+  margin-top: 24px;
+  background: #e8f5e9;
+  border: 2px solid #34a853;
+  color: #166534;
+  font-weight: 700;
+  padding: 14px 20px;
+  border-radius: 8px;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  user-select: all;
+  word-break: break-all;
+}
+.domain {
+  font-size: 14px;
+  color: #6b7280;
+  margin-top: 6px;
+}
+footer {
+  margin-top: 60px;
+  font-size: 13px;
+  color: #9ca3af;
+}
+</style>
+</head>
+<body>
+<h1>🔐 Identificador del dispositivo</h1>
+<p>Este es el código único de este navegador/equipo para el dominio actual.<br>
+Agrégalo en <strong>autorizados.json</strong> para habilitar el acceso.</p>
+
+<div id="fingerprint">Cargando fingerprint...</div>
+<div class="domain" id="domainInfo"></div>
+
+<footer>Mi Tienda — Sistema de cobro © 2025</footer>
+
+<script>
+(async () => {
+  console.log("🟡 Iniciando fingerprint detector...");
+  try {
+    const fp = await FingerprintJS.load();
+    const result = await fp.get();
+    const fingerprint = result.visitorId;
+    const domain = window.location.hostname;
+    const fpBox = document.getElementById('fingerprint');
+    const domainBox = document.getElementById('domainInfo');
+    fpBox.textContent = fingerprint;
+    domainBox.textContent = `Dominio detectado: ${domain}`;
+    console.log("✅ Fingerprint:", fingerprint);
+    console.log("🌐 Dominio actual:", domain);
+  } catch (err) {
+    document.getElementById('fingerprint').textContent = "❌ Error al generar fingerprint";
+    console.error("Error generando fingerprint:", err);
+  }
+})();
+</script>
+</body>
+</html>
