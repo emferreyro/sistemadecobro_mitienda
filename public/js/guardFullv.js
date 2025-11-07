@@ -41,7 +41,7 @@
       const vence = new Date(autorizado.vencimiento);
       if (!isNaN(+vence) && vence < hoy) {
         alert(`⚠️ Licencia expirada (${autorizado.vencimiento}). Contacta soporte.`);
-        window.location.href = "sistemadecobro_mitienda.html";
+        window.location.href = "index.html";
         return;
       }
     }
