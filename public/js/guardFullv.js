@@ -31,7 +31,7 @@
     if (!autorizado) {
       alert("❌ Este dispositivo no está autorizado.\n\nContacta al soporte.");
       console.error("❌ Dispositivo NO autorizado:", fingerprint);
-      window.location.href = "index.html";
+      window.location.href = "https://sistemadecobro-mitienda.vercel.app/";
       return;
     }
 
@@ -41,7 +41,7 @@
       const vence = new Date(autorizado.vencimiento);
       if (!isNaN(+vence) && vence < hoy) {
         alert(`⚠️ Licencia expirada (${autorizado.vencimiento}). Contacta soporte.`);
-        window.location.href = "index.html";
+        window.location.href = "https://sistemadecobro-mitienda.vercel.app/";
         return;
       }
     }
@@ -52,6 +52,6 @@
   } catch (err) {
     console.error("🚨 Error al verificar autorización:", err);
     alert("Error al verificar autorización. Revisa el archivo autorizados.json o la conexión al servidor.");
-    window.location.href = "index.html";
+    window.location.href = "https://sistemadecobro-mitienda.vercel.app/";
   }
 })();
