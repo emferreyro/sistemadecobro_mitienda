@@ -1,7 +1,10 @@
 {"autorizados":[
-{"id":"039fe1a4f16839b6c9af955da40abae5","user":"admin","vencimiento":"2025-11-13"},
-{"id":"27b4b1ec97ce55c6feba5192e103ecce","user":"caja2","vencimiento":"2025-11-12"}
+{"id":"039fe1a4f16839b6c9af955da40abae5","user":"admin","vencimiento":"2025-11-22"},
+{"id":"32a29ac34e782423212133ff8c3d48f6","user":"admin","vencimiento":"2025-11-22"},
+{"id":"eb81c0ab862c7faa8d9180880435c96b","user":"admin","vencimiento":"2025-11-22"},
+{"id":"27b4b1ec97ce55c6feba5192e103ecce","user":"admin","vencimiento":"2025-11-22"}
 ]}
+
 
 
 
