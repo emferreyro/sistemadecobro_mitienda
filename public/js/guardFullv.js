@@ -31,7 +31,7 @@
     if (!autorizado) {
       alert("❌ Este dispositivo no está autorizado.\n\nContacta al soporte.");
       console.error("❌ Dispositivo NO autorizado:", fingerprint);
-      window.location.href = "sistemadecobro_mitienda.html";
+      window.location.href = "Index.html";
       return;
     }
 
