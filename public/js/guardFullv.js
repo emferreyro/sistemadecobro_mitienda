@@ -31,7 +31,7 @@
     if (!autorizado) {
       alert("❌ Este dispositivo no está autorizado.\n\nContacta al soporte.");
       console.error("❌ Dispositivo NO autorizado:", fingerprint);
-      window.location.href = "https://sistemadecobro-mitienda.vercel.app/";
+      window.location.href = "index.html";
       return;
     }
 
@@ -52,6 +52,6 @@
   } catch (err) {
     console.error("🚨 Error al verificar autorización:", err);
     alert("Error al verificar autorización. Revisa el archivo autorizados.json o la conexión al servidor.");
-    window.location.href = "sistemadecobro_mitienda.html";
+    window.location.href = "index.html";
   }
 })();
