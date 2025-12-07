@@ -75,7 +75,6 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 @keyframes blink-fast-red { 0% {opacity:1} 50% {opacity:0.1} 100% {opacity:1} }
 .blink-green { animation: blink-fast-green 0.3s ease-in-out; }
 .blink-red { animation: blink-fast-red 0.3s ease-in-out; }
-
 @media (max-width:1100px){ .container{grid-template-columns:1fr;} .panel-right{order:2} }
 .small-muted{font-size:12px;color:#9ca3af;}
 
@@ -94,6 +93,29 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 }
 #inputBusqueda:focus { border-color: var(--amarillo); box-shadow: 0 4px 12px rgba(245, 225, 49, 0.15); }
 #btnEscanear { white-space: nowrap; height: 42px; }
+
+/* 👉 Cantidad de arriba: más chica y cómoda */
+#cantidad{
+  max-width:110px;
+  font-size:16px;
+  padding:6px 8px;
+}
+
+/* 👉 Cantidad en la tabla: más grande y centrada */
+.inp-cant{
+  width:60px !important;
+  padding:6px 8px !important;
+  font-size:15px;
+  text-align:center;
+  border-radius:6px;
+  border:1px solid #e6e7ea;
+}
+body.dark .inp-cant{
+  border-color:#444;
+  background:#222;
+  color:#f5f5f5;
+}
+
 @media (max-width: 768px) {
   .venta-top { flex-direction: column; align-items: stretch; }
   #btnEscanear, #btnAgregar, #btnLimpiar { width: 100%; }
@@ -157,7 +179,6 @@ body.dark .nav button.active { background: linear-gradient(180deg, #b71c1c, #8b0
 body.dark .footer-note { color: #aaa; }
 body.dark table th { color: #ccc; }
 body.dark .small, body.dark .small-muted { color: #aaa; }
-/* ⬇️ Modal en tema oscuro */
 body.dark .modal-box { background:#181818; color:#f1f1f1; border-color:#2c2c2c; }
 
 /* === Ajustes responsivos del encabezado === */
@@ -168,7 +189,6 @@ header {
   background: #f5e131;
   color: #1f1f1f;
   font-weight: 700;
-  box-shadow: var(--sombra);
   padding: 8px 16px;
   border-bottom: 1px solid rgba(0,0,0,0.04);
 }
@@ -254,7 +274,6 @@ header {
     font-size: 16px;
   }
 }
-
 </style>
 </head>
 <body>
@@ -278,12 +297,9 @@ header {
       </div>
       <div id="adminArea" style="display:flex;align-items:center;gap:8px">
         <button id="btnAdminLogout" class="btn btn-outline" style="display:none">🚪 Salir</button>
-        <!-- 🆕 Botón de tema -->
         <button id="btnToggleTheme" class="btn btn-outline" title="Cambiar tema">🌓 Tema</button>
       </div>
-      <!-- 🆕 Botones de versión -->
       <button id="btnVersionFull" class="btn btn-outline" title="Versión completa">🔐 Versión completa</button>
-      <!-- 🆕 Botón accesorios (antes del de Sin Internet) -->
       <button id="btnAccesorios" class="btn btn-outline" title="Accesorios para tu negocio">🛠️ Articulos</button>
       <button id="btnVersionOffline" class="btn btn-outline" title="Versión sin internet">💾 V. offline</button>
     </div>
@@ -309,7 +325,7 @@ header {
             <div style="flex:1">
               <label for="inputBusqueda">Buscar o escanear producto</label>
               <div style="display:flex; gap:8px; align-items:center">
-                <input id="inputBusqueda" type="text" placeholder="Escribe o escanea el código o nombre del producto" autocomplete="off" />
+                <input id="inputBusqueda" type="text" placeholder="Escribe o escanea el código o nombre" autocomplete="off" />
                 <button id="btnEscanear" class="btn btn-outline" type="button">📷 Cámara</button>
               </div>
               <div class="small" style="margin-top:4px;color:#6b7280">
@@ -317,7 +333,7 @@ header {
               </div>
             </div>
 
-            <div style="width:200px">
+            <div style="width:110px">
               <label for="cantidad">Cantidad</label>
               <input id="cantidad" type="number" min="1" value="1" />
             </div>
@@ -400,9 +416,17 @@ header {
         <!-- HISTORIAL -->
         <div id="panel-historial" class="panel" style="display:none">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div><strong>Historial de ventas</strong><div class="small">Ventas guardadas localmente</div></div>
+            <div>
+              <strong>Historial de ventas</strong>
+              <div class="small">Ventas guardadas localmente</div>
+              <div class="small" style="margin-top:4px">
+                Hoy: <strong id="historialHoy">$0.00</strong> · 
+                Mes: <strong id="historialMes">$0.00</strong> · 
+                Total: <strong id="historialAcumulado">$0.00</strong>
+              </div>
+            </div>
             <div id="adminHistControls" style="display:none">
-              <button id="btn-clear-all" class="btn btn-outline">Borrar todo</button>
+              <button id="btn-clear-all" class="btn btn-outline">Borrar historial</button>
               <button id="btnExportCSV" class="btn btn-outline">Reporte Ventas</button>
             </div>
           </div>
@@ -416,7 +440,6 @@ header {
         <div class="panel">
           <strong>Atajos</strong>
           <div class="small" style="margin-top:6px">Presiona <em>Enter</em> en el buscador para agregar. Puedes usar cámara o lector físico.</div>
-          <!-- ⬇️ Atajos centrados -->
           <div id="atajos-botones">
             <button id="shortcut-venta" class="btn btn-rojo">Ventas</button>
             <button id="shortcut-productos" class="btn btn-rojo">Productos</button>
@@ -580,7 +603,9 @@ function renderCart(){
     tr.innerHTML = `
       <td>${item.codigo || ''}</td>
       <td>${escapeHtml(item.nombre)}</td>
-      <td><input type="number" min="1" value="${item.cantidad}" data-codigo="${item.codigo}" style="width:10px;padding:6px;border-radius:6px;border:1px solid #e6e7ea" class="inp-cant" /></td>
+      <td>
+        <input type="number" min="1" value="${item.cantidad}" data-codigo="${item.codigo}" class="inp-cant" />
+      </td>
       <td>${formatMXN(item.precio)}</td>
       <td>${formatMXN(item.subtotal)}</td>
       <td><button data-codigo="${item.codigo}" class="btn btn-outline btn-small btn-remove">Quitar</button></td>
@@ -624,7 +649,6 @@ function renderProducts(){
                      </div>`;
     productsList.appendChild(div);
 
-    /* ⬇️ Productos de ejemplo con botón Agregar */
     const small = document.createElement('div');
     small.className = 'product-item';
     small.innerHTML = `
@@ -637,7 +661,6 @@ function renderProducts(){
     rightProducts.appendChild(small);
   });
 
-  /* Eventos */
   document.querySelectorAll('.btn-add-to-cart').forEach(b=> b.addEventListener('click', e=> { 
     const c = e.currentTarget.getAttribute('data-codigo'); 
     agregarAlCarrito(c,1); showPanel(panelVenta); 
@@ -707,8 +730,6 @@ btnAddProd.addEventListener('click', ()=>{
     productos.push({ codigo, nombre, precio });
   }
   saveProducts(); renderProducts();
-  
-  // 🔊 Beep de confirmación (producto registrado)
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
@@ -723,7 +744,7 @@ btnAddProd.addEventListener('click', ()=>{
   } catch (e) {
     console.warn('Audio no disponible:', e);
   }
-prodCodigo.value=''; prodNombre.value=''; prodPrecio.value=''; prodCodigo.focus();
+  prodCodigo.value=''; prodNombre.value=''; prodPrecio.value=''; prodCodigo.focus();
   checkProductLimitOnOpen();
 });
 
@@ -756,7 +777,7 @@ function agregarAlCarrito(termino, cantidad, desdeLector){
   const qty = Math.max(1, Number(cantidad) || 1);
   const existente = carrito.find(x=> x.codigo === prod.codigo);
   if(existente){ existente.cantidad += qty; existente.subtotal = Number((existente.cantidad * existente.precio).toFixed(2)); }
-  else { carrito.push({ codigo: prod.codigo, nombre: prod.nombre, precio: prod.precio, cantidad: qty, subtotal: Number((qty * prod.precio).toFixed(2)) }); }
+  else { carrito.push({ codigo: prod.codigo, nombre: prod.nombre, precio: prod.precio, cantidad: qty, subtotal: Number((qty * prod.precio).toFixed(2)), manual: false }); }
   saveCart(); renderCart();
 }
 
@@ -860,7 +881,16 @@ btnFinalizar.addEventListener('click', ()=> {
     return;
   }
   const total = currentTotal;
-  const venta = { id: historial.length + 1, fecha: new Date().toLocaleString(), total: Number(total.toFixed(2)), items: carrito.map(x=> ({...x})) , pago: pago, cambio: Number((pago - total).toFixed(2)) };
+  const now = new Date();
+  const venta = {
+    id: historial.length + 1,
+    fecha: now.toLocaleString(),
+    fechaISO: now.toISOString(),
+    total: Number(total.toFixed(2)),
+    items: carrito.map(x=> ({...x})),
+    pago: pago,
+    cambio: Number((pago - total).toFixed(2))
+  };
   historial.unshift(venta);
   carrito = [];
   saveHistory(); saveCart();
@@ -880,7 +910,7 @@ btnCancelar.addEventListener('click', ()=> {
   cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
 });
 
-/* Manual: versión mínima para no romper flujo */
+/* Manual sin código */
 function nextManualCode(){ const ts = Date.now(); return 'M-'+String(Math.floor(Math.random()*900)+100)+'-'+String(ts).slice(-4); }
 function openManualModal(){
   if(document.getElementById('manual-modal')) return;
@@ -921,32 +951,96 @@ document.getElementById('btnSinCodigo') && document.getElementById('btnSinCodigo
 /* HISTORIAL */
 function renderHistorial(){
   historyList.innerHTML = '';
-  if(historial.length === 0){ const p = document.createElement('div'); p.className='small'; p.textContent='No hay ventas registradas aún.'; historyList.appendChild(p); return; }
-  historial.forEach(v=>{
-    const d = document.createElement('div'); d.className = 'history-item';
-    d.innerHTML = `<div><div style="font-weight:700">Venta #${v.id}</div><div class="small">${v.fecha}</div></div>
-                   <div style="text-align:right"><div style="font-weight:800;color:var(--rojo)">${formatMXN(v.total)}</div>
-                   <details style="margin-top:8px"><summary class="small">Ver detalles</summary>
-                     <table style="width:100%;margin-top:8px;border-collapse:collapse"><thead><tr><th>Código</th><th>Nombre</th><th>Cant</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>
-                     ${v.items.map(it=>`<tr><td style="padding:6px 4px">${it.codigo}</td><td style="padding:6px 4px">${escapeHtml(it.nombre)}</td><td style="padding:6px 4px">${it.cantidad}</td><td style="padding:6px 4px">${formatMXN(it.precio)}</td><td style="padding:6px 4px">${formatMXN(it.subtotal)}</td></tr>`).join('')}
-                     </tbody></table></details></div>`;
-    historyList.appendChild(d);
-  });
+  if(historial.length === 0){
+    const p = document.createElement('div');
+    p.className='small';
+    p.textContent='No hay ventas registradas aún.';
+    historyList.appendChild(p);
+  } else {
+    historial.forEach(v=>{
+      const d = document.createElement('div');
+      d.className = 'history-item';
+      d.innerHTML = `<div><div style="font-weight:700">Venta #${v.id}</div><div class="small">${v.fecha}</div></div>
+                     <div style="text-align:right"><div style="font-weight:800;color:var(--rojo)">${formatMXN(v.total)}</div>
+                     <details style="margin-top:8px"><summary class="small">Ver detalles</summary>
+                       <table style="width:100%;margin-top:8px;border-collapse:collapse"><thead><tr><th>Código</th><th>Nombre</th><th>Cant</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>
+                       ${v.items.map(it=>`<tr><td style="padding:6px 4px">${it.codigo}</td><td style="padding:6px 4px">${escapeHtml(it.nombre)}</td><td style="padding:6px 4px">${it.cantidad}</td><td style="padding:6px 4px">${formatMXN(it.precio)}</td><td style="padding:6px 4px">${formatMXN(it.subtotal)}</td></tr>`).join('')}
+                       </tbody></table></details></div>`;
+      historyList.appendChild(d);
+    });
+  }
+  actualizarResumenHistorial();
 }
 
-/* CLEAR ALL (admin) */
-if(btnClearAll){
-  btnClearAll.addEventListener('click', ()=> {
-    if(!confirm('¿Borrar todo el historial y productos? Esta acción es irreversible.')) return;
-    productos = DEFAULT_PRODUCTS.slice();
+function parseVentaDate(v){
+  if (v.fechaISO){
+    const d = new Date(v.fechaISO);
+    if (!isNaN(d)) return d;
+  }
+  if (v.fecha){
+    const d = new Date(v.fecha);
+    if (!isNaN(d)) return d;
+  }
+  return null;
+}
+
+function actualizarResumenHistorial(){
+  const elHoy = document.getElementById('historialHoy');
+  const elMes = document.getElementById('historialMes');
+  const elTotal = document.getElementById('historialAcumulado');
+  if (!elHoy || !elMes || !elTotal) return;
+
+  const hoy = new Date();
+  const y = hoy.getFullYear();
+  const m = hoy.getMonth();
+  const d = hoy.getDate();
+
+  let totalGeneral = 0;
+  let totalHoy = 0;
+  let totalMes = 0;
+
+  historial.forEach(v => {
+    const totalVenta = Number(v.total) || 0;
+    totalGeneral += totalVenta;
+
+    const fecha = parseVentaDate(v);
+    if (!fecha) return;
+
+    const fy = fecha.getFullYear();
+    const fm = fecha.getMonth();
+    const fd = fecha.getDate();
+
+    if (fy === y && fm === m) {
+      totalMes += totalVenta;
+      if (fd === d) {
+        totalHoy += totalVenta;
+      }
+    }
+  });
+
+  elHoy.textContent = formatMXN(totalHoy);
+  elMes.textContent = formatMXN(totalMes);
+  elTotal.textContent = formatMXN(totalGeneral);
+}
+
+/* CLEAR ALL (admin) — solo historial + carrito, NO productos */
+if (btnClearAll) {
+  btnClearAll.addEventListener('click', () => {
+    if (!confirm('¿Borrar TODO el historial de ventas? Esta acción es irreversible, pero tus productos se conservarán.')) {
+      return;
+    }
+
+    // Solo limpiamos historial y carrito
     historial = [];
     carrito = [];
-    localStorage.removeItem(KEY_LOGO);
-    saveProducts(); saveHistory(); saveCart();
-    logoImg.src = 'imagenes/logo.png';
-    renderProducts(); renderCart(); renderHistorial();
-    checkProductLimitOnOpen();
-    alert('Datos borrados y productos de ejemplo restaurados.');
+
+    saveHistory();
+    saveCart();
+
+    renderCart();
+    renderHistorial();
+
+    alert('Historial de ventas borrado. Los productos registrados se mantienen sin cambios.');
   });
 }
 
@@ -1005,23 +1099,21 @@ function openScannerModal(targetInput){
           scanTargetInput.dispatchEvent(new Event('input', { bubbles: true }));
           scanTargetInput.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
         }
-        
-  // 🔊 Beep de confirmación (escaneo exitoso)
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1000, ctx.currentTime);
-    gain.gain.setValueAtTime(0.2, ctx.currentTime);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.15);
-  } catch (e) {
-    console.warn('Audio no disponible:', e);
-  }
-closeScannerModal();
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1000, ctx.currentTime);
+          gain.gain.setValueAtTime(0.2, ctx.currentTime);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.15);
+        } catch (e) {
+          console.warn('Audio no disponible:', e);
+        }
+        closeScannerModal();
       }).catch(err => {
         alert('No se pudo iniciar la cámara: ' + err);
         closeScannerModal();
@@ -1138,7 +1230,7 @@ function adminSignedOut(){
   if(adminHistControls) adminHistControls.style.display = 'none';
   btnAdminLogout.style.display = 'none';
   renderProducts();
-  alert('Sesión de administrador cerrada.');s
+  alert('Sesión de administrador cerrada.');
 }
 
 /* Mantener pulsado el logo 3s para admin */
@@ -1181,13 +1273,13 @@ if(btnContacto){
   }
 })();
 
-/* === 🌙 Toggle de tema (inicia en claro) === */
+/* === 🌙 Toggle de tema === */
 const btnToggleTheme=document.getElementById('btnToggleTheme');
 const THEME_KEY='sistemacobro_theme_v2';
 function applyTheme(theme){
   if(theme==='dark'){
     document.body.classList.add('dark');
-    document.documentElement.classList.add('dark'); // ⬅️ también <html>
+    document.documentElement.classList.add('dark');
   } else {
     document.body.classList.remove('dark');
     document.documentElement.classList.remove('dark');
@@ -1197,10 +1289,10 @@ function applyTheme(theme){
 function detectPreferredTheme(){
   const saved=localStorage.getItem(THEME_KEY);
   if(saved) return saved;
-  return 'light'; // inicia en claro
+  return 'light';
 }
 
-/* === 🆕 Versión completa (modal login) & Versión sin internet (descarga) === */
+/* === Versión completa/offline y accesorios === */
 function openLoginModal(){
   if(document.getElementById('login-modal')) return;
   const modal = document.createElement('div'); modal.className='modal'; modal.id='login-modal';
@@ -1241,13 +1333,11 @@ function handleLoginConfirm(){
     const inp=document.getElementById('loginPass'); if(inp){ inp.value=''; inp.focus(); }
   }
 }
-/* Listeners de botones de versión */
 btnVersionFull && btnVersionFull.addEventListener('click', openLoginModal);
 btnVersionOffline && btnVersionOffline.addEventListener('click', ()=>{
   const ok = confirm('¿Deseas descargar la versión sin internet (archivo ZIP)?');
   if(ok){ window.location.href='Sistemadecobro_Mitienda.zip'; }
 });
-/* 🆕 Listener botón accesorios: nueva pestaña */
 btnAccesorios && btnAccesorios.addEventListener('click', ()=>{
   window.open('Productos.html','_blank');
 });
@@ -1270,8 +1360,6 @@ btnToggleTheme.addEventListener('click',()=>{
 });
 </script>
 
-
-<!-- 🧩 Protección por fingerprint (verifica dispositivo autorizado) -->
 <script src="js/acceso.js"></script>
 </body>
 </html>
