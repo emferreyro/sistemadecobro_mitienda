@@ -316,6 +316,13 @@
       z-index:9999;
     }
     .aviso.visible{opacity:1;}
+  
+    /* Corrección específica para que el campo Cantidad NO se estire */
+    .venta-top div:nth-child(2) input#cantidad {
+      width: 120px !important;
+      flex: 0 0 120px !important;
+    }
+
   </style>
 </head>
 <body>
@@ -449,7 +456,6 @@
                   Puedes escribir, escanear con lector o usar la cámara.
                 </div>
               </div>
-              <!-- Cantidad con ancho fijo -->
               <div style="width:120px">
                 <label for="cantidad">Cantidad</label>
                 <input id="cantidad" type="number" min="1" value="1" />
@@ -460,7 +466,7 @@
               </div>
             </div>
 
-            <div style="margin-top:10px">
+<div style="margin-top:10px">
               <button id="btnSinCodigo" class="btn btn-rojo">➕ Agregar producto sin código</button>
             </div>
 
