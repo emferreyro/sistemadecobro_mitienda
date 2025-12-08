@@ -286,7 +286,7 @@ header {
       <img id="logoImg" class="logo-img" src="imagenes/logo.png" alt="Mi Tienda" />
       <div>
         <div class="title">Mi Tienda</div>
-        <div class="small">Sistema de cobro / Haciendo fácil tu día!</div>
+        <div class="small">Sistema de cobro / Haciendo fácil tu día</div>
       </div>
     </div>
     <div class="header-right">
@@ -300,7 +300,7 @@ header {
         <button id="btnToggleTheme" class="btn btn-outline" title="Cambiar tema">🌓 Tema</button>
       </div>
       <button id="btnVersionFull" class="btn btn-outline" title="Versión completa">🔐 Versión completa</button>
-      <button id="btnAccesorios" class="btn btn-outline" title="Accesorios para tu negocio">🛠️ Accesorios</button>
+      <button id="btnAccesorios" class="btn btn-outline" title="Accesorios para tu negocio">🛠️ Articulos</button>
       <button id="btnVersionOffline" class="btn btn-outline" title="Versión sin internet">💾 V. offline</button>
     </div>
   </div>
@@ -494,7 +494,7 @@ const KEY_PRODUCTS = 'sistemacobro_products_v2';
 const KEY_CART = 'sistemacobro_cart_v2';
 const KEY_HISTORY = 'sistemacobro_history_v2';
 const KEY_LOGO = 'sistemacobro_logo_v2';
-const MAX_PRODUCTS = 50;
+const MAX_PRODUCTS = 5;
 const MANUAL_MAX_PER_SALE = 5;
 
 /* DEFAULT PRODUCTS */
@@ -598,13 +598,14 @@ function showPanel(panel){
 /* CART UI */
 function renderCart(){
   cartBody.innerHTML = '';
-  carrito.forEach(item=>{
+  carrito.forEach(item => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${item.codigo || ''}</td>
       <td>${escapeHtml(item.nombre)}</td>
       <td>
-        <input type="number" min="1" value="${item.cantidad}" data-codigo="${item.codigo}" class="inp-cant" />
+        <input type="number" min="1" value="${item.cantidad}" data-codigo="${item.codigo}"
+          style="width:64px;padding:6px;border-radius:6px;border:1px solid #e6e7ea" class="inp-cant" />
       </td>
       <td>${formatMXN(item.precio)}</td>
       <td>${formatMXN(item.subtotal)}</td>
@@ -612,26 +613,46 @@ function renderCart(){
     `;
     cartBody.appendChild(tr);
   });
-  cartCount.textContent = carrito.length;
-  currentTotal = carrito.reduce((s,it)=> s + it.subtotal, 0);
+
+  // 👉 NUEVO: sumar la cantidad total de artículos (no solo los renglones)
+  const totalArticulos = carrito.reduce((acc, it) => {
+    return acc + (Number(it.cantidad) || 0);
+  }, 0);
+  cartCount.textContent = totalArticulos;
+
+  // Total en pesos
+  currentTotal = carrito.reduce((s,it) => s + (Number(it.subtotal) || 0), 0);
   totalLabel.textContent = formatMXN(currentTotal);
 
+  // Recalcular cambio
   updatePaymentChange();
 
-  document.querySelectorAll('.btn-remove').forEach(b=> b.addEventListener('click', e=>{
-    const c = e.currentTarget.getAttribute('data-codigo');
-    carrito = carrito.filter(x => x.codigo !== c);
-    saveCart(); renderCart();
-  }));
-  document.querySelectorAll('.inp-cant').forEach(inp=> inp.addEventListener('change', e=>{
-    const v = Math.max(1, Number(e.target.value) || 1);
-    const c = e.target.getAttribute('data-codigo');
-    carrito = carrito.map(it => {
-      if(it.codigo === c){ it.cantidad = v; it.subtotal = Number((it.precio * it.cantidad).toFixed(2)); }
-      return it;
+  // Botón "Quitar"
+  document.querySelectorAll('.btn-remove').forEach(b => {
+    b.addEventListener('click', e => {
+      const c = e.currentTarget.getAttribute('data-codigo');
+      carrito = carrito.filter(x => x.codigo !== c);
+      saveCart();
+      renderCart();
     });
-    saveCart(); renderCart();
-  }));
+  });
+
+  // Cambio de cantidad desde el input
+  document.querySelectorAll('.inp-cant').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const v = Math.max(1, Number(e.target.value) || 1);
+      const c = e.target.getAttribute('data-codigo');
+      carrito = carrito.map(it => {
+        if(it.codigo === c){
+          it.cantidad = v;
+          it.subtotal = Number((it.precio * it.cantidad).toFixed(2));
+        }
+        return it;
+      });
+      saveCart();
+      renderCart();
+    });
+  });
 }
 
 /* PRODUCTS UI */

@@ -540,38 +540,61 @@ function showPanel(panel){
 /* CART UI */
 function renderCart(){
   cartBody.innerHTML = '';
-  carrito.forEach(item=>{
+  carrito.forEach(item => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${item.codigo || ''}</td>
       <td>${escapeHtml(item.nombre)}</td>
-      <td><input type="number" min="1" value="${item.cantidad}" data-codigo="${item.codigo}" style="width:64px;padding:6px;border-radius:6px;border:1px solid #e6e7ea" class="inp-cant" /></td>
+      <td>
+        <input type="number" min="1" value="${item.cantidad}" data-codigo="${item.codigo}"
+          style="width:64px;padding:6px;border-radius:6px;border:1px solid #e6e7ea" class="inp-cant" />
+      </td>
       <td>${formatMXN(item.precio)}</td>
       <td>${formatMXN(item.subtotal)}</td>
       <td><button data-codigo="${item.codigo}" class="btn btn-outline btn-small btn-remove">Quitar</button></td>
     `;
     cartBody.appendChild(tr);
   });
-  cartCount.textContent = carrito.length;
-  currentTotal = carrito.reduce((s,it)=> s + it.subtotal, 0);
+
+  // 👉 NUEVO: sumar la cantidad total de artículos (no solo los renglones)
+  const totalArticulos = carrito.reduce((acc, it) => {
+    return acc + (Number(it.cantidad) || 0);
+  }, 0);
+  cartCount.textContent = totalArticulos;
+
+  // Total en pesos
+  currentTotal = carrito.reduce((s,it) => s + (Number(it.subtotal) || 0), 0);
   totalLabel.textContent = formatMXN(currentTotal);
 
+  // Recalcular cambio
   updatePaymentChange();
 
-  document.querySelectorAll('.btn-remove').forEach(b=> b.addEventListener('click', e=>{
-    const c = e.currentTarget.getAttribute('data-codigo');
-    carrito = carrito.filter(x => x.codigo !== c);
-    saveCart(); renderCart();
-  }));
-  document.querySelectorAll('.inp-cant').forEach(inp=> inp.addEventListener('change', e=>{
-    const v = Math.max(1, Number(e.target.value) || 1);
-    const c = e.target.getAttribute('data-codigo');
-    carrito = carrito.map(it => {
-      if(it.codigo === c){ it.cantidad = v; it.subtotal = Number((it.precio * it.cantidad).toFixed(2)); }
-      return it;
+  // Botón "Quitar"
+  document.querySelectorAll('.btn-remove').forEach(b => {
+    b.addEventListener('click', e => {
+      const c = e.currentTarget.getAttribute('data-codigo');
+      carrito = carrito.filter(x => x.codigo !== c);
+      saveCart();
+      renderCart();
     });
-    saveCart(); renderCart();
-  }));
+  });
+
+  // Cambio de cantidad desde el input
+  document.querySelectorAll('.inp-cant').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const v = Math.max(1, Number(e.target.value) || 1);
+      const c = e.target.getAttribute('data-codigo');
+      carrito = carrito.map(it => {
+        if(it.codigo === c){
+          it.cantidad = v;
+          it.subtotal = Number((it.precio * it.cantidad).toFixed(2));
+        }
+        return it;
+      });
+      saveCart();
+      renderCart();
+    });
+  });
 }
 
 /* PRODUCTS UI */
