@@ -545,7 +545,8 @@ function renderCart(){
     `;
     cartBody.appendChild(tr);
   });
-  cartCount.textContent = carrito.length;
+  const totalArticulos = carrito.reduce((acc, it) => acc + (Number(it.cantidad) || 0), 0);
+  cartCount.textContent = totalArticulos;
   currentTotal = carrito.reduce((s,it)=> s + it.subtotal, 0);
   totalLabel.textContent = formatMXN(currentTotal);
 
