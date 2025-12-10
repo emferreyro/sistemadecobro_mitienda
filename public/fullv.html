@@ -43,6 +43,10 @@ main {
 .container{width:1200px;max-width:calc(100% - 40px);display:grid;grid-template-columns:1fr 380px;gap:18px;align-items:start;}
 .panel{background:var(--blanco);border-radius:var(--radio);padding:14px;box-shadow:var(--sombra);border:1px solid rgba(0,0,0,0.03);}
 .venta-top{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;}
+.venta-top > div:nth-child(2){
+  flex: 0 0 120px;
+}
+
 label{font-size:13px;color:#6b7280;margin-bottom:6px;display:block;}
 input[type="text"], input[type="number"], input[type="file"], textarea{padding:10px 12px;border-radius:10px;border:1px solid #e6e7ea;font-size:15px;outline:none;background:#fff;}
 input:focus, textarea:focus{box-shadow:0 6px 18px rgba(253,216,53,0.12);border-color:var(--amarillo);}
@@ -278,6 +282,7 @@ document.getElementById('modalAceptar').onclick = () => {
 </div>
 <div id="adminArea" style="display:flex;align-items:center;gap:8px">
 <button class="btn btn-outline" id="btnAdminLogout" style="display:none">🚪 Salir</button>
+<button class="btn btn-outline" id="btnCambiarLogo" title="Cambiar logo">🖼️ Logo</button>
 <!-- 🆕 Botón de tema -->
 <button class="btn btn-outline" id="btnToggleTheme" title="Cambiar tema">🌓 Tema</button>
 </div>
@@ -310,7 +315,7 @@ document.getElementById('modalAceptar').onclick = () => {
 </div>
 <div style="width:120px">
 <label for="cantidad">Cantidad</label>
-<input id="cantidad" min="1" type="number" value="1"/>
+<input id="cantidad" min="1" type="number" value="1" style="width:80px"/>
 </div>
 <div style="display:flex;gap:8px">
 <button class="btn btn-rojo" id="btnAgregar" style="height:44px;margin-top:22px">Agregar</button>
@@ -456,6 +461,7 @@ let scanTargetInput = null;
 
 /* UI refs */
 const logoImg = document.getElementById('logoImg');
+const btnCambiarLogo = document.getElementById('btnCambiarLogo');
 const navVenta = document.getElementById('nav-venta');
 const navProductos = document.getElementById('nav-productos');
 const navHistorial = document.getElementById('nav-historial');
@@ -492,6 +498,7 @@ const btnExportProd = document.getElementById('btnExportProd');
 const btnImportProd = document.getElementById('btnImportProd');
 const inputImportProd = document.getElementById('inputImportProd');
 const pagoInput = document.getElementById('pago');
+const logoFile = document.getElementById('logoFile');
 const cambioLabel = document.getElementById('cambio');
 
 /* NUEVOS refs de la zona unificada */
@@ -829,6 +836,7 @@ btnFinalizar.addEventListener('click', ()=> {
   pagoInput.value = '';
   cambioLabel.textContent = formatMXN(0);
   cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
+  mostrarOpcionesTicket(venta);
   showPanel(panelHistorial);
 });
 
@@ -889,10 +897,116 @@ function renderHistorial(){
                    <details style="margin-top:8px"><summary class="small">Ver detalles</summary>
                      <table style="width:100%;margin-top:8px;border-collapse:collapse"><thead><tr><th>Código</th><th>Nombre</th><th>Cant</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>
                      ${v.items.map(it=>`<tr><td style="padding:6px 4px">${it.codigo}</td><td style="padding:6px 4px">${escapeHtml(it.nombre)}</td><td style="padding:6px 4px">${it.cantidad}</td><td style="padding:6px 4px">${formatMXN(it.precio)}</td><td style="padding:6px 4px">${formatMXN(it.subtotal)}</td></tr>`).join('')}
-                     </tbody></table></details></div>`;
+                     </tbody></table></details>
+                     <div style="margin-top:8px;text-align:right">
+                       <button type="button" class="btn btn-outline btn-small btn-ticket" data-id="${v.id}">Ticket</button>
+                     </div></div>`;
     historyList.appendChild(d);
   });
+
+  document.querySelectorAll('.btn-ticket').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.getAttribute('data-id')) || 0;
+      const venta = historial.find(v => Number(v.id) === id);
+      if(venta){ mostrarOpcionesTicket(venta); }
+    });
+  });
   actualizarResumenHistorial();
+}
+
+
+function armarTextoTicket(v){
+  if(!v) return '';
+  const titleEl = document.querySelector('.title');
+  const nombreTienda = titleEl ? titleEl.textContent.trim() : 'Mi Tienda';
+  const lineas = [];
+  lineas.push(nombreTienda);
+  lineas.push('Ticket de venta #' + (v.id != null ? v.id : ''));
+  if(v.fecha){ lineas.push(String(v.fecha)); }
+  lineas.push('------------------------------');
+  if(Array.isArray(v.items)){
+    v.items.forEach(it => {
+      const nombre = (it && it.nombre) ? String(it.nombre) : '';
+      const cant = it && it.cantidad != null ? it.cantidad : 0;
+      const precio = it && it.precio != null ? it.precio : 0;
+      const subtotal = it && it.subtotal != null ? it.subtotal : cant * precio;
+      lineas.push(cant + ' x ' + nombre);
+      lineas.push('  ' + formatMXN(precio) + '  -> ' + formatMXN(subtotal));
+    });
+  }
+  lineas.push('------------------------------');
+  lineas.push('Total:  ' + formatMXN(v.total));
+  if(typeof v.pago !== 'undefined'){ lineas.push('Pago:   ' + formatMXN(v.pago)); }
+  if(typeof v.cambio !== 'undefined'){ lineas.push('Cambio: ' + formatMXN(v.cambio)); }
+  lineas.push('');
+  lineas.push('¡Gracias por su compra!');
+  return lineas.join('\n');
+}
+
+function imprimirTicket(venta){
+  const ticketTexto = armarTextoTicket(venta);
+  if(!ticketTexto){ alert('No se pudo generar el ticket.'); return; }
+  const w = window.open('', '_blank', 'width=480,height=600');
+  if(!w){
+    alert('No se pudo abrir la ventana de impresión. Revisa el bloqueador de ventanas emergentes.');
+    return;
+  }
+  const safeHtml = ticketTexto
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ticket</title><style>
+    body{font-family:monospace;white-space:pre-wrap;padding:10px;font-size:13px;}
+  </style></head><body>${safeHtml}</body></html>`);
+  w.document.close();
+  w.focus();
+  w.print();
+}
+
+function enviarTicketCorreo(venta){
+  const ticketTexto = armarTextoTicket(venta);
+  if(!ticketTexto){ alert('No se pudo generar el ticket.'); return; }
+  const subject = encodeURIComponent('Ticket venta #' + (venta.id != null ? venta.id : ''));
+  const body = encodeURIComponent(ticketTexto);
+  window.location.href = `mailto:?subject=${subject}&body=${body}`;
+}
+
+function enviarTicketWhatsApp(venta){
+  const ticketTexto = armarTextoTicket(venta);
+  if(!ticketTexto){ alert('No se pudo generar el ticket.'); return; }
+  const text = encodeURIComponent(ticketTexto);
+  window.open('https://wa.me/?text=' + text, '_blank');
+}
+
+function mostrarOpcionesTicket(venta){
+  if(!venta) return;
+  const existing = document.getElementById('modal-ticket-opciones');
+  if(existing){ existing.remove(); }
+  const overlay = document.createElement('div');
+  overlay.className = 'modal';
+  overlay.id = 'modal-ticket-opciones';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong>Ticket de venta #${venta.id != null ? venta.id : ''}</strong>
+        <button type="button" class="btn btn-outline btn-small" id="btnCerrarTicketModal">Cerrar</button>
+      </div>
+      <p class="small" style="margin-bottom:12px">Elige cómo quieres manejar este ticket.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <button type="button" class="btn btn-amarillo" id="btnTicketImprimir">🖨 Imprimir</button>
+        <button type="button" class="btn btn-outline" id="btnTicketCorreo">📧 Enviar correo</button>
+        <button type="button" class="btn btn-outline" id="btnTicketWhats">💬 WhatsApp</button>
+        <button type="button" class="btn btn-outline" id="btnTicketOmitir">Omitir</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const cerrar = ()=>{ overlay.remove(); };
+  document.getElementById('btnCerrarTicketModal').onclick = cerrar;
+  document.getElementById('btnTicketOmitir').onclick = cerrar;
+  document.getElementById('btnTicketImprimir').onclick = ()=>{ imprimirTicket(venta); };
+  document.getElementById('btnTicketCorreo').onclick = ()=>{ enviarTicketCorreo(venta); };
+  document.getElementById('btnTicketWhats').onclick = ()=>{ enviarTicketWhatsApp(venta); };
 }
 
 /* CLEAR ALL (admin) - solo historial + carrito, NO productos */
@@ -1219,6 +1333,33 @@ btnToggleTheme.addEventListener('click',()=>{
   applyTheme(isDark?'light':'dark');
 });
 
+/* Cambiar logo: abrir selector de archivo y guardar en localStorage */
+if(btnCambiarLogo){
+  btnCambiarLogo.addEventListener('click', () => {
+    const input = document.getElementById('logoFile');
+    if(input) input.click();
+  });
+}
+
+document.addEventListener('change', (e) => {
+  const target = e.target;
+  if(!target || target.id !== 'logoFile') return;
+  const file = target.files && target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){
+    alert('Por favor selecciona una imagen válida.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const dataUrl = ev.target.result;
+    logoImg.src = dataUrl;
+    saveLogo(dataUrl);
+  };
+  reader.readAsDataURL(file);
+});
+
+
 /* === Botón Salir: cerrar pestaña === */
 if (typeof btnAdminLogout !== 'undefined' && btnAdminLogout) {
   btnAdminLogout.addEventListener('click', () => {
@@ -1231,5 +1372,6 @@ if (typeof btnAdminLogout !== 'undefined' && btnAdminLogout) {
   });
 }
 </script>
+<input type="file" id="logoFile" accept="image/*" style="display:none"/>
 </body>
 </html>
