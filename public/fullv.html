@@ -163,6 +163,17 @@ body.dark .nav button.active { background: linear-gradient(180deg, #b71c1c, #8b0
 body.dark .footer-note { color: #aaa; }
 body.dark table th { color: #ccc; }
 body.dark .small, body.dark .small-muted { color: #aaa; }
+/* Corregir modal en modo oscuro: fondo claro + texto oscuro */
+body.dark .modal-box {
+  background: #ffffff;
+  color: #1f2937;
+}
+
+/* Botones dentro del modal sobre fondo blanco */
+body.dark .modal-box .btn-outline {
+  border-color: #e6e7ea;
+  color: #1f2937;
+}
 </style>
 </head>
 <body>
@@ -1067,20 +1078,6 @@ function actualizarResumenHistorial(){
   elHoy.textContent = formatMXN(totalHoy);
   elMes.textContent = formatMXN(totalMes);
   elTotal.textContent = formatMXN(totalGeneral);
-}
-
-/* CLEAR ALL (admin) - solo historial + carrito, NO productos */
-if(btnClearAll){
-  btnClearAll.addEventListener('click', () => {
-    if(!confirm('¿Borrar TODO el historial de ventas? Esta acción es irreversible, pero tus productos se conservarán.')) return;
-    historial = [];
-    carrito = [];
-    saveHistory();
-    saveCart();
-    renderCart();
-    renderHistorial();
-    alert('Historial de ventas borrado. Los productos registrados se mantienen sin cambios.');
-  });
 }
 
 /* EXPORT CSV */
