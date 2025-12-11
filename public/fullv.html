@@ -86,7 +86,7 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 .small-muted{font-size:12px;color:#9ca3af;}
 
 .header-center { display: none; }
-.bandera-mx { height: 48px; width: auto; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); margin-right: 420px;}
+.bandera-mx { height: 48px; width: auto; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); margin-right: 12px;}
 
 /* === NUEVA ZONA DE VENTA SIMPLIFICADA (CSS complementario) === */
 #inputBusqueda {
@@ -174,6 +174,20 @@ body.dark .modal-box .btn-outline {
   border-color: #e6e7ea;
   color: #1f2937;
 }
+
+/* === Ajuste visual para encabezado de tienda === */
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
 </style>
 </head>
 <body>
@@ -279,10 +293,12 @@ document.getElementById('modalAceptar').onclick = () => {
 <div class="header-container">
 <div class="header-left">
 <img alt="Bandera de México" class="bandera-mx" src="imagenes/bandera-mx.png"/>
-<img alt="Mi Tienda" class="logo-img" id="logoImg" src="imagenes/logo.png"/>
-<div>
-<div class="title">Mi Tienda</div>
-<div class="small">Sistema de cobro / Haciendo fácil tu día</div>
+<div class="header-brand">
+  <img alt="Mi Tienda" class="logo-img" id="logoImg" src="imagenes/logo.png"/>
+  <div class="header-brand-text">
+    <div class="title">Mi Tienda</div>
+    <div class="small">Sistema de cobro / Haciendo fácil tu día</div>
+  </div>
 </div>
 </div>
 <div class="header-right">
@@ -1202,7 +1218,21 @@ function imprimirTicket(venta){
     .replace(/\n/g,'<br>');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ticket</title><style>
     body{font-family:monospace;white-space:pre-wrap;padding:10px;font-size:13px;}
-  </style></head><body>${safeHtml}</body></html>`);
+  
+/* === Ajuste visual para encabezado de tienda === */
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+</style></head><body>${safeHtml}</body></html>`);
   w.document.close();
   w.focus();
   w.print();
