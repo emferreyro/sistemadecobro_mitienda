@@ -838,7 +838,16 @@ btnFinalizar.addEventListener('click', ()=> {
     return;
   }
   const total = currentTotal;
-  const venta = { id: historial.length + 1, fecha: new Date().toLocaleString(), total: Number(total.toFixed(2)), items: carrito.map(x=> ({...x})) , pago: pago, cambio: Number((pago - total).toFixed(2)) };
+  const ahora = new Date();
+  const venta = {
+    id: historial.length + 1,
+    fecha: ahora.toLocaleString(),
+    fechaISO: ahora.toISOString(),
+    total: Number(total.toFixed(2)),
+    items: carrito.map(x=> ({...x})),
+    pago: pago,
+    cambio: Number((pago - total).toFixed(2))
+  };
   historial.unshift(venta);
   carrito = [];
   saveHistory(); saveCart();
@@ -1036,7 +1045,16 @@ if(btnClearAll){
 }
 
 function parseVentaDate(v){
-  if(!v || !v.fecha) return null;
+  if(!v) return null;
+
+  // Usar fechaISO si existe (formato estándar)
+  if(v.fechaISO){
+    const dIso = new Date(v.fechaISO);
+    if(!isNaN(dIso.getTime())) return dIso;
+  }
+
+  // Compatibilidad con registros antiguos: intentar parsear la cadena 'fecha'
+  if(!v.fecha) return null;
   const d = new Date(v.fecha);
   if(isNaN(d.getTime())) return null;
   return d;
