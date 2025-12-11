@@ -982,12 +982,47 @@ function renderHistorial(){
       const d = document.createElement('div');
       d.className = 'history-item';
       d.innerHTML = `<div><div style="font-weight:700">Venta #${v.id}</div><div class="small">${v.fecha}</div></div>
-                     <div style="text-align:right"><div style="font-weight:800;color:var(--rojo)">${formatMXN(v.total)}</div>
-                     <details style="margin-top:8px"><summary class="small">Ver detalles</summary>
-                       <table style="width:100%;margin-top:8px;border-collapse:collapse"><thead><tr><th>Código</th><th>Nombre</th><th>Cant</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>
-                       ${v.items.map(it=>`<tr><td style="padding:6px 4px">${it.codigo}</td><td style="padding:6px 4px">${escapeHtml(it.nombre)}</td><td style="padding:6px 4px">${it.cantidad}</td><td style="padding:6px 4px">${formatMXN(it.precio)}</td><td style="padding:6px 4px">${formatMXN(it.subtotal)}</td></tr>`).join('')}
-                       </tbody></table></details></div>`;
+                     <div style="text-align:right">
+                       <div style="font-weight:800;color:var(--rojo)">${formatMXN(v.total)}</div>
+                       <details style="margin-top:8px">
+                         <summary class="small">Ver detalles</summary>
+                         <table style="width:100%;margin-top:8px;border-collapse:collapse">
+                           <thead>
+                             <tr><th>Código</th><th>Nombre</th><th>Cant</th><th>Precio</th><th>Subtotal</th></tr>
+                           </thead>
+                           <tbody>
+                             ${
+                               v.items.map(it=>`
+                                 <tr>
+                                   <td style="padding:6px 4px">${it.codigo}</td>
+                                   <td style="padding:6px 4px">${escapeHtml(it.nombre)}</td>
+                                   <td style="padding:6px 4px">${it.cantidad}</td>
+                                   <td style="padding:6px 4px">${formatMXN(it.precio)}</td>
+                                   <td style="padding:6px 4px">${formatMXN(it.subtotal)}</td>
+                                 </tr>
+                               `).join('')
+                             }
+                           </tbody>
+                         </table>
+                       </details>
+                       <div style="margin-top:8px;text-align:right">
+                         <button type="button" class="btn btn-outline btn-small btn-ticket" data-id="${v.id}">Ticket</button>
+                       </div>
+                     </div>`;
       historyList.appendChild(d);
+    });
+
+    // Asignar eventos a botones de ticket
+    document.querySelectorAll('.btn-ticket').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = Number(btn.getAttribute('data-id')) || 0;
+        const venta = historial.find(v => Number(v.id) === id);
+        if(venta){
+          imprimirTicket(venta);
+        } else {
+          alert('No se encontró la información de la venta.');
+        }
+      });
     });
   }
   actualizarResumenHistorial();
@@ -1043,6 +1078,165 @@ function actualizarResumenHistorial(){
   elMes.textContent = formatMXN(totalMes);
   elTotal.textContent = formatMXN(totalGeneral);
 }
+
+
+/* === Funciones de ticket: armar texto e imprimir (solo impresión) === */
+function armarTextoTicket(v){
+  if(!v) return '';
+
+  const WIDTH = 32; // ancho de ticket en caracteres
+
+  function center(text){
+    text = String(text || '').trim();
+    if(text.length >= WIDTH) return text;
+    const left = Math.floor((WIDTH - text.length) / 2);
+    const right = WIDTH - text.length - left;
+    return ' '.repeat(left) + text + ' '.repeat(right);
+  }
+
+  function line(char='-'){
+    return char.repeat(WIDTH);
+  }
+
+  function right(label, value){
+    const txt = String(label) + String(value);
+    if(txt.length >= WIDTH) return txt;
+    return ' '.repeat(WIDTH - txt.length) + txt;
+  }
+
+  const titleEl = document.querySelector('.title');
+  const nombreTienda = titleEl ? titleEl.textContent.trim() : 'Mi Tienda';
+
+  const lineaDireccion = 'Calle / Colonia';
+  const lineaRFC = 'RFC: XXXXXXXX';
+  const lineaTel = 'Tel: 55-0000-0000';
+
+  const lineas = [];
+
+  // ENCABEZADO
+  lineas.push(center(nombreTienda.toUpperCase()));
+  lineas.push(center(lineaDireccion));
+  lineas.push(center(lineaRFC));
+  lineas.push(center(lineaTel));
+  lineas.push(line('='));
+
+  // DATOS GENERALES
+  lineas.push(center('TICKET DE VENTA'));
+  lineas.push(center('#' + (v.id != null ? v.id : '')));
+  if(v.fecha){
+    lineas.push(center(String(v.fecha)));
+  }
+  lineas.push(line('-'));
+
+  // ENCABEZADO DETALLE
+  lineas.push('CANT  DESCRIPCIÓN');
+  lineas.push('P.U.            IMPORTE');
+  lineas.push(line('-'));
+
+  // DETALLE DE PRODUCTOS
+  if(Array.isArray(v.items)){
+    v.items.forEach(it => {
+      const nombre = (it && it.nombre) ? String(it.nombre) : '';
+      const cant = it && it.cantidad != null ? it.cantidad : 0;
+      const precio = it && it.precio != null ? it.precio : 0;
+      const subtotal = it && it.subtotal != null ? it.subtotal : cant * precio;
+
+      const desc = (cant + ' x ' + nombre).slice(0, WIDTH);
+      lineas.push(desc);
+
+      const lineaPrecio = right(
+        formatMXN(precio) + '  ',
+        formatMXN(subtotal)
+      );
+      lineas.push(lineaPrecio);
+    });
+  }
+
+  lineas.push(line('-'));
+
+  // TOTALES
+  lineas.push(right('TOTAL: ', formatMXN(v.total)));
+  if(typeof v.pago !== 'undefined'){
+    lineas.push(right('PAGO: ', formatMXN(v.pago)));
+  }
+  if(typeof v.cambio !== 'undefined'){
+    lineas.push(right('CAMBIO: ', formatMXN(v.cambio)));
+  }
+
+  lineas.push(line('='));
+  lineas.push(center('¡GRACIAS POR SU COMPRA!'));
+  lineas.push(center('Vuelva pronto'));
+  lineas.push('');
+
+  return lineas.join('\n');
+}
+
+function imprimirTicket(venta){
+  const ticketTexto = armarTextoTicket(venta);
+  if(!ticketTexto){
+    alert('No se pudo generar el ticket.');
+    return;
+  }
+
+  const w = window.open('', '_blank', 'width=480,height=600');
+  if(!w){
+    alert('No se pudo abrir la ventana de impresión. Revisa el bloqueador de ventanas emergentes.');
+    return;
+  }
+
+  const safeHtml = ticketTexto
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>');
+
+  w.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Ticket</title>
+<style>
+  html, body{
+    margin:0;
+    padding:0;
+    background:#ffffff !important;
+    color:#000000 !important;
+  }
+  body{
+    font-family: monospace;
+    font-size: 13px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .ticket-wrapper{
+    padding: 10px 12px;
+    display:flex;
+    justify-content:center;
+  }
+  .ticket{
+    text-align:left;
+    white-space:pre-wrap;
+  }
+  @media print{
+    body{
+      margin:0;
+      padding:0;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="ticket-wrapper">
+    <div class="ticket">${safeHtml}</div>
+  </div>
+</body>
+</html>`);
+
+  w.document.close();
+  w.focus();
+  w.print();
+}
+
 
 /* CLEAR ALL (admin) — solo historial + carrito, NO productos */
 if (btnClearAll) {
