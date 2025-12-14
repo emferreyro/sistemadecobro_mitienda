@@ -1113,12 +1113,8 @@ function armarTextoTicket(v){
 
   const lineas = [];
 
-  // ENCABEZADO
-  lineas.push(center(nombreTienda.toUpperCase()));
-  lineas.push(center(lineaDireccion));
-  lineas.push(center(lineaRFC));
-  lineas.push(center(lineaTel));
-  lineas.push(line('='));
+  // ENCABEZADO ELIMINADO
+
 
   // DATOS GENERALES
   lineas.push(center('TICKET DE VENTA'));
@@ -1184,11 +1180,11 @@ function imprimirTicket(venta){
     return;
   }
 
-  const safeHtml = ticketTexto
+  // Escapar HTML pero conservar saltos de línea (se renderizan dentro de <pre>)
+  const safeText = String(ticketTexto)
     .replace(/&/g,'&amp;')
     .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/\n/g,'<br>');
+    .replace(/>/g,'&gt;');
 
   w.document.write(`<!DOCTYPE html>
 <html>
@@ -1196,6 +1192,7 @@ function imprimirTicket(venta){
 <meta charset="utf-8">
 <title>Ticket</title>
 <style>
+  @page{ size: 58mm auto; margin: 0; }
   html, body{
     margin:0;
     padding:0;
@@ -1209,25 +1206,26 @@ function imprimirTicket(venta){
     print-color-adjust: exact;
   }
   .ticket-wrapper{
-    padding: 10px 12px;
+    margin:0;
+    padding:0;
     display:flex;
-    justify-content:center;
+    justify-content:flex-start;
   }
-  .ticket{
+  pre.ticket{
+    width:58mm;
+    margin:0;
+    padding:10px 12px;
+    white-space:pre; /* crucial para respetar espacios y columnas */
     text-align:left;
-    white-space:pre-wrap;
-  }
-  @media print{
-    body{
-      margin:0;
-      padding:0;
-    }
+    font-family: monospace;
+    font-size: 13px;
+    line-height: 1.25;
   }
 </style>
 </head>
 <body>
   <div class="ticket-wrapper">
-    <div class="ticket">${safeHtml}</div>
+    <pre class="ticket">${safeText}</pre>
   </div>
 </body>
 </html>`);

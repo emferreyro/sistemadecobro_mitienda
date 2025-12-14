@@ -189,6 +189,16 @@ body.dark .modal-box .btn-outline {
 }
 
 </style>
+
+<style id="ticket-thermal-override">
+@media print{
+  @page{ size: 58mm auto; margin: 0; }
+  html,body{ margin:0; padding:0; }
+  .ticket, .ticket *{ box-sizing:border-box; }
+  .ticket{ width:58mm; margin:0; text-align:left; font-family: monospace; }
+}
+</style>
+
 </head>
 <body>
 <!-- ==============================
@@ -1206,36 +1216,96 @@ if(ticketConfigModal){
 function imprimirTicket(venta){
   const ticketTexto = armarTextoTicket(venta);
   if(!ticketTexto){ alert('No se pudo generar el ticket.'); return; }
-  const w = window.open('', '_blank', 'width=480,height=600');
-  if(!w){
-    alert('No se pudo abrir la ventana de impresión. Revisa el bloqueador de ventanas emergentes.');
-    return;
+
+  // Ticket térmico (tablet / móvil): evita márgenes, fija ancho en mm y usa fallback con iframe
+  const PAPER_MM = 58; // 58mm típico. (Si tu impresora es 80mm, cambia a 80)
+  const html = (() => {
+    const safe = (ticketTexto || '')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Ticket</title>
+  <style>
+    @page { size: ${PAPER_MM}mm auto; margin: 0; }
+    html, body { margin:0; padding:0; }
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .ticket {
+      width: ${PAPER_MM}mm;
+      box-sizing: border-box;
+      padding: 2mm;
+      font-size: 12px;
+      line-height: 1.2;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+
+<style id="ticket-thermal-override">
+@media print{
+  @page{ size: 58mm auto; margin: 0; }
+  html,body{ margin:0; padding:0; }
+  .ticket, .ticket *{ box-sizing:border-box; }
+  .ticket{ width:58mm; margin:0; text-align:left; font-family: monospace; }
+}
+</style>
+
+</head>
+<body>
+  <pre class="ticket">${safe}</pre>
+</body>
+</html>`;
+  })();
+
+  // 1) Intento normal: ventana nueva
+  const w = window.open('', '_blank');
+  if(w){
+    try{
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      w.focus();
+      // Esperar un momento a que el layout esté listo en algunos navegadores
+      setTimeout(()=>{ try{ w.print(); }catch(e){} }, 150);
+      return;
+    } catch(e){
+      try{ w.close(); }catch(_){}
+    }
   }
-  const safeHtml = ticketTexto
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/\n/g,'<br>');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ticket</title><style>
-    body{font-family:monospace;white-space:pre-wrap;padding:10px;font-size:13px;}
-  
-/* === Ajuste visual para encabezado de tienda === */
-.header-brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
 
-.header-brand-text {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.2;
-}
+  // 2) Fallback: iframe oculto (muy compatible en tablets cuando bloquean popups)
+  try{
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.opacity = '0';
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.srcdoc = html;
+    document.body.appendChild(iframe);
 
-</style></head><body>${safeHtml}</body></html>`);
-  w.document.close();
-  w.focus();
-  w.print();
+    const cleanup = () => { try{ iframe.remove(); }catch(e){} };
+    iframe.onload = () => {
+      try{
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        // Limpieza tras imprimir (algunos navegadores no disparan afterprint)
+        setTimeout(cleanup, 1500);
+      } catch(e){
+        cleanup();
+        alert('No se pudo imprimir en este dispositivo. Revisa permisos del navegador o intenta desde Chrome.');
+      }
+    };
+  } catch(e){
+    alert('No se pudo iniciar la impresión. Revisa permisos del navegador.');
+  }
 }
 
 function enviarTicketCorreo(venta){
