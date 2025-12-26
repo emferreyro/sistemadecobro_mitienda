@@ -300,7 +300,9 @@ header {
         <button id="btnToggleTheme" class="btn btn-outline" title="Cambiar tema">🌓 Tema</button>
       </div>
       <button id="btnVersionFull" class="btn btn-outline" title="Versión completa">🔐 Versión completa</button>
-      <button id="btnAccesorios" class="btn btn-outline" title="Accesorios para tu negocio">🛠️ Accesorios</button>
+      <button id="btnAccesorios" class="btn btn-outline" title="Accesorios para tu negocio">🛠️ Articulos</button>
+      <button id="btnAcerca" class="btn btn-outline" title="Acerca de">ℹ️ Acerca de</button>
+            <button id="btnVideo" class="btn btn-outline" title="Video">🎬 Video</button>
       <button id="btnVersionOffline" class="btn btn-outline" title="Versión sin internet">💾 V. offline</button>
     </div>
   </div>
@@ -562,8 +564,10 @@ const btnEscanear = document.getElementById('btnEscanear');
 const btnVersionFull = document.getElementById('btnVersionFull');
 const btnVersionOffline = document.getElementById('btnVersionOffline');
 const btnAccesorios = document.getElementById('btnAccesorios');
+const btnAcerca = document.getElementById('btnAcerca');
 
-/* UTIL */
+
+const btnVideo = document.getElementById('btnVideo');/* UTIL */
 function formatMXN(n){ return '$' + Number(n).toFixed(2); }
 function escapeHtml(str){ if(!str) return ''; return str.replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
@@ -1549,11 +1553,32 @@ function handleLoginConfirm(){
 btnVersionFull && btnVersionFull.addEventListener('click', openLoginModal);
 btnVersionOffline && btnVersionOffline.addEventListener('click', ()=>{
   const ok = confirm('¿Deseas descargar la versión sin internet (archivo ZIP)?');
-  if(ok){ window.location.href='sistemadecobro_mitienda.zip'; }
+  if(ok){ window.location.href='Sistemadecobro_Mitienda.zip'; }
 });
 btnAccesorios && btnAccesorios.addEventListener('click', ()=>{
   window.open('Productos.html','_blank');
 });
+
+
+
+btnVideo && btnVideo.addEventListener('click', ()=>{
+  // Abrir el video en una ventana "flotante" centrada
+  const w = 980, h = 620;
+  const left = Math.max(0, Math.floor((screen.width - w) / 2));
+  const top  = Math.max(0, Math.floor((screen.height - h) / 2));
+  const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=no`;
+  window.open('video.html', 'mitiendaVideo', features);
+});
+
+btnAcerca && btnAcerca.addEventListener('click', ()=>{
+  // Abrir "Acerca de" en una ventana flotante centrada
+  const w = 980, h = 720;
+  const left = Math.max(0, Math.floor((screen.width - w) / 2));
+  const top  = Math.max(0, Math.floor((screen.height - h) / 2));
+  const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+  window.open('acercade.html', 'mitiendaAcerca', features);
+});
+
 
 /* Inicialización */
 window.addEventListener('load', ()=>{
