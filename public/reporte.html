@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MiTienda • Reporte</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap">
+  <style>
+:root{
+  --rojo:#e53935; --rojo-dark:#b71c1c; --amarillo:#f5e131; --blanco:#ffffff; --gris:#d7d8db;
+  --texto:#1f2937; --muted:#6b7280; --border:#e6e7ea; --radio:12px; --sombra: 0 6px 18px rgba(31,41,55,0.08);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+}
+html,body{height:100%;margin:0;background:var(--gris);color:var(--texto);}
+*{box-sizing:border-box}
+header{
+  position: sticky; top: 0; z-index: 1000;
+  background: var(--amarillo); color:#1f1f1f; font-weight:700;
+  box-shadow: var(--sombra); padding: 10px 16px; border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+.header-container{
+  max-width:1200px; margin:0 auto;
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+}
+.title{font-size:18px;font-weight:900;margin:0;}
+.sub{font-size:13px;color:#374151;font-weight:600;margin-top:2px}
+.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+main{max-width:1200px;margin:0 auto;padding:80px 18px 18px;}
+.grid{display:grid;grid-template-columns:1fr;gap:18px;align-items:start}
+@media (min-width:1100px){ .grid{grid-template-columns:420px 1fr;} }
+
+.card{background:var(--blanco);border-radius:var(--radio);padding:14px;box-shadow:var(--sombra);border:1px solid rgba(0,0,0,0.03);}
+label{font-size:13px;color:var(--muted);margin-bottom:6px;display:block;}
+input[type="file"], input[type="date"], select, textarea, input[type="text"]{
+  width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border);
+  font-size:15px; outline:none; background:#fff; color:var(--texto);
+}
+input:focus, textarea:focus, select:focus{ box-shadow:0 6px 18px rgba(253,216,53,0.12); border-color:var(--amarillo); }
+
+.btn{padding:10px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:900;}
+.btn-rojo{background:var(--rojo);color:var(--blanco);}
+.btn-amarillo{background:var(--amarillo);color:var(--texto);}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--texto);}
+.btn-small{padding:6px 8px;border-radius:8px;font-size:13px;font-weight:900;}
+button:disabled{opacity:.55;cursor:not-allowed}
+
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hint{font-size:13px;color:var(--muted);line-height:1.35}
+.small{font-size:13px;color:var(--muted)}
+.mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+
+.kpis{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:12px}
+@media (max-width:360px){ .kpis{grid-template-columns:1fr;} }
+@media (min-width: 900px){ .kpis{grid-template-columns:repeat(6, minmax(0,1fr));} }
+
+.kpi{
+  padding:12px;border:1px solid #f3f4f6;border-radius:12px;background:#fff;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;min-height:88px;text-align:center;
+}
+.kpi .t{font-size:12px;color:var(--muted);font-weight:800;line-height:1.15;}
+@media (max-width: 420px){
+  .kpi{min-height:78px;padding:10px}
+  .kpi .v{font-size:16px}
+}
+.kpi .v{font-size:18px;font-weight:900;margin:0;color:var(--rojo-dark);line-height:1.2;word-break:break-word;}
+
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.tab{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;font-weight:900;cursor:pointer;}
+.tab.active{background:linear-gradient(180deg,var(--rojo),#c62828);color:var(--blanco);border-color:transparent;box-shadow:0 6px 16px rgba(229,57,53,0.14);}
+
+.pill{display:inline-block;padding:2px 8px;border:1px solid var(--border);border-radius:999px;color:var(--muted);font-size:12px;background:#fff}
+
+.table-wrap{overflow:auto;margin-top:10px;max-height:520px;border:1px solid #f3f4f6;border-radius:10px;background:#fff;}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:10px;text-align:left;border-bottom:1px solid #f3f4f6;vertical-align:top}
+th{color:var(--muted);font-size:13px;font-weight:700}
+.right{text-align:right}
+
+/* === TEMA OSCURO === */
+html.dark, body.dark { background-color:#0d0d0d; color:#f1f1f1; }
+body.dark header{ background:#202020; color:#f5f5f5; border-bottom-color:#333; }
+body.dark .card{ background:#181818; color:#f1f1f1; border-color:#2c2c2c; }
+body.dark input, body.dark textarea, body.dark select{ background:#222; border-color:#444; color:#f5f5f5; }
+body.dark .btn-outline{ border-color:#666; color:#f1f1f1; }
+body.dark .kpi{ background:#181818; border-color:#2c2c2c; }
+body.dark .kpi .v{ color:#f5e131; }
+body.dark .pill{ background:#181818; border-color:#2c2c2c; }
+body.dark .table-wrap{ background:#181818; border-color:#2c2c2c; }
+body.dark th, body.dark td{ border-bottom-color:#2c2c2c; }
+body.dark th{ color:#ccc; }
+body.dark .small{ color:#aaa; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="header-container">
+    <div>
+      <div class="title">📊 Reporte • MiTienda</div>
+      <div class="sub">Predeterminado: lee historial local del sistema (sin CSV). Opcional: cargar CSV.</div>
+    </div>
+    <div class="header-right">
+      <button id="btnToggleTheme" class="btn btn-outline btn-small" title="Cambiar tema">🌓 Tema</button>
+    </div>
+  </div>
+</header>
+
+<main class="grid">
+  <section class="card">
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <div style="font-weight:900">Fuente de datos</div>
+        <div class="small">Se intenta leer <span class="mono">localStorage</span> del sistema. Si no hay historial, puedes cargar un CSV.</div>
+      </div>
+      <div class="row">
+        <button id="btnLoadLocal" class="btn btn-amarillo">Leer historial</button>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
+
+    <label>Opción B: cargar CSV (igual que antes)</label>
+    <input id="file" type="file" accept=".csv,text/csv" />
+    <div class="hint" style="margin-top:6px">Columnas esperadas: <span class="mono">Venta ID, Fecha, Total, Código, Nombre, Cant, Precio, Subtotal</span>.</div>
+
+    <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
+
+    <label>Filtros de fecha (opcional)</label>
+    <div class="row">
+      <div style="flex:1 1 160px">
+        <input id="from" type="date" />
+        <div class="small">Desde</div>
+      </div>
+      <div style="flex:1 1 160px">
+        <input id="to" type="date" />
+        <div class="small">Hasta</div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <label style="display:flex;gap:8px;align-items:center">
+        <input id="excludeZero" type="checkbox" checked />
+        Excluir renglones con Subtotal 0 (series/notas)
+      </label>
+    </div>
+
+    <div style="margin-top:10px">
+      <label>Agrupar artículos M- por palabra (opcional)</label>
+      <input id="mKeywords" value="cigarro, huevo, jamón, tortilla, mayonesa, azúcar, crema" type="text"
+             placeholder="Ej: cigarro, huevo, jamón, tortilla, mayonesa, azúcar, crema" />
+      <div class="hint">Solo aplica a renglones con código <span class="mono">M-</span>. Lo que no coincida cae en <b>Otros M-</b>.</div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button id="run" class="btn btn-rojo" disabled>Generar reportes</button>
+      <button id="export" class="btn btn-outline" disabled>Exportar “ventas por artículo”</button>
+      <span id="status" class="small"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="kpis">
+      <div class="kpi"><div class="t">Ventas (importe)</div><div id="kSales" class="v">—</div></div>
+      <div class="kpi"><div class="t">Transacciones</div><div id="kTx" class="v">—</div></div>
+      <div class="kpi"><div class="t">Más vendido (piezas)</div><div id="kTop" class="v">—</div></div>
+      <div class="kpi"><div class="t">Menos vendido (piezas)</div><div id="kLow" class="v">—</div></div>
+      <div class="kpi"><div class="t">M- piezas</div><div id="kMPieces" class="v">—</div></div>
+      <div class="kpi"><div class="t">M- importe</div><div id="kMAmount" class="v">—</div></div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
+
+    <div class="tabs">
+      <button class="tab active" data-tab="items">Ventas por artículo</button>
+      <button class="tab" data-tab="periods">Totales por periodo</button>
+      <button class="tab" data-tab="mitems">Artículos M- (por palabra)</button>
+      <button class="tab" data-tab="debug">Vista rápida</button>
+    </div>
+
+    <div id="panel-items">
+      <div class="row" style="justify-content:space-between;gap:12px">
+        <div class="pill" id="scope">—</div>
+        <div style="flex:1 1 240px;max-width:340px">
+          <input id="search" type="text" placeholder="Buscar artículo…" />
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Artículo</th>
+              <th class="right">Piezas</th>
+              <th class="right">Importe</th>
+              <th class="right">#Ventas</th>
+            </tr>
+          </thead>
+          <tbody id="tblItems"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="panel-periods" style="display:none">
+      <div class="row">
+        <label>Periodo</label>
+        <select id="period">
+          <option value="day">Día</option>
+          <option value="week">Semana</option>
+          <option value="month">Mes</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Periodo</th>
+              <th class="right">Transacciones</th>
+              <th class="right">Importe</th>
+            </tr>
+          </thead>
+          <tbody id="tblPeriods"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="panel-mitems" style="display:none">
+      <div class="hint">Agrupación de artículos con código <span class="mono">M-</span> por palabra en la descripción.</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Grupo</th>
+              <th class="right">Piezas</th>
+              <th class="right">Importe</th>
+              <th class="right">#Ventas</th>
+            </tr>
+          </thead>
+          <tbody id="tblMItems"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="panel-debug" style="display:none">
+      <div class="hint">Primeras 15 filas ya filtradas (para validar).</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Venta ID</th><th>Fecha</th><th>Código</th><th>Nombre</th><th class="right">Cant</th><th class="right">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody id="tblDebug"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+  // Tema
+  const THEME_KEY='sistemacobro_theme_v2';
+  function applyTheme(theme){
+    if(theme==='dark'){
+      document.body.classList.add('dark');
+      document.documentElement.classList.add('dark');
+    } else {
+      document.body.classList.remove('dark');
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem(THEME_KEY,theme);
+  }
+  function detectPreferredTheme(){
+    const saved=localStorage.getItem(THEME_KEY);
+    if(saved) return saved;
+    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  window.addEventListener('load', ()=> applyTheme(detectPreferredTheme()));
+  document.getElementById('btnToggleTheme')?.addEventListener('click', ()=>{
+    const isDark=document.body.classList.contains('dark');
+    applyTheme(isDark?'light':'dark');
+  });
+
+  // Helpers
+  const $ = (id) => document.getElementById(id);
+  function stripAccents(s){
+    return (s ?? "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+  }
+  function money(n){
+    if(!isFinite(n)) return "—";
+    return n.toLocaleString("es-MX",{style:"currency",currency:"MXN"});
+  }
+  function safeNum(x){
+    const n = Number(String(x ?? "").replace(/,/g,"").trim());
+    return isFinite(n) ? n : 0;
+  }
+  function isoDate(d){
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const da = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${da}`;
+  }
+  function weekKey(d){
+    const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = tmp.getUTCDay() || 7;
+    tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(),0,1));
+    const weekNo = Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
+    return `${tmp.getUTCFullYear()}-W${String(weekNo).padStart(2,"0")}`;
+  }
+  function monthKey(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
+  function fmtNum(n){ return (isFinite(n)? n:0).toLocaleString("es-MX",{maximumFractionDigits:3}); }
+  function escapeHtml(s){
+    return (s??"").toString()
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+  }
+
+  // Minimal CSV parser (quotes & commas)
+  function parseCSV(text){
+    const rows = [];
+    let row = [], field = "", inQuotes = false;
+    for(let i=0;i<text.length;i++){
+      const ch = text[i], next = text[i+1];
+      if(inQuotes){
+        if(ch === '"' && next === '"'){ field += '"'; i++; }
+        else if(ch === '"'){ inQuotes = false; }
+        else { field += ch; }
+      }else{
+        if(ch === '"'){ inQuotes = true; }
+        else if(ch === ","){ row.push(field); field=""; }
+        else if(ch === "\n"){ row.push(field); field=""; if(row.length>1) rows.push(row); row=[]; }
+        else if(ch === "\r"){ }
+        else { field += ch; }
+      }
+    }
+    row.push(field);
+    if(row.length>1) rows.push(row);
+    const header = rows.shift() || [];
+    return { header, rows };
+  }
+
+  // Parse date from CSV like "11/12/2025, 20:59:29" (tries dd/mm and mm/dd)
+  function parseMXDateTime(s){
+    if(!s) return null;
+    const t = s.toString().replace(/\s+/g," ").trim();
+    const parts = t.split(",");
+    const datePart = (parts[0]||"").trim();
+    const timePart = (parts[1]||"00:00:00").trim();
+    const [a,b,c] = datePart.split("/").map(x=>parseInt(x,10));
+    const [hh,mm,ss] = timePart.split(":").map(x=>parseInt(x,10));
+    if(!a || !b || !c) return null;
+    let d = new Date(c, b-1, a, hh||0, mm||0, ss||0);
+    if(isNaN(d.getTime())) d = new Date(c, a-1, b, hh||0, mm||0, ss||0);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // State
+  let RAW = [];
+  let ITEMS = [];
+  let TX = [];
+  let ITEMS_EXPORT = "";
+  let M_GROUPS = [];
+  const KEY_HISTORY = 'sistemacobro_history_v2'; // ajusta si tu app usa otra llave
+
+  function setStatus(msg){ $("status").textContent = msg || ""; }
+
+  function clearOutputs(){
+    $("tblItems").innerHTML = "";
+    $("tblPeriods").innerHTML = "";
+    $("tblDebug").innerHTML = "";
+    $("tblMItems").innerHTML = "";
+    $("kSales").textContent = "—";
+    $("kTx").textContent = "—";
+    $("kTop").textContent = "—";
+    $("kLow").textContent = "—";
+    $("kMPieces").textContent = "—";
+    $("kMAmount").textContent = "—";
+    $("scope").textContent = "—";
+  }
+
+  function buildItemsCSV(items){
+    const lines = [];
+    lines.push(["Articulo","Piezas","Importe","NumVentas"].join(","));
+    for(const it of items){
+      const art = '"' + (it.item||"").replaceAll('"','""') + '"';
+      lines.push([art, it.pieces, it.amount, it.salesCount].join(","));
+    }
+    return lines.join("\r\n");
+  }
+
+  function renderItems(){
+    const q = stripAccents($("search").value);
+    const rows = (q ? ITEMS.filter(x=> stripAccents(x.item).includes(q)) : ITEMS);
+    const tbody = $("tblItems");
+    tbody.innerHTML = "";
+    const max = 250;
+    for(const it of rows.slice(0,max)){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(it.item)}</td>
+        <td class="right">${fmtNum(it.pieces)}</td>
+        <td class="right">${money(it.amount)}</td>
+        <td class="right">${it.salesCount.toLocaleString("es-MX")}</td>`;
+      tbody.appendChild(tr);
+    }
+    if(rows.length>max){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="4" class="small">Mostrando ${max} de ${rows.length}. Usa el buscador para filtrar.</td>`;
+      tbody.appendChild(tr);
+    }
+  }
+
+  function renderPeriods(){
+    if(!TX.length) { $("tblPeriods").innerHTML=""; return; }
+    const mode = $("period").value;
+    const map = new Map();
+    for(const t of TX){
+      const k = mode==="day" ? isoDate(t.dt) : (mode==="week" ? weekKey(t.dt) : monthKey(t.dt));
+      if(!map.has(k)) map.set(k,{period:k, tx:0, amount:0});
+      const p = map.get(k);
+      p.tx += 1;
+      p.amount += (t.total||0);
+    }
+    const arr = Array.from(map.values()).sort((a,b)=> a.period.localeCompare(b.period));
+    const tbody = $("tblPeriods");
+    tbody.innerHTML = "";
+    for(const p of arr){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(p.period)}</td>
+        <td class="right">${p.tx.toLocaleString("es-MX")}</td>
+        <td class="right">${money(p.amount)}</td>`;
+      tbody.appendChild(tr);
+    }
+  }
+
+  function renderDebug(filtered){
+    const tbody = $("tblDebug");
+    tbody.innerHTML = "";
+    for(const r of filtered.slice(0,15)){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(r.ventaId)}</td>
+        <td>${escapeHtml(r.fechaRaw)}</td>
+        <td>${escapeHtml(r.codigo)}</td>
+        <td>${escapeHtml(r.label)}</td>
+        <td class="right">${fmtNum(r.cant)}</td>
+        <td class="right">${money(r.subtotal)}</td>`;
+      tbody.appendChild(tr);
+    }
+  }
+
+  function renderMItems(){
+    const tbody = $("tblMItems");
+    tbody.innerHTML = "";
+    if(!M_GROUPS.length){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="4" class="small">No hay artículos M- en el rango (o no hay palabras configuradas).</td>`;
+      tbody.appendChild(tr);
+      return;
+    }
+    const pretty = (g)=> g === "otros m-" ? "Otros M-" : g;
+    for(const it of M_GROUPS){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(pretty(it.group))}</td>
+        <td class="right">${fmtNum(it.pieces)}</td>
+        <td class="right">${money(it.amount)}</td>
+        <td class="right">${it.salesCount.toLocaleString("es-MX")}</td>`;
+      tbody.appendChild(tr);
+    }
+  }
+
+  function generateReports(){
+    if(!RAW.length){ setStatus("No hay datos cargados."); return; }
+
+    const from = $("from").value ? new Date($("from").value+"T00:00:00") : null;
+    const to = $("to").value ? new Date($("to").value+"T23:59:59") : null;
+    const excludeZero = $("excludeZero").checked;
+
+    const filtered = [];
+    const M_TOTAL = { pieces: 0, amount: 0 };
+
+    for(const r of RAW){
+      const d = r.dt ?? parseMXDateTime(r.fechaRaw) ?? (r.fechaISO ? new Date(r.fechaISO) : null);
+      if(!d || isNaN(d.getTime())) continue;
+      if(from && d < from) continue;
+      if(to && d > to) continue;
+      if(excludeZero && (r.subtotal === 0 || r.precio <= 0.01)) continue;
+
+      if(r.codigo && String(r.codigo).startsWith("M-")){
+        M_TOTAL.pieces += r.cant;
+        M_TOTAL.amount += r.subtotal;
+        filtered.push({...r, dt:d, label:r.nombre, key:"M-"});
+        continue;
+      }
+
+      const key = r.codigo ? String(r.codigo) : ("NAME:" + stripAccents(r.nombre));
+      filtered.push({...r, dt:d, label:r.nombre, key});
+    }
+
+    const map = new Map();
+    for(const r of filtered){
+      if(r.key === "M-") continue;
+      if(!map.has(r.key)){
+        map.set(r.key,{ item:r.label, pieces:0, amount:0, ventas:new Set() });
+      }
+      const it = map.get(r.key);
+      it.pieces += r.cant;
+      it.amount += r.subtotal;
+      it.ventas.add(r.ventaId);
+    }
+    ITEMS = Array.from(map.values()).map(x=>({
+      item:x.item, pieces:x.pieces, amount:x.amount, salesCount:x.ventas.size
+    })).sort((a,b)=> b.pieces - a.pieces);
+
+    const txMap = new Map();
+    for(const r of filtered){
+      const k = r.ventaId;
+      if(!txMap.has(k)) txMap.set(k,{ ventaId:k, dt:r.dt, total:r.total });
+    }
+    TX = Array.from(txMap.values()).sort((a,b)=> a.dt - b.dt);
+
+    const kwText = ($("mKeywords")?.value || "").trim();
+    const keywords = kwText ? kwText.split(",").map(x=>stripAccents(x)).map(x=>x.trim()).filter(Boolean) : [];
+    const gmap = new Map();
+    function addGroup(group, r){
+      if(!gmap.has(group)) gmap.set(group,{group, pieces:0, amount:0, ventas:new Set()});
+      const g = gmap.get(group);
+      g.pieces += r.cant;
+      g.amount += r.subtotal;
+      g.ventas.add(r.ventaId);
+    }
+    for(const r of filtered){
+      if(r.key !== "M-") continue;
+      const desc = stripAccents(r.nombre);
+      let grp = null;
+      for(const k of keywords){ if(k && desc.includes(k)){ grp = k; break; } }
+      addGroup(grp ? grp : "otros m-", r);
+    }
+    M_GROUPS = Array.from(gmap.values()).map(x=>({
+      group:x.group, pieces:x.pieces, amount:x.amount, salesCount:x.ventas.size
+    })).sort((a,b)=> b.pieces - a.pieces);
+
+    const totalSales = TX.reduce((s,t)=> s + (t.total||0), 0);
+    $("kSales").textContent = money(totalSales);
+    $("kTx").textContent = TX.length.toLocaleString("es-MX");
+    $("kTop").textContent = ITEMS.length ? `${ITEMS[0].item} (${fmtNum(ITEMS[0].pieces)} pzas)` : "—";
+    const low = ITEMS.slice().filter(x=>x.pieces>0).sort((a,b)=> a.pieces - b.pieces)[0];
+    $("kLow").textContent = low ? `${low.item} (${fmtNum(low.pieces)} pzas)` : "—";
+    $("kMPieces").textContent = fmtNum(M_TOTAL.pieces);
+    $("kMAmount").textContent = money(M_TOTAL.amount);
+
+    const scopeParts = [];
+    if(from) scopeParts.push(`desde ${isoDate(from)}`);
+    if(to) scopeParts.push(`hasta ${isoDate(to)}`);
+    $("scope").textContent = scopeParts.length ? scopeParts.join(" • ") : "Sin filtro de fecha";
+
+    renderItems(); renderPeriods(); renderMItems(); renderDebug(filtered);
+
+    ITEMS_EXPORT = buildItemsCSV(ITEMS);
+    $("export").disabled = !ITEMS.length;
+    $("run").disabled = false;
+    setStatus(`Reportes listos: ${ITEMS.length} artículos, ${TX.length} transacciones.`);
+  }
+
+  function loadFromLocalHistory(){
+    clearOutputs();
+    RAW = []; ITEMS = []; TX = []; M_GROUPS = []; ITEMS_EXPORT = "";
+
+    let hist = null;
+    try{
+      const raw = localStorage.getItem(KEY_HISTORY);
+      hist = raw ? JSON.parse(raw) : null;
+    }catch(e){ hist = null; }
+
+    if(!Array.isArray(hist) || hist.length === 0){
+      setStatus("No se encontró historial local. Usa CSV o abre este reporte desde la misma app.");
+      $("run").disabled = true;
+      return;
+    }
+
+    const rows = [];
+    for(const v of hist){
+      const ventaId = (v.id != null ? v.id : "");
+      const fechaRaw = v.fecha || "";
+      const fechaISO = v.fechaISO || "";
+      const total = safeNum(v.total);
+      const items = Array.isArray(v.items) ? v.items : [];
+      for(const it of items){
+        rows.push({
+          ventaId: String(ventaId),
+          fechaRaw,
+          fechaISO,
+          total,
+          codigo: (it.codigo ?? "").toString().trim(),
+          nombre: (it.nombre ?? "").toString().trim(),
+          cant: safeNum(it.cantidad),
+          precio: safeNum(it.precio),
+          subtotal: safeNum(it.subtotal),
+          dt: (fechaISO ? new Date(fechaISO) : null)
+        });
+      }
+    }
+
+    RAW = rows;
+    $("run").disabled = false;
+    setStatus(`Historial cargado: ${RAW.length} filas (${hist.length} ventas).`);
+    generateReports();
+  }
+
+  // CSV input
+  document.getElementById("file").addEventListener("change", async (e)=>{
+    const f = e.target.files?.[0];
+    $("run").disabled = !f;
+    $("export").disabled = true;
+    setStatus(f ? `Archivo: ${f.name}` : "");
+    RAW = []; ITEMS = []; TX = []; M_GROUPS = []; ITEMS_EXPORT = "";
+    clearOutputs();
+    if(!f) return;
+
+    const text = await f.text();
+    const {header, rows} = parseCSV(text);
+    const idx = {};
+    header.forEach((h,i)=> idx[h.replace(/\uFEFF/g,"").trim()] = i);
+
+    const required = ["Venta ID","Fecha","Total","Código","Nombre","Cant","Precio","Subtotal"];
+    const missing = required.filter(k=>idx[k]===undefined);
+    if(missing.length){
+      alert("Faltan columnas en el CSV: " + missing.join(", "));
+      return;
+    }
+
+    RAW = rows.map(r=>({
+      ventaId: r[idx["Venta ID"]],
+      fechaRaw: r[idx["Fecha"]],
+      total: safeNum(r[idx["Total"]]),
+      codigo: (r[idx["Código"]]||"").trim(),
+      nombre: (r[idx["Nombre"]]||"").trim(),
+      cant: safeNum(r[idx["Cant"]]),
+      precio: safeNum(r[idx["Precio"]]),
+      subtotal: safeNum(r[idx["Subtotal"]]),
+      dt: null,
+      fechaISO: null
+    }));
+
+    $("run").disabled = false;
+    setStatus(`CSV cargado: ${RAW.length} filas. Listo para generar reportes.`);
+  });
+
+  document.getElementById("btnLoadLocal").addEventListener("click", loadFromLocalHistory);
+  document.getElementById("run").addEventListener("click", generateReports);
+
+  document.getElementById("export").addEventListener("click", ()=>{
+    if(!ITEMS_EXPORT) return;
+    const blob = new Blob([ITEMS_EXPORT], {type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "reporte_ventas_por_articulo.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  });
+
+  document.getElementById("search").addEventListener("input", renderItems);
+  document.getElementById("period").addEventListener("change", renderPeriods);
+
+  // Tabs
+  document.querySelectorAll(".tab").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      const t = btn.dataset.tab;
+      document.getElementById("panel-items").style.display = (t==="items") ? "" : "none";
+      document.getElementById("panel-periods").style.display = (t==="periods") ? "" : "none";
+      document.getElementById("panel-mitems").style.display = (t==="mitems") ? "" : "none";
+      document.getElementById("panel-debug").style.display = (t==="debug") ? "" : "none";
+      if(t==="periods") renderPeriods();
+      if(t==="mitems") renderMItems();
+    });
+  });
+
+  // Auto-intento al abrir
+  window.addEventListener("load", loadFromLocalHistory);
+</script>
+</body>
+</html>

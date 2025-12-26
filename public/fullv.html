@@ -322,6 +322,7 @@ document.getElementById('modalAceptar').onclick = () => {
 <button class="btn btn-outline" id="btnCambiarLogo" title="Cambiar logo">🖼️ Logo</button>
 <!-- 🆕 Botón de tema -->
 <button class="btn btn-outline" id="btnToggleTheme" title="Cambiar tema">🌓 Tema</button>
+<button class="btn btn-outline" id="btnReporte" title="Reporte">📊 Reporte</button>
 <button class="btn btn-outline" id="btnTicketConfig" title="Configurar ticket">⚙️ Ticket</button>
 </div>
 </div>
@@ -589,6 +590,7 @@ const ticketLeyenda2Input = document.getElementById('ticket-leyenda2');
 const btnGuardarTicketCfg = document.getElementById('btnGuardarTicketCfg');
 const ticketConfigModal   = document.getElementById('ticket-config-modal');
 const btnTicketConfig     = document.getElementById('btnTicketConfig');
+const btnReporte          = document.getElementById('btnReporte');
 const btnCloseTicketCfg   = document.getElementById('btnCloseTicketCfg');
 const pagoInput = document.getElementById('pago');
 const logoFile = document.getElementById('logoFile');
@@ -1669,7 +1671,15 @@ window.addEventListener('load', ()=>{
 });
 btnToggleTheme.addEventListener('click',()=>{
   const isDark=document.body.classList.contains('dark');
-  applyTheme(isDark?'light':'dark');
+  
+
+// 🆕 Reporte (abre reporte.html en pestaña nueva)
+if(btnReporte){
+  btnReporte.addEventListener('click', ()=>{
+    window.open('reporte.html', '_blank');
+  });
+}
+applyTheme(isDark?'light':'dark');
 });
 
 /* Cambiar logo: abrir selector de archivo y guardar en localStorage */
