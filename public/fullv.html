@@ -1702,16 +1702,16 @@ window.addEventListener('load', ()=>{
   checkProductLimitOnOpen();
   adminSignedIn(); // Modo admin siempre activo
 });
-btnToggleTheme.addEventListener('click',()=>{
-  const isDark=document.body.classList.contains('dark');
-  
 
 // 🆕 Reporte (abre reporte.html en pestaña nueva)
 if(btnReporte){
   btnReporte.addEventListener('click', ()=>{
-    window.open('reporte.html', '_blank');
+    window.open('reporte.html','_blank');
   });
 }
+
+btnToggleTheme.addEventListener('click',()=>{
+  const isDark=document.body.classList.contains('dark');
 applyTheme(isDark?'light':'dark');
 });
 
