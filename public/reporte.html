@@ -96,7 +96,7 @@ body.dark .small{ color:#aaa; }
   <div class="header-container">
     <div>
       <div class="title">📊 Reporte • MiTienda</div>
-      <div class="sub">Predeterminado: lee historial local del sistema (sin CSV). Opcional: cargar CSV.</div>
+      <div class="sub">Reporte de ventas</div>
     </div>
     <div class="header-right">
       <button id="btnToggleTheme" class="btn btn-outline btn-small" title="Cambiar tema">🌓 Tema</button>
@@ -112,19 +112,19 @@ body.dark .small{ color:#aaa; }
         <div class="small">Se intenta leer <span class="mono">localStorage</span> del sistema. Si no hay historial, puedes cargar un CSV.</div>
       </div>
       <div class="row">
-        <button id="btnLoadLocal" class="btn btn-amarillo">Leer historial</button>
+        
       </div>
     </div>
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
 
-    <label>Opción B: cargar CSV (igual que antes)</label>
+    <label>Cargar CSV (opcional)</label>
     <input id="file" type="file" accept=".csv,text/csv" />
-    <div class="hint" style="margin-top:6px">Columnas esperadas: <span class="mono">Venta ID, Fecha, Total, Código, Nombre, Cant, Precio, Subtotal</span>.</div>
+    <div class="hint" style="margin-top:6px">Estructura del CSV: <span class="mono">Venta ID, Fecha, Total, Código, Nombre, Cant, Precio, Subtotal</span>.</div>
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
 
-    <label>Filtros de fecha (opcional)</label>
+    <label>Filtrar por fecha (opcional)</label>
     <div class="row">
       <div style="flex:1 1 160px">
         <input id="from" type="date" />
@@ -144,10 +144,10 @@ body.dark .small{ color:#aaa; }
     </div>
 
     <div style="margin-top:10px">
-      <label>Agrupar artículos M- por palabra (opcional)</label>
+      <label>Agrupar artículos sin código (M-) por palabra (opcional)</label>
       <input id="mKeywords" value="cigarro, huevo, jamón, tortilla, mayonesa, azúcar, crema" type="text"
              placeholder="Ej: cigarro, huevo, jamón, tortilla, mayonesa, azúcar, crema" />
-      <div class="hint">Solo aplica a renglones con código <span class="mono">M-</span>. Lo que no coincida cae en <b>Otros M-</b>.</div>
+      <div class="hint">Solo aplica a renglones con código <span class="mono">M-</span>. Lo que no coincida cae en <b>Otros</b>.</div>
     </div>
 
     <div class="row" style="margin-top:12px">
@@ -170,11 +170,9 @@ body.dark .small{ color:#aaa; }
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
 
     <div class="tabs">
-      <button class="tab active" data-tab="items">Ventas por artículo</button>
-      <button class="tab" data-tab="periods">Totales por periodo</button>
-      <button class="tab" data-tab="mitems">Artículos M- (por palabra)</button>
-      <button class="tab" data-tab="debug">Vista rápida</button>
-    </div>
+  <button class="tab active" data-tab="items">Artículos con código</button>
+  <button class="tab" data-tab="mitems">Artículos sin código (M-)</button>
+</div>
 
     <div id="panel-items">
       <div class="row" style="justify-content:space-between;gap:12px">
@@ -198,16 +196,7 @@ body.dark .small{ color:#aaa; }
       </div>
     </div>
 
-    <div id="panel-periods" style="display:none">
-      <div class="row">
-        <label>Periodo</label>
-        <select id="period">
-          <option value="day">Día</option>
-          <option value="week">Semana</option>
-          <option value="month">Mes</option>
-        </select>
-      </div>
-      <div class="table-wrap">
+    <div class="table-wrap">
         <table>
           <thead>
             <tr>
@@ -238,9 +227,7 @@ body.dark .small{ color:#aaa; }
       </div>
     </div>
 
-    <div id="panel-debug" style="display:none">
-      <div class="hint">Primeras 15 filas ya filtradas (para validar).</div>
-      <div class="table-wrap">
+    <div class="table-wrap">
         <table>
           <thead>
             <tr>
@@ -408,47 +395,7 @@ body.dark .small{ color:#aaa; }
     }
   }
 
-  function renderPeriods(){
-    if(!TX.length) { $("tblPeriods").innerHTML=""; return; }
-    const mode = $("period").value;
-    const map = new Map();
-    for(const t of TX){
-      const k = mode==="day" ? isoDate(t.dt) : (mode==="week" ? weekKey(t.dt) : monthKey(t.dt));
-      if(!map.has(k)) map.set(k,{period:k, tx:0, amount:0});
-      const p = map.get(k);
-      p.tx += 1;
-      p.amount += (t.total||0);
-    }
-    const arr = Array.from(map.values()).sort((a,b)=> a.period.localeCompare(b.period));
-    const tbody = $("tblPeriods");
-    tbody.innerHTML = "";
-    for(const p of arr){
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${escapeHtml(p.period)}</td>
-        <td class="right">${p.tx.toLocaleString("es-MX")}</td>
-        <td class="right">${money(p.amount)}</td>`;
-      tbody.appendChild(tr);
-    }
-  }
-
-  function renderDebug(filtered){
-    const tbody = $("tblDebug");
-    tbody.innerHTML = "";
-    for(const r of filtered.slice(0,15)){
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${escapeHtml(r.ventaId)}</td>
-        <td>${escapeHtml(r.fechaRaw)}</td>
-        <td>${escapeHtml(r.codigo)}</td>
-        <td>${escapeHtml(r.label)}</td>
-        <td class="right">${fmtNum(r.cant)}</td>
-        <td class="right">${money(r.subtotal)}</td>`;
-      tbody.appendChild(tr);
-    }
-  }
-
-  function renderMItems(){
+      function renderMItems(){
     const tbody = $("tblMItems");
     tbody.innerHTML = "";
     if(!M_GROUPS.length){
@@ -554,7 +501,7 @@ body.dark .small{ color:#aaa; }
     if(to) scopeParts.push(`hasta ${isoDate(to)}`);
     $("scope").textContent = scopeParts.length ? scopeParts.join(" • ") : "Sin filtro de fecha";
 
-    renderItems(); renderPeriods(); renderMItems(); renderDebug(filtered);
+    renderItems(); renderMItems();
 
     ITEMS_EXPORT = buildItemsCSV(ITEMS);
     $("export").disabled = !ITEMS.length;
@@ -644,10 +591,7 @@ body.dark .small{ color:#aaa; }
 
     $("run").disabled = false;
     setStatus(`CSV cargado: ${RAW.length} filas. Listo para generar reportes.`);
-  });
-
-  document.getElementById("btnLoadLocal").addEventListener("click", loadFromLocalHistory);
-  document.getElementById("run").addEventListener("click", generateReports);
+  });document.getElementById("run").addEventListener("click", generateReports);
 
   document.getElementById("export").addEventListener("click", ()=>{
     if(!ITEMS_EXPORT) return;
@@ -672,10 +616,8 @@ body.dark .small{ color:#aaa; }
       btn.classList.add("active");
       const t = btn.dataset.tab;
       document.getElementById("panel-items").style.display = (t==="items") ? "" : "none";
-      document.getElementById("panel-periods").style.display = (t==="periods") ? "" : "none";
       document.getElementById("panel-mitems").style.display = (t==="mitems") ? "" : "none";
-      document.getElementById("panel-debug").style.display = (t==="debug") ? "" : "none";
-      if(t==="periods") renderPeriods();
+      if(t==="items") renderItems();
       if(t==="mitems") renderMItems();
     });
   });
