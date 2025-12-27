@@ -188,6 +188,32 @@ body.dark .modal-box .btn-outline {
     line-height: 1.2;
 }
 
+
+/* 🆕 Línea de meta en lista de productos (Precio/Costo/Utilidad) */
+.product-meta{display:flex;gap:12px;align-items:baseline;justify-content:flex-start;flex-wrap:wrap}
+.product-meta .spacer{flex:1 1 auto}
+.product-meta .meta-right{display:flex;gap:12px;align-items:baseline;justify-content:flex-end;flex-wrap:wrap}
+.product-meta .label{color:#9ca3af;font-size:12px;font-weight:600}
+.product-meta .val{font-weight:800}
+body.dark .product-meta .label{color:#bdbdbd}
+
+label.small{font-size:12px;color:#9ca3af;font-weight:700}
+body.dark label.small{color:#bdbdbd}
+
+/* 🆕 Floating labels para Costo / Precio (mantiene línea visual) */
+.field-float{position:relative}
+.field-float input{width:120px;padding-top:18px}
+.field-label{
+  position:absolute;
+  top:2px;
+  left:10px;
+  font-size:11px;
+  font-weight:700;
+  color:#9ca3af;
+  pointer-events:none;
+}
+body.dark .field-label{color:#bdbdbd}
+
 </style>
 
 <style id="ticket-thermal-override">
@@ -411,7 +437,7 @@ document.getElementById('modalAceptar').onclick = () => {
 <button class="btn btn-outline" id="btnScanProd">📷 Escanear código</button>
 </div>
 <input id="prod-nombre" placeholder="Nombre del producto" style="flex:1"/>
-<input id="prod-precio" placeholder="Precio" step="0.01" style="width:120px" type="number"/>
+<div style="display:flex; gap:10px; align-items:center"><div class="field-float"><span class="field-label">Costo</span><input id="prod-costo" type="number" step="0.01" placeholder="0.00"/></div><div class="field-float"><span class="field-label">Precio</span><input id="prod-precio" type="number" step="0.01" placeholder="0.00"/></div></div>
 <button class="btn btn-rojo" id="btn-add-prod">Agregar</button>
 </div>
 <div class="right-controls" style="margin-bottom:8px">
@@ -526,7 +552,7 @@ const MANUAL_MAX_PER_SALE = 5;
 
 /* DEFAULT PRODUCTS */
 const DEFAULT_PRODUCTS = [
-  { codigo: "001", nombre: "Descripción del prodcuto", precio: 1.00 },
+  { codigo: "001", nombre: "Descripción del prodcuto", precio: 1.00, costo: 0 },
 ];
 
 /* STATE */
@@ -563,6 +589,7 @@ const rightProducts = document.getElementById('right-products');
 const historyList = document.getElementById('history-list');
 const prodCodigo = document.getElementById('prod-codigo');
 const prodNombre = document.getElementById('prod-nombre');
+const prodCosto = document.getElementById('prod-costo');
 const prodPrecio = document.getElementById('prod-precio');
 const btnAddProd = document.getElementById('btn-add-prod');
 const btnClearAll = document.getElementById('btn-clear-all');
@@ -612,6 +639,8 @@ function saveLogo(dataUrl){ localStorage.setItem(KEY_LOGO, dataUrl); }
 function loadState(){
   const p = localStorage.getItem(KEY_PRODUCTS);
   productos = p ? JSON.parse(p) : (localStorage.setItem(KEY_PRODUCTS, JSON.stringify(DEFAULT_PRODUCTS.slice())), DEFAULT_PRODUCTS.slice());
+// 🆕 Backward compatible: si no hay costo, poner 0
+productos = (productos||[]).map(pp=> ({...pp, costo: (pp && pp.costo!=null) ? Number(pp.costo)||0 : 0}));
   carrito = JSON.parse(localStorage.getItem(KEY_CART) || '[]');
   historial = JSON.parse(localStorage.getItem(KEY_HISTORY) || '[]');
   const logo = localStorage.getItem(KEY_LOGO);
@@ -678,7 +707,7 @@ function renderProducts(){
     const div = document.createElement('div'); div.className='product-item';
     const adminBtns = isAdmin ? `<button data-idx="${idx}" class="btn btn-outline btn-small btn-edit">✏️</button>
       <button data-idx="${idx}" class="btn btn-outline btn-small btn-del">🗑️</button>` : '';
-    div.innerHTML = `<div><div style="font-weight:700">${p.codigo} — ${escapeHtml(p.nombre)}</div><div class="small">Precio: ${formatMXN(p.precio)}</div></div>
+    div.innerHTML = `<div><div style="font-weight:700">${p.codigo} — ${escapeHtml(p.nombre)}</div><div class="small product-meta"><span><span class="label">Precio:</span> <span class="val">${formatMXN(p.precio)}</span></span><span class="spacer"></span><span class="meta-right"><span><span class="label">Costo:</span> <span class="val">${formatMXN((Number(p.costo)||0))}</span></span><span><span class="label">Utilidad:</span> <span class="val">${formatMXN((Number(p.precio)||0)-(Number(p.costo)||0))}</span></span></span></div></div>
                      <div style="display:flex;gap:8px;align-items:center">
                        ${adminBtns}
                        <button data-codigo="${p.codigo}" class="btn btn-rojo btn-add-to-cart">Agregar</button>
@@ -715,7 +744,7 @@ function renderProducts(){
     document.querySelectorAll('.btn-edit').forEach(b=> b.addEventListener('click', e=> {
       const i = Number(e.currentTarget.getAttribute('data-idx'));
       const p = productos[i];
-      prodCodigo.value = p.codigo; prodNombre.value = p.nombre; prodPrecio.value = p.precio;
+      prodCodigo.value = p.codigo; prodNombre.value = p.nombre; if(typeof prodCosto !== 'undefined' && prodCosto) prodCosto.value = (p.costo ?? 0); prodPrecio.value = p.precio;
       prodCodigo.dataset.editIndex = i;
       prodNombre.focus();
     }));
@@ -740,11 +769,13 @@ function checkProductLimitOnOpen(){
     if(btnAddProd) btnAddProd.disabled = true;
     if(prodCodigo) prodCodigo.disabled = true;
     if(prodNombre) prodNombre.disabled = true;
+    if(prodCosto) prodCosto.disabled = true;
     if(prodPrecio) prodPrecio.disabled = true;
   } else {
     if(btnAddProd) btnAddProd.disabled = false;
     if(prodCodigo) prodCodigo.disabled = false;
     if(prodNombre) prodNombre.disabled = false;
+    if(prodCosto) prodCosto.disabled = false;
     if(prodPrecio) prodPrecio.disabled = false;
   }
 }
@@ -752,8 +783,10 @@ function checkProductLimitOnOpen(){
 btnAddProd.addEventListener('click', ()=>{
   const codigo = (prodCodigo.value || '').toString().trim();
   const nombre = (prodNombre.value || '').toString().trim();
+  const costo = (typeof prodCosto !== 'undefined' && prodCosto) ? (Number(prodCosto.value) || 0) : 0;
   const precio = Number(prodPrecio.value) || 0;
-  if(!codigo || !nombre || precio <= 0){ alert('Completa código, nombre y precio válidos'); return; }
+  if(!codigo || !nombre || precio <= 0){ alert('Completa código, nombre, costo y precio válidos'); return; }
+  if(costo < 0){ alert('Costo no puede ser negativo'); return; }
   if(typeof prodCodigo.dataset.editIndex === 'undefined' && productos.length >= MAX_PRODUCTS){
     alert(LIMIT_MESSAGE);
     if(btnAddProd) btnAddProd.disabled = true;
@@ -761,11 +794,11 @@ btnAddProd.addEventListener('click', ()=>{
   }
   const editIndex = prodCodigo.dataset.editIndex;
   if(typeof editIndex !== 'undefined'){
-    productos[Number(editIndex)] = { codigo, nombre, precio };
+    productos[Number(editIndex)] = { codigo, nombre, precio, costo: (Number(costo)||0) };
     delete prodCodigo.dataset.editIndex;
   } else {
     if(productos.find(p=> p.codigo === codigo)){ if(!confirm('Código ya existe. ¿Deseas agregar duplicado?')) return; }
-    productos.push({ codigo, nombre, precio });
+    productos.push({ codigo, nombre, precio, costo: (Number(costo)||0) });
   }
   saveProducts(); renderProducts();
   
@@ -784,7 +817,7 @@ btnAddProd.addEventListener('click', ()=>{
   } catch (e) {
     console.warn('Audio no disponible:', e);
   }
-prodCodigo.value=''; prodNombre.value=''; prodPrecio.value=''; prodCodigo.focus();
+prodCodigo.value=''; prodNombre.value=''; if(typeof prodCosto!=='undefined' && prodCosto) prodCosto.value=''; prodPrecio.value=''; prodCodigo.focus();
   checkProductLimitOnOpen();
   adminSignedIn(); // Modo admin siempre activo
 });

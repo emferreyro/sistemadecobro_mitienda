@@ -165,6 +165,8 @@ body.dark .small{ color:#aaa; }
       <div class="kpi"><div class="t">Menos vendido (piezas)</div><div id="kLow" class="v">—</div></div>
       <div class="kpi"><div class="t">M- piezas</div><div id="kMPieces" class="v">—</div></div>
       <div class="kpi"><div class="t">M- importe</div><div id="kMAmount" class="v">—</div></div>
+      <div class="kpi"><div class="t">Utilidad (estimada)</div><div id="kProfit" class="v">—</div></div>
+      <div class="kpi"><div class="t">Margen % (prom.)</div><div id="kMargin" class="v">—</div></div>
     </div>
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
@@ -173,7 +175,8 @@ body.dark .small{ color:#aaa; }
       <button class="tab active" data-tab="items">Ventas por artículo</button>
       <button class="tab" data-tab="periods">Totales por periodo</button>
       <button class="tab" data-tab="mitems">Artículos M- (por palabra)</button>
-      <button class="tab" data-tab="debug">Vista rápida</button>
+      <button class="tab" data-tab="debug">Validación</button>
+      <button class="tab" data-tab="profit">Utilidad</button>
     </div>
 
     <div id="panel-items">
@@ -238,8 +241,39 @@ body.dark .small{ color:#aaa; }
       </div>
     </div>
 
+    
+    <div id="panel-profit" style="display:none">
+      <div class="hint">
+        Reporte de <b>utilidad</b> usando el <span class="mono">Costo</span> guardado en tu lista de productos.
+        Si un producto no tiene costo, se asume <b>0</b>.
+      </div>
+      <div class="row" style="justify-content:space-between;gap:12px;margin-top:8px">
+        <div class="pill" id="profitScope">—</div>
+        <div style="flex:1 1 240px;max-width:340px">
+          <input id="searchProfit" type="text" placeholder="Buscar producto…" />
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th class="right">Piezas</th>
+              <th class="right">Ingreso</th>
+              <th class="right">Costo</th>
+              <th class="right">Utilidad</th>
+              <th class="right">Margen %</th>
+            </tr>
+          </thead>
+          <tbody id="tblProfit"></tbody>
+        </table>
+      </div>
+      <div class="small" id="profitNote" style="margin-top:8px"></div>
+    </div>
+
     <div id="panel-debug" style="display:none">
-      <div class="hint">Primeras 15 filas ya filtradas (para validar).</div>
+
+      <div class="hint">Primeras 15 filas ya filtradas (para validar que el CSV/historial se leyó bien).</div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -313,6 +347,76 @@ body.dark .small{ color:#aaa; }
       .replaceAll('"',"&quot;").replaceAll("'","&#039;");
   }
 
+  // === Utilidad (Costos desde lista de productos) ===
+  function loadProductsMap(){
+    const keysToTry = [
+      "sistemacobro_products_v2",
+      "sistemacobro_products",
+      "mitienda_products",
+      "products",
+      "productos"
+    ];
+    let raw = null, usedKey = null;
+    for(const k of keysToTry){
+      try{
+        const v = localStorage.getItem(k);
+        if(v && v.trim().startsWith("[")){
+          raw = v; usedKey = k; break;
+        }
+      }catch(e){}
+    }
+    PRODUCTS_MAP = new Map();
+    if(!raw) return { ok:false, key:null, count:0 };
+
+    try{
+      const arr = JSON.parse(raw);
+      if(!Array.isArray(arr)) return { ok:false, key:usedKey, count:0 };
+      for(const p of arr){
+        const code = (p?.codigo ?? p?.code ?? "").toString().trim();
+        if(!code) continue;
+        const costo = Number(p?.costo ?? p?.cost ?? 0) || 0;
+        const nombre = (p?.nombre ?? p?.name ?? "").toString().trim();
+        PRODUCTS_MAP.set(code, { costo, nombre });
+      }
+      return { ok:true, key:usedKey, count:PRODUCTS_MAP.size };
+    }catch(e){
+      return { ok:false, key:usedKey, count:0 };
+    }
+  }
+
+  function pct(n){
+    if(!isFinite(n)) return "—";
+    return n.toLocaleString("es-MX",{maximumFractionDigits:2}) + "%";
+  }
+
+  function renderProfit(){
+    const q = stripAccents($("searchProfit")?.value || "");
+    const rows = (q ? PROFIT_ITEMS.filter(x=> stripAccents(x.item).includes(q)) : PROFIT_ITEMS);
+
+    const tbody = $("tblProfit");
+    if(!tbody) return;
+    tbody.innerHTML = "";
+
+    const max = 250;
+    for(const it of rows.slice(0,max)){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(it.item)}</td>
+        <td class="right">${fmtNum(it.pieces)}</td>
+        <td class="right">${money(it.revenue)}</td>
+        <td class="right">${money(it.cost)}</td>
+        <td class="right">${money(it.profit)}</td>
+        <td class="right">${pct(it.margin)}</td>`;
+      tbody.appendChild(tr);
+    }
+    if(rows.length>max){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="6" class="small">Mostrando ${max} de ${rows.length}. Usa el buscador para filtrar.</td>`;
+      tbody.appendChild(tr);
+    }
+  }
+
+
   // Minimal CSV parser (quotes & commas)
   function parseCSV(text){
     const rows = [];
@@ -358,6 +462,8 @@ body.dark .small{ color:#aaa; }
   let TX = [];
   let ITEMS_EXPORT = "";
   let M_GROUPS = [];
+  let PROFIT_ITEMS = [];
+  let PRODUCTS_MAP = new Map();
   const KEY_HISTORY = 'sistemacobro_history_v2'; // ajusta si tu app usa otra llave
 
   function setStatus(msg){ $("status").textContent = msg || ""; }
@@ -373,6 +479,11 @@ body.dark .small{ color:#aaa; }
     $("kLow").textContent = "—";
     $("kMPieces").textContent = "—";
     $("kMAmount").textContent = "—";
+    const kp = $("kProfit"); if(kp) kp.textContent = "—";
+    const km = $("kMargin"); if(km) km.textContent = "—";
+    const tp = $("tblProfit"); if(tp) tp.innerHTML = "";
+    const ps = $("profitScope"); if(ps) ps.textContent = "—";
+    const pn = $("profitNote"); if(pn) pn.textContent = "";
     $("scope").textContent = "—";
   }
 
@@ -501,7 +612,7 @@ body.dark .small{ color:#aaa; }
     for(const r of filtered){
       if(r.key === "M-") continue;
       if(!map.has(r.key)){
-        map.set(r.key,{ item:r.label, pieces:0, amount:0, ventas:new Set() });
+        map.set(r.key,{ code:r.key, item:r.label, pieces:0, amount:0, ventas:new Set() });
       }
       const it = map.get(r.key);
       it.pieces += r.cant;
@@ -509,6 +620,7 @@ body.dark .small{ color:#aaa; }
       it.ventas.add(r.ventaId);
     }
     ITEMS = Array.from(map.values()).map(x=>({
+      code:x.code,
       item:x.item, pieces:x.pieces, amount:x.amount, salesCount:x.ventas.size
     })).sort((a,b)=> b.pieces - a.pieces);
 
@@ -549,12 +661,24 @@ body.dark .small{ color:#aaa; }
     $("kMPieces").textContent = fmtNum(M_TOTAL.pieces);
     $("kMAmount").textContent = money(M_TOTAL.amount);
 
+    const totalProfit = PROFIT_ITEMS.reduce((s,x)=> s + (x.profit||0), 0);
+    const totalRevenueForMargin = PROFIT_ITEMS.reduce((s,x)=> s + (x.revenue||0), 0);
+    $("kProfit").textContent = money(totalProfit);
+    $("kMargin").textContent = (totalRevenueForMargin>0) ? ((totalProfit/totalRevenueForMargin)*100).toLocaleString("es-MX",{maximumFractionDigits:2}) + "%" : "—";
+
     const scopeParts = [];
     if(from) scopeParts.push(`desde ${isoDate(from)}`);
     if(to) scopeParts.push(`hasta ${isoDate(to)}`);
     $("scope").textContent = scopeParts.length ? scopeParts.join(" • ") : "Sin filtro de fecha";
+    const ps = $("profitScope"); if(ps) ps.textContent = $("scope").textContent;
+    const pn = $("profitNote");
+    if(pn){
+      const info = loadProductsMap();
+      if(!info.ok) pn.textContent = "No se encontró la lista de productos en localStorage (para costos). Se asume costo = 0.";
+      else pn.textContent = `Productos para costos: ${info.count} (key: ${info.key}). Si falta costo, se asume 0.`;
+    }
 
-    renderItems(); renderPeriods(); renderMItems(); renderDebug(filtered);
+    renderItems(); renderPeriods(); renderMItems(); renderProfit(); renderDebug(filtered);
 
     ITEMS_EXPORT = buildItemsCSV(ITEMS);
     $("export").disabled = !ITEMS.length;
@@ -675,8 +799,10 @@ body.dark .small{ color:#aaa; }
       document.getElementById("panel-periods").style.display = (t==="periods") ? "" : "none";
       document.getElementById("panel-mitems").style.display = (t==="mitems") ? "" : "none";
       document.getElementById("panel-debug").style.display = (t==="debug") ? "" : "none";
+      document.getElementById("panel-profit").style.display = (t==="profit") ? "" : "none";
       if(t==="periods") renderPeriods();
       if(t==="mitems") renderMItems();
+      if(t==="profit") renderProfit();
     });
   });
 
