@@ -185,6 +185,7 @@ body.dark .small{ color:#aaa; }
   <section class="card">
     <div class="kpis">
       <div class="kpi"><div class="t">Ventas (importe)</div><div id="kSales" class="v">—</div></div>
+      <div class="kpi"><div class="t">Utilidad</div><div id="kProfit" class="v">—</div></div>
       <div class="kpi"><div class="t">Transacciones</div><div id="kTx" class="v">—</div></div>
       <div class="kpi"><div class="t">Más vendido (piezas)</div><div id="kTop" class="v">—</div></div>
       <div class="kpi"><div class="t">Menos vendido (piezas)</div><div id="kLow" class="v">—</div></div>
@@ -197,6 +198,7 @@ body.dark .small{ color:#aaa; }
     <div class="tabs">
       <button class="tab active" data-tab="items">Artículos con código</button>
       <button class="tab" data-tab="mitems">Artículos con código M-</button>
+      <button class="tab" data-tab="profit">Utilidad por producto</button>
     </div>
 
     <div id="panel-items">
@@ -237,6 +239,34 @@ body.dark .small{ color:#aaa; }
         </table>
       </div>
     </div>
+    <div id="panel-profit" style="display:none">
+      <div class="row" style="justify-content:space-between;gap:12px">
+        <div class="pill" id="profitScope">Usa este reporte para ver utilidad por producto (requiere que tengas capturado el costo del producto).</div>
+        <div style="flex:1 1 240px;max-width:340px">
+          <input id="searchProfit" type="text" placeholder="Buscar por código o nombre…" />
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Artículo</th>
+              <th class="right">Código</th>
+              <th class="right">Piezas</th>
+              <th class="right">Costo</th>
+              <th class="right">Venta prom</th>
+              <th class="right">Utilidad</th>
+              <th class="right">#Ventas</th>
+            </tr>
+          </thead>
+          <tbody id="tblProfit"></tbody>
+        </table>
+      </div>
+      <div class="small" style="margin-top:8px">
+        Nota: La utilidad se calcula como <span class="mono">(precio de venta - costo) × cantidad</span>. Si un producto no tiene costo capturado, se asume costo $0.
+      </div>
+    </div>
+
   </section>
 </main>
 
@@ -344,7 +374,10 @@ body.dark .small{ color:#aaa; }
   let TX = [];
   let ITEMS_EXPORT = "";
   let M_GROUPS = [];
+  let PROFIT = [];
+  let PROFIT_TOTAL = 0;
   const KEY_HISTORY = 'sistemacobro_history_v2'; // ajusta si tu app usa otra llave
+  const KEY_PRODUCTS = 'sistemacobro_products_v2';
 
   function setStatus(msg){ $("status").textContent = msg || ""; }
 
@@ -352,12 +385,14 @@ body.dark .small{ color:#aaa; }
     $("tblItems").innerHTML = "";
     $("tblMItems").innerHTML = "";
     $("kSales").textContent = "—";
+    $("kProfit").textContent = "—";
     $("kTx").textContent = "—";
     $("kTop").textContent = "—";
     $("kLow").textContent = "—";
     $("kMPieces").textContent = "—";
     $("kMAmount").textContent = "—";
     $("scope").textContent = "—";
+    $("profitScope").textContent = "—";
   }
 
   function buildItemsCSV(items){
@@ -413,8 +448,52 @@ body.dark .small{ color:#aaa; }
     }
   }
 
+
+  function renderProfit(){
+    const q = stripAccents($("searchProfit")?.value || "");
+    const rows = (q ? PROFIT.filter(x=> stripAccents((x.item+" "+x.code)).includes(q)) : PROFIT);
+    const tbody = $("tblProfit");
+    tbody.innerHTML = "";
+    const max = 250;
+    for(const it of rows.slice(0,max)){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(it.item)}</td>
+        <td class="right"><span class="mono">${escapeHtml(it.code)}</span></td>
+        <td class="right">${fmtNum(it.pieces)}</td>
+        <td class="right">${money(it.costUnit)}</td>
+        <td class="right">${money(it.avgSellPrice)}</td>
+        <td class="right"><b>${money(it.profit)}</b></td>
+        <td class="right">${it.salesCount.toLocaleString("es-MX")}</td>`;
+      tbody.appendChild(tr);
+    }
+    if(rows.length>max){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="7" class="small">Mostrando ${max} de ${rows.length}. Usa el buscador para filtrar.</td>`;
+      tbody.appendChild(tr);
+    }
+  }
+
   function generateReports(){
     if(!RAW.length){ setStatus("No hay datos cargados."); return; }
+
+    // Costos: se leen del catálogo de productos guardado por MiTienda
+    let productosCatalogo = [];
+    try{
+      const rawP = localStorage.getItem(KEY_PRODUCTS);
+      productosCatalogo = rawP ? JSON.parse(rawP) : [];
+    }catch(e){ productosCatalogo = []; }
+
+    const costMap = new Map();
+    for(const p of (Array.isArray(productosCatalogo) ? productosCatalogo : [])){
+      const code = (p && p.codigo != null) ? String(p.codigo).trim() : "";
+      if(!code) continue;
+      const c = safeNum(p.costo);
+      costMap.set(code, c);
+    }
+
+    PROFIT = [];
+    PROFIT_TOTAL = 0;
 
     const from = $("from").value ? new Date($("from").value+"T00:00:00") : null;
     const to = $("to").value ? new Date($("to").value+"T23:59:59") : null;
@@ -484,8 +563,47 @@ body.dark .small{ color:#aaa; }
       group:x.group, pieces:x.pieces, amount:x.amount, salesCount:x.ventas.size
     })).sort((a,b)=> b.pieces - a.pieces);
 
+    // Utilidad por producto (solo artículos con código que NO sean M-)
+    const pmap = new Map();
+    for(const r of filtered){
+      const code = (r.codigo ?? "").toString().trim();
+      if(!code || code.startsWith("M-")) continue;
+
+      const key = code; // agrupamos por código
+      if(!pmap.has(key)){
+        pmap.set(key,{ item:r.nombre, code:key, pieces:0, ventas:new Set(), revenue:0, costUnit: costMap.get(key) ?? 0 });
+      }
+      const it = pmap.get(key);
+      it.pieces += r.cant;
+      it.ventas.add(r.ventaId);
+      it.revenue += r.subtotal;
+      // si en algún momento cambia el nombre, nos quedamos con el más reciente no vacío
+      if(r.nombre) it.item = r.nombre;
+      // refrescar costo si existe
+      const cu = costMap.get(key);
+      if(cu != null) it.costUnit = cu;
+    }
+
+    PROFIT = Array.from(pmap.values()).map(x=>{
+      const costTotal = (x.costUnit || 0) * (x.pieces || 0);
+      const profit = (x.revenue || 0) - costTotal;
+      PROFIT_TOTAL += profit;
+      return {
+        item: x.item,
+        code: x.code,
+        pieces: x.pieces,
+        salesCount: x.ventas.size,
+        revenue: x.revenue,
+        costUnit: x.costUnit || 0,
+        avgSellPrice: (x.pieces ? (x.revenue / x.pieces) : 0),
+        profit
+      };
+    }).sort((a,b)=> b.profit - a.profit);
+
+
     const totalSales = TX.reduce((s,t)=> s + (t.total||0), 0);
     $("kSales").textContent = money(totalSales);
+    $("kProfit").textContent = money(PROFIT_TOTAL);
     $("kTx").textContent = TX.length.toLocaleString("es-MX");
     $("kTop").textContent = ITEMS.length ? `${ITEMS[0].item} (${fmtNum(ITEMS[0].pieces)} pzas)` : "—";
     const low = ITEMS.slice().filter(x=>x.pieces>0).sort((a,b)=> a.pieces - b.pieces)[0];
@@ -497,8 +615,10 @@ body.dark .small{ color:#aaa; }
     if(from) scopeParts.push(`desde ${isoDate(from)}`);
     if(to) scopeParts.push(`hasta ${isoDate(to)}`);
     $("scope").textContent = scopeParts.length ? scopeParts.join(" • ") : "Sin filtro de fecha";
+    const missingCost = PROFIT.filter(x=> (x.costUnit||0) <= 0.000001).length;
+    $("profitScope").textContent = `Productos con código: ${PROFIT.length.toLocaleString("es-MX")} • Utilidad total: ${money(PROFIT_TOTAL)}${missingCost? " • Sin costo: "+missingCost.toLocaleString("es-MX"):""}`;
 
-    renderItems(); renderMItems();
+    renderItems(); renderMItems(); renderProfit();
 
     ITEMS_EXPORT = buildItemsCSV(ITEMS);
     $("export").disabled = !ITEMS.length;
@@ -605,6 +725,7 @@ body.dark .small{ color:#aaa; }
   });
 
   document.getElementById("search").addEventListener("input", renderItems);
+  document.getElementById("searchProfit").addEventListener("input", renderProfit);
 
   // Tabs
   document.querySelectorAll(".tab").forEach(btn=>{
@@ -613,8 +734,10 @@ body.dark .small{ color:#aaa; }
       btn.classList.add("active");
       const t = btn.dataset.tab;
       document.getElementById("panel-items").style.display = (t==="items") ? "" : "none";
-            document.getElementById("panel-mitems").style.display = (t==="mitems") ? "" : "none";
-                  if(t==="mitems") renderMItems();
+      document.getElementById("panel-mitems").style.display = (t==="mitems") ? "" : "none";
+      document.getElementById("panel-profit").style.display = (t==="profit") ? "" : "none";
+      if(t==="mitems") renderMItems();
+      if(t==="profit") renderProfit();
     });
   });
 
