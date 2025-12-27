@@ -96,7 +96,7 @@ body.dark .small{ color:#aaa; }
   <div class="header-container">
     <div>
       <div class="title">📊 Reporte • MiTienda</div>
-      <div class="sub">Reporte de ventas</div>
+      <div class="sub">Abre y lee el historial guardado en el sistema. (Opcional) También puedes cargar un CSV.</div>
     </div>
     <div class="header-right">
       <button id="btnToggleTheme" class="btn btn-outline btn-small" title="Cambiar tema">🌓 Tema</button>
@@ -106,25 +106,20 @@ body.dark .small{ color:#aaa; }
 
 <main class="grid">
   <section class="card">
-    <div class="row" style="justify-content:space-between">
-      <div>
+    <div>
         <div style="font-weight:900">Fuente de datos</div>
-        <div class="small">Se intenta leer <span class="mono">localStorage</span> del sistema. Si no hay historial, puedes cargar un CSV.</div>
+        <div class="small">Este reporte lee automáticamente el historial guardado por MiTienda. Si no existe historial en este dispositivo, puedes cargar un CSV.</div>
       </div>
-      <div class="row">
-        
-      </div>
-    </div>
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
 
     <label>Cargar CSV (opcional)</label>
     <input id="file" type="file" accept=".csv,text/csv" />
-    <div class="hint" style="margin-top:6px">Estructura del CSV: <span class="mono">Venta ID, Fecha, Total, Código, Nombre, Cant, Precio, Subtotal</span>.</div>
+    <div class="hint" style="margin-top:6px">Si usas CSV, debe tener las columnas: <span class="mono">Venta ID, Fecha, Total, Código, Nombre, Cant, Precio, Subtotal</span>.</div>
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
 
-    <label>Filtrar por fecha (opcional)</label>
+    <label>Filtros de fecha (opcional)</label>
     <div class="row">
       <div style="flex:1 1 160px">
         <input id="from" type="date" />
@@ -139,20 +134,20 @@ body.dark .small{ color:#aaa; }
     <div class="row" style="margin-top:8px">
       <label style="display:flex;gap:8px;align-items:center">
         <input id="excludeZero" type="checkbox" checked />
-        Excluir renglones con Subtotal 0 (series/notas)
+        Omitir renglones con Subtotal $0
       </label>
     </div>
 
     <div style="margin-top:10px">
-      <label>Agrupar artículos sin código (M-) por palabra (opcional)</label>
+      <label>Agrupar artículos con código M- por palabra (opcional)</label>
       <input id="mKeywords" value="cigarro, huevo, jamón, tortilla, mayonesa, azúcar, crema" type="text"
              placeholder="Ej: cigarro, huevo, jamón, tortilla, mayonesa, azúcar, crema" />
-      <div class="hint">Solo aplica a renglones con código <span class="mono">M-</span>. Lo que no coincida cae en <b>Otros</b>.</div>
+      <div class="hint">Solo aplica a artículos con código <span class="mono">M-</span>. Si no coincide, se agrupa en <b>Otros M-</b>.</div>
     </div>
 
     <div class="row" style="margin-top:12px">
-      <button id="run" class="btn btn-rojo" disabled>Generar reportes</button>
-      <button id="export" class="btn btn-outline" disabled>Exportar “ventas por artículo”</button>
+      <button id="run" class="btn btn-rojo" disabled>Actualizar reporte</button>
+      <button id="export" class="btn btn-outline" disabled>Exportar artículos con código</button>
       <span id="status" class="small"></span>
     </div>
   </section>
@@ -170,9 +165,9 @@ body.dark .small{ color:#aaa; }
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
 
     <div class="tabs">
-  <button class="tab active" data-tab="items">Artículos con código</button>
-  <button class="tab" data-tab="mitems">Artículos sin código (M-)</button>
-</div>
+      <button class="tab active" data-tab="items">Artículos con código</button>
+      <button class="tab" data-tab="mitems">Artículos con código M-</button>
+    </div>
 
     <div id="panel-items">
       <div class="row" style="justify-content:space-between;gap:12px">
@@ -196,22 +191,8 @@ body.dark .small{ color:#aaa; }
       </div>
     </div>
 
-    <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Periodo</th>
-              <th class="right">Transacciones</th>
-              <th class="right">Importe</th>
-            </tr>
-          </thead>
-          <tbody id="tblPeriods"></tbody>
-        </table>
-      </div>
-    </div>
-
     <div id="panel-mitems" style="display:none">
-      <div class="hint">Agrupación de artículos con código <span class="mono">M-</span> por palabra en la descripción.</div>
+      <div class="hint">Agrupación de artículos con código <span class="mono">M-</span> según las palabras configuradas.</div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -223,18 +204,6 @@ body.dark .small{ color:#aaa; }
             </tr>
           </thead>
           <tbody id="tblMItems"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Venta ID</th><th>Fecha</th><th>Código</th><th>Nombre</th><th class="right">Cant</th><th class="right">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody id="tblDebug"></tbody>
         </table>
       </div>
     </div>
@@ -351,8 +320,6 @@ body.dark .small{ color:#aaa; }
 
   function clearOutputs(){
     $("tblItems").innerHTML = "";
-    $("tblPeriods").innerHTML = "";
-    $("tblDebug").innerHTML = "";
     $("tblMItems").innerHTML = "";
     $("kSales").textContent = "—";
     $("kTx").textContent = "—";
@@ -395,7 +362,7 @@ body.dark .small{ color:#aaa; }
     }
   }
 
-      function renderMItems(){
+  function renderMItems(){
     const tbody = $("tblMItems");
     tbody.innerHTML = "";
     if(!M_GROUPS.length){
@@ -520,7 +487,7 @@ body.dark .small{ color:#aaa; }
     }catch(e){ hist = null; }
 
     if(!Array.isArray(hist) || hist.length === 0){
-      setStatus("No se encontró historial local. Usa CSV o abre este reporte desde la misma app.");
+      setStatus("No se encontró historial en este dispositivo. Puedes cargar un CSV (opcional) o abrir el reporte desde MiTienda en este mismo navegador/dispositivo.");
       $("run").disabled = true;
       return;
     }
@@ -591,7 +558,8 @@ body.dark .small{ color:#aaa; }
 
     $("run").disabled = false;
     setStatus(`CSV cargado: ${RAW.length} filas. Listo para generar reportes.`);
-  });document.getElementById("run").addEventListener("click", generateReports);
+  });
+  document.getElementById("run").addEventListener("click", generateReports);
 
   document.getElementById("export").addEventListener("click", ()=>{
     if(!ITEMS_EXPORT) return;
@@ -607,7 +575,6 @@ body.dark .small{ color:#aaa; }
   });
 
   document.getElementById("search").addEventListener("input", renderItems);
-  document.getElementById("period").addEventListener("change", renderPeriods);
 
   // Tabs
   document.querySelectorAll(".tab").forEach(btn=>{
@@ -616,9 +583,8 @@ body.dark .small{ color:#aaa; }
       btn.classList.add("active");
       const t = btn.dataset.tab;
       document.getElementById("panel-items").style.display = (t==="items") ? "" : "none";
-      document.getElementById("panel-mitems").style.display = (t==="mitems") ? "" : "none";
-      if(t==="items") renderItems();
-      if(t==="mitems") renderMItems();
+            document.getElementById("panel-mitems").style.display = (t==="mitems") ? "" : "none";
+                  if(t==="mitems") renderMItems();
     });
   });
 
