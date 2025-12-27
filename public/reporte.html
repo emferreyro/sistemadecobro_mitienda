@@ -51,12 +51,12 @@ button:disabled{opacity:.55;cursor:not-allowed}
 
 .kpis{
   display:grid;
-  grid-template-columns:repeat(2, minmax(0,1fr));
-  gap:8px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap:10px;
   align-items:stretch;
 }
+@media (max-width:420px){ .kpis{grid-template-columns:1fr 1fr;} }
 @media (max-width:360px){ .kpis{grid-template-columns:1fr;} }
-@media (min-width: 900px){ .kpis{grid-template-columns:repeat(6, minmax(0,1fr));} }
 
 .kpi{
   padding:14px 12px;
@@ -256,6 +256,7 @@ body.dark .small{ color:#aaa; }
               <th class="right">Costo</th>
               <th class="right">Venta prom</th>
               <th class="right">Utilidad</th>
+              <th class="right">Margen %</th>
               <th class="right">#Ventas</th>
             </tr>
           </thead>
@@ -263,7 +264,7 @@ body.dark .small{ color:#aaa; }
         </table>
       </div>
       <div class="small" style="margin-top:8px">
-        Nota: La utilidad se calcula como <span class="mono">(precio de venta - costo) × cantidad</span>. Si un producto no tiene costo capturado, se asume costo $0.
+        Nota: La utilidad se calcula como <span class="mono">(venta − costo) × cantidad</span>. El <span class="mono">margen %</span> se calcula como <span class="mono">utilidad ÷ ventas × 100</span>. Si un producto no tiene costo capturado, se asume costo $0.
       </div>
     </div>
 
@@ -323,6 +324,7 @@ body.dark .small{ color:#aaa; }
   }
   function monthKey(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
   function fmtNum(n){ return (isFinite(n)? n:0).toLocaleString("es-MX",{maximumFractionDigits:3}); }
+  function pct(n){ return isFinite(n) ? (n).toLocaleString("es-MX",{maximumFractionDigits:1})+"%" : "—"; }
   function escapeHtml(s){
     return (s??"").toString()
       .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
@@ -464,12 +466,13 @@ body.dark .small{ color:#aaa; }
         <td class="right">${money(it.costUnit)}</td>
         <td class="right">${money(it.avgSellPrice)}</td>
         <td class="right"><b>${money(it.profit)}</b></td>
+        <td class="right">${pct(it.marginPct)}</td>
         <td class="right">${it.salesCount.toLocaleString("es-MX")}</td>`;
       tbody.appendChild(tr);
     }
     if(rows.length>max){
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="7" class="small">Mostrando ${max} de ${rows.length}. Usa el buscador para filtrar.</td>`;
+      tr.innerHTML = `<td colspan="8" class="small">Mostrando ${max} de ${rows.length}. Usa el buscador para filtrar.</td>`;
       tbody.appendChild(tr);
     }
   }
@@ -596,7 +599,8 @@ body.dark .small{ color:#aaa; }
         revenue: x.revenue,
         costUnit: x.costUnit || 0,
         avgSellPrice: (x.pieces ? (x.revenue / x.pieces) : 0),
-        profit
+        profit,
+        marginPct: (x.revenue ? (profit / x.revenue * 100) : 0)
       };
     }).sort((a,b)=> b.profit - a.profit);
 
