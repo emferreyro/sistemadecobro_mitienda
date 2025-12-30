@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mi Tienda — Generador de Códigos</title>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+<style>
+  :root{
+    --amarillo:#f5e131;
+    --fondo:#e5e7eb;
+    --card:#ffffff;
+    --texto:#111827;
+    --muted:#6b7280;
+    --borde:#e5e7eb;
+    --sombra: 0 10px 25px rgba(0,0,0,.10);
+    --radio:14px;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fondo);color:var(--texto)}
+  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-weight:900;}
+
+  /* ===== Header MiTienda ===== */
+  .mitienda-header{
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: var(--amarillo);
+    border-bottom: 1px solid rgba(0,0,0,.08);
+    display:flex;
+    justify-content:center;
+  }
+  .header-wrap{
+    width:1200px;
+    max-width:calc(100% - 40px);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    padding:10px 0;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-width: 260px;
+  }
+  .brand img{display:block}
+  .flag{
+    width:38px;
+    height:auto;
+    border-radius:4px;
+    box-shadow:0 2px 6px rgba(0,0,0,.15);
+  }
+  .logo{
+    width:44px;
+    height:44px;
+    object-fit:contain;
+  }
+  .brand-text{display:flex;flex-direction:column;line-height:1.12}
+  .brand-title{font-weight:900;font-size:18px}
+  .brand-sub{font-size:13px;font-weight:700;color:#374151}
+  .header-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .btn{
+    padding:10px 14px;
+    border-radius:12px;
+    border:1px solid rgba(0,0,0,.15);
+    background:#fff;
+    cursor:pointer;
+    font-weight:800;
+    user-select:none;
+  }
+  .btn-amarillo{
+    background:var(--amarillo);
+    border-color: rgba(0,0,0,.18);
+  }
+  .btn-outline{
+    background:transparent;
+  }
+  .btn-small{padding:7px 10px;border-radius:10px;font-size:13px}
+
+  main{padding:20px;display:flex;justify-content:center}
+  .stack{width:100%;max-width:980px;display:grid;gap:14px}
+  .card{
+    background:var(--card);
+    border-radius:var(--radio);
+    box-shadow:var(--sombra);
+    padding:18px;
+    width:100%;
+  }
+
+  .row{
+    display:grid;
+    grid-template-columns: 1.1fr 2.2fr auto auto;
+    gap:10px;
+    align-items:center;
+  }
+  input{
+    width:100%;
+    padding:12px 12px;
+    border-radius:12px;
+    border:1px solid var(--borde);
+    font-size:15px;
+    outline:none;
+    background:#fff;
+  }
+  input:focus{border-color: rgba(245,225,49,.9); box-shadow:0 10px 25px rgba(245,225,49,.18)}
+  .two{
+    margin-top:10px;
+    display:grid;
+    grid-template-columns: 1.1fr 2.2fr;
+    gap:14px;
+    align-items:center;
+  }
+  .label{font-size:13px;color:var(--muted);margin:8px 0 6px}
+  #barcode{width:100%; height:52px}
+  #status{font-size:13px;color:var(--muted);margin-top:10px}
+
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:10px;text-align:left;border-bottom:1px solid #eef0f3;vertical-align:middle}
+  th{font-size:12px;color:var(--muted);font-weight:800}
+  .td-code{font-weight:900}
+  .actions{display:flex;gap:8px;align-items:center}
+  .empty{padding:14px;color:var(--muted);font-size:13px}
+
+  @media (max-width: 980px){
+    .row{grid-template-columns:1fr; align-items:stretch}
+    .two{grid-template-columns:1fr}
+  }
+
+  /* Dark mode */
+  body.dark{background:#0d0d0d;color:#f3f4f6}
+  body.dark .mitienda-header{background:#202020;border-bottom-color:#333}
+  body.dark .brand-sub{color:#d1d5db}
+  body.dark .card{background:#141414}
+  body.dark input{background:#111;border-color:#333;color:#f3f4f6}
+  body.dark .btn{background:#111;color:#f3f4f6;border-color:#333}
+  body.dark .btn-amarillo{background:#2b2b2b}
+  body.dark th{color:#cbd5e1}
+  body.dark td{border-bottom-color:#222}
+  body.dark .btn-outline{background:transparent}
+</style>
+</head>
+
+<body>
+<header class="mitienda-header">
+  <div class="header-wrap">
+    <div class="brand">
+      <img src="imagenes/bandera-mx.png" class="flag" alt="MX">
+      <img src="imagenes/logo.png" class="logo" alt="Mi Tienda">
+      <div class="brand-text">
+        <div class="brand-title">Mi Tienda</div>
+        <div class="brand-sub">Sistema de cobro / Haciendo fácil tu día</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-outline" id="btnTema" title="Cambiar tema">🌓 Tema</button>
+      <button class="btn btn-outline" id="btnExport" title="Exportar lista">📤 Exportar</button>
+      <button class="btn btn-outline" id="btnImport" title="Importar lista">📥 Importar</button>
+      <input id="fileImport" type="file" accept=".json,application/json" style="display:none">
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="stack">
+    <div class="card">
+      <div class="row">
+        <input id="grupo" placeholder="Grupo (ej. Arinas)" autocomplete="off">
+        <input id="desc" placeholder="Descripción (ej. Arina de trigo 1Kg)" autocomplete="off">
+        <button id="btnGen" class="btn btn-amarillo">Generar</button>
+        <button id="btnSave" class="btn">Guardar</button>
+      </div>
+
+      <div class="label">Código sugerido (editable)</div>
+
+      <div class="two">
+        <input id="codigo" class="mono" placeholder="—" autocomplete="off">
+        <svg id="barcode"></svg>
+      </div>
+
+      <div id="status">Listo.</div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="font-weight:900">Lista de códigos guardados</div>
+        <div class="actions">
+          <button class="btn btn-outline btn-small" id="btnImprimir">🖨 Imprimir lista</button>
+          <button class="btn btn-outline btn-small" id="btnBorrarTodo">🗑️ Borrar todo</button>
+        </div>
+      </div>
+
+      <div id="listaEmpty" class="empty" style="display:none">Aún no hay registros.</div>
+
+      <div style="overflow:auto">
+        <table id="tabla" style="display:none">
+          <thead>
+            <tr>
+              <th>Grupo</th>
+              <th>Descripción</th>
+              <th>Código</th>
+              <th>Barcode</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  const LS_KEY = 'mitienda_gencodigo_records_v2';
+  const $ = (id)=>document.getElementById(id);
+  const STOP = new Set(['DE','LA','EL','Y','DEL','AL','EN','A','LOS','LAS','UN','UNA','CON','POR','PARA']);
+
+  let editingId = null;
+
+  function setStatus(t){ $('status').textContent = t; }
+
+  function clean(s){
+    return (s||'')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .toUpperCase()
+      .replace(/[^A-Z0-9 ]/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  function sugGrupo(g){
+    // Primeras 3 letras reales (sin brincar)
+    return (clean(g).replace(/\s+/g,'') + 'XXX').slice(0,3);
+  }
+
+  function sugDesc(d){
+    // 3 + 3 de las primeras 2 palabras útiles (saltando DE/LA/EL...)
+    const w = clean(d).split(' ').filter(x => x && !STOP.has(x));
+    const a = (w[0] || 'XXX').slice(0,3);
+    const b = (w[1] || 'XXX').slice(0,3);
+    return a + b;
+  }
+
+  function yymm(){
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(2);
+    const mm = String(now.getMonth()+1).padStart(2,'0');
+    return yy + mm;
+  }
+
+  function sanitizeCode(s){
+    // Para evitar fallas en lectores, dejamos A-Z0-9 sin espacios
+    return String(s||'').toUpperCase().replace(/\s+/g,'').replace(/[^A-Z0-9]/g,'');
+  }
+
+  function drawBarcode(svgOrSelector, code, height=35){
+    try{
+      const v = sanitizeCode(code);
+      if(!v){
+        const svg = (typeof svgOrSelector === 'string') ? document.querySelector(svgOrSelector) : svgOrSelector;
+        if(svg) while(svg.firstChild) svg.removeChild(svg.firstChild);
+        return;
+      }
+      JsBarcode(svgOrSelector, v, {format:'CODE128', height, margin:0, displayValue:false});
+    }catch(e){
+      console.error(e);
+    }
+  }
+
+  function getRecords(){
+    try{ return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }
+    catch(e){ return []; }
+  }
+  function setRecords(arr){
+    localStorage.setItem(LS_KEY, JSON.stringify(arr));
+  }
+
+  function nextSeq(base){
+    const recs = getRecords();
+    const count = recs.filter(r => r.base === base).length + 1;
+    return String(count).padStart(2,'0'); // 01,02...
+  }
+
+  function sugerir(){
+    const g = $('grupo').value;
+    const d = $('desc').value;
+    if(!g || !d){ setStatus('Faltan datos.'); return; }
+
+    const base = sugGrupo(g) + sugDesc(d) + yymm();
+    const seq  = nextSeq(base);
+    const code = base + seq;
+
+    $('codigo').value = code;
+    drawBarcode('#barcode', code, 35);
+    setStatus('Sugerido.');
+  }
+
+  function resetForm(){
+    editingId = null;
+    $('grupo').value = '';
+    $('desc').value = '';
+    $('codigo').value = '';
+    drawBarcode('#barcode', '', 35);
+  }
+
+  function renderList(){
+    const recs = getRecords();
+    const tbody = $('tbody');
+    tbody.innerHTML = '';
+
+    $('listaEmpty').style.display = recs.length ? 'none' : 'block';
+    $('tabla').style.display = recs.length ? 'table' : 'none';
+
+    for(const r of recs){
+      const tr = document.createElement('tr');
+      const bid = 'bc_' + (r.id || '').replace(/[^a-zA-Z0-9_-]/g,'') + '_' + Math.random().toString(16).slice(2);
+      tr.innerHTML = `
+        <td>${escapeHtml(r.grupo||'')}</td>
+        <td>${escapeHtml(r.descripcion||'')}</td>
+        <td class="td-code mono">${escapeHtml(r.code||'')}</td>
+        <td><svg id="${bid}"></svg></td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-outline btn-small" data-act="edit" data-id="${escapeHtml(r.id)}">✏️</button>
+            <button class="btn btn-outline btn-small" data-act="del" data-id="${escapeHtml(r.id)}">🗑️</button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+      const svg = document.getElementById(bid);
+      if(svg) drawBarcode(svg, r.code, 22);
+    }
+
+    tbody.querySelectorAll('button[data-act]').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const act = b.getAttribute('data-act');
+        const id = b.getAttribute('data-id');
+        if(act === 'del') return delRecord(id);
+        if(act === 'edit') return editRecord(id);
+      });
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function delRecord(id){
+    if(!confirm('¿Eliminar este registro?')) return;
+    const recs = getRecords().filter(r => String(r.id) !== String(id));
+    setRecords(recs);
+    renderList();
+    setStatus('Eliminado.');
+  }
+
+  function editRecord(id){
+    const r = getRecords().find(x => String(x.id) === String(id));
+    if(!r) return;
+    editingId = r.id;
+    $('grupo').value = r.grupo || '';
+    $('desc').value = r.descripcion || '';
+    $('codigo').value = r.code || '';
+    drawBarcode('#barcode', r.code || '', 35);
+    setStatus('Editando… cambia y vuelve a Guardar.');
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  $('btnGen').addEventListener('click', sugerir);
+
+  $('codigo').addEventListener('input', ()=>{
+    drawBarcode('#barcode', $('codigo').value, 35);
+  });
+
+  $('btnSave').addEventListener('click', ()=>{
+    const g = ($('grupo').value || '').trim();
+    const d = ($('desc').value || '').trim();
+    const code = sanitizeCode($('codigo').value);
+
+    if(!g || !d){ setStatus('Faltan datos (Grupo y Descripción).'); return; }
+    if(!code){ setStatus('No hay código válido.'); return; }
+
+    const base = code.slice(0, -2); // todo menos consecutivo (asumimos 2 dígitos)
+    const recs = getRecords();
+
+    if(editingId){
+      const idx = recs.findIndex(r => String(r.id) === String(editingId));
+      if(idx >= 0){
+        recs[idx] = {...recs[idx], grupo:g, descripcion:d, code, base, updatedAt:new Date().toISOString()};
+        setRecords(recs);
+        renderList();
+        setStatus('Actualizado.');
+        resetForm();
+        return;
+      }
+      editingId = null; // si no se encontró, cae a agregar
+    }
+
+    recs.unshift({
+      id: (crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(16).slice(2)),
+      createdAt: new Date().toISOString(),
+      grupo:g,
+      descripcion:d,
+      code,
+      base
+    });
+    setRecords(recs);
+    renderList();
+    setStatus('Guardado en este equipo.');
+    resetForm();
+  });
+
+  $('btnTema').addEventListener('click', ()=>{
+    document.body.classList.toggle('dark');
+  });
+
+  $('btnBorrarTodo').addEventListener('click', ()=>{
+    if(!confirm('¿Borrar TODOS los registros guardados en este equipo?')) return;
+    localStorage.removeItem(LS_KEY);
+    renderList();
+    setStatus('Registros eliminados.');
+  });
+
+  $('btnImprimir').addEventListener('click', ()=>{
+    // Imprime la lista completa
+    setTimeout(()=>window.print(), 50);
+  });
+
+  // Export / Import
+  $('btnExport').addEventListener('click', ()=>{
+    const payload = {version:1, exportedAt:new Date().toISOString(), records:getRecords()};
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `gencodigos_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setStatus('Exportado.');
+  });
+  $('btnImport').addEventListener('click', ()=> $('fileImport').click());
+  $('fileImport').addEventListener('change', async(e)=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    try{
+      const txt = await file.text();
+      const data = JSON.parse(txt);
+      const incoming = Array.isArray(data) ? data : (data && Array.isArray(data.records) ? data.records : null);
+      if(!incoming) throw new Error('Formato inválido');
+
+      const cur = getRecords();
+      const map = new Map(cur.map(r => [r.id, r]));
+      for(const r of incoming){
+        const id = r.id || ((crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(16).slice(2)));
+        map.set(id, {
+          id,
+          createdAt: r.createdAt || new Date().toISOString(),
+          updatedAt: r.updatedAt || r.updatedAt,
+          grupo: r.grupo || '',
+          descripcion: r.descripcion || r.desc || '',
+          code: sanitizeCode(r.code || ''),
+          base: r.base || ''
+        });
+      }
+      const merged = Array.from(map.values()).sort((a,b)=> (b.createdAt||'').localeCompare(a.createdAt||''));
+      setRecords(merged);
+      renderList();
+      setStatus('Importado.');
+    }catch(err){
+      console.error(err);
+      setStatus('No se pudo importar ese archivo.');
+    }finally{
+      e.target.value = '';
+    }
+  });
+
+  // Init
+  renderList();
+</script>
+
+<style>
+@media print{
+  @page{ size:auto; margin:6mm; }
+  .mitienda-header, .header-actions, .row, #status, .actions, #btnImprimir, #btnBorrarTodo { display:none !important; }
+  body{ background:#fff !important; color:#000 !important; }
+  .card{ box-shadow:none !important; }
+  th{ font-size:11px }
+}
+</style>
+</body>
+</html>

@@ -300,7 +300,8 @@ header {
         <button id="btnToggleTheme" class="btn btn-outline" title="Cambiar tema">🌓 Tema</button>
       </div>
       <button id="btnVersionFull" class="btn btn-outline" title="Versión completa">🔐 Versión completa</button>
-      <button id="btnAccesorios" class="btn btn-outline" title="Accesorios para tu negocio">🛠️ Accesorios POS</button>
+      <button id="btnAccesorios" class="btn btn-outline" title="Accesorios para tu negocio">🛠️ Articulos</button>
+      <button id="btnGenCodigo" class="btn btn-outline" title="Generador de códigos">🏷️ Códigos</button>
       <button id="btnAcerca" class="btn btn-outline" title="Acerca de">ℹ️ Acerca de</button>
             <button id="btnVideo" class="btn btn-outline" title="Video">🎬 Video</button>
       <button id="btnVersionOffline" class="btn btn-outline" title="Versión sin internet">💾 V. offline</button>
@@ -1555,6 +1556,17 @@ btnVersionOffline && btnVersionOffline.addEventListener('click', ()=>{
   const ok = confirm('¿Deseas descargar la versión sin internet (archivo ZIP)?');
   if(ok){ window.location.href='Sistemadecobro_Mitienda.zip'; }
 });
+
+const btnGenCodigo = document.getElementById('btnGenCodigo');
+btnGenCodigo && btnGenCodigo.addEventListener('click', ()=>{
+  const w = 1100, h = 720;
+  const left = Math.max(0, Math.floor((screen.width - w) / 2));
+  const top  = Math.max(0, Math.floor((screen.height - h) / 2));
+  const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+  window.open('gencodigo.html', 'mitiendaGenCodigo', features);
+});
+
+
 btnAccesorios && btnAccesorios.addEventListener('click', ()=>{
   window.open('Productos.html','_blank');
 });
