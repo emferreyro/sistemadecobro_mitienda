@@ -1771,5 +1771,62 @@ window.addEventListener('DOMContentLoaded', ()=>{
 
 </script>
 <input type="file" id="logoFile" accept="image/*" style="display:none"/>
+
+<script>
+/* ===== MiTienda: Códigos (popup) + recepción desde gencodigo.html (seguro) ===== */
+(function(){
+  function openGenCodigo(){
+    var w = 1100, h = 720;
+    var left = Math.max(0, Math.floor((screen.width - w)/2));
+    var top  = Math.max(0, Math.floor((screen.height - h)/2));
+    var features = 'popup=yes,width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',resizable=yes,scrollbars=yes';
+    window.open('gencodigo.html', 'mitiendaGenCodigo', features);
+  }
+
+  function attach(){
+    // Botón (si existe) — no rompe nada si no está
+    var btn = document.getElementById('btnGenCodigo');
+    if(btn && !btn.__mitiendaBound){
+      btn.addEventListener('click', openGenCodigo);
+      btn.__mitiendaBound = true;
+    }
+
+    // Listener único para recibir producto desde el generador
+    if(!window.__mitiendaGenCodigoListener){
+      window.addEventListener('message', function(ev){
+        var data = ev && ev.data;
+        if(!data || data.type !== 'MITIENDA_GENCODIGO_TO_PRODUCT') return;
+
+        var codigo = (data.producto && data.producto.codigo) ? String(data.producto.codigo) : '';
+        var nombre = (data.producto && data.producto.nombre) ? String(data.producto.nombre) : '';
+
+        // Ir a Productos (si existe el botón de navegación)
+        var navProd = document.getElementById('nav-productos');
+        if(navProd && navProd.click) navProd.click();
+
+        // Llenar campos (compat: IDs posibles)
+        var inpCodigo = document.getElementById('prod-codigo') || document.getElementById('codigoProducto') || document.querySelector('input[name="codigo"], #codigo');
+        var inpNombre = document.getElementById('prod-nombre') || document.getElementById('nombreProducto') || document.querySelector('input[name="nombre"], #nombre');
+        var inpPrecio = document.getElementById('prod-precio') || document.getElementById('precioProducto') || document.querySelector('input[name="precio"], #precio');
+
+        if(inpCodigo) inpCodigo.value = codigo;
+        if(inpNombre) inpNombre.value = nombre;
+
+        if(inpPrecio && inpPrecio.focus) inpPrecio.focus();
+        else if(inpNombre && inpNombre.focus) inpNombre.focus();
+        else if(inpCodigo && inpCodigo.focus) inpCodigo.focus();
+      }, false);
+
+      window.__mitiendaGenCodigoListener = true;
+    }
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', attach);
+  } else {
+    attach();
+  }
+})();
+</script>
 </body>
 </html>

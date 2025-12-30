@@ -117,7 +117,7 @@
     align-items:center;
   }
   .label{font-size:13px;color:var(--muted);margin:8px 0 6px}
-  #barcode{width:100%; height:52px}
+  #barcode{width:100%; height:18px}
   #status{font-size:13px;color:var(--muted);margin-top:10px}
 
   table{width:100%;border-collapse:collapse;font-size:14px}
@@ -173,7 +173,7 @@
       <div class="row">
         <input id="grupo" placeholder="Grupo (ej. Arinas)" autocomplete="off">
         <input id="desc" placeholder="Descripción (ej. Arina de trigo 1Kg)" autocomplete="off">
-        <button id="btnGen" class="btn btn-amarillo">Generar</button>
+        <button id="btnGen" class="btn btn-amarillo">Sugerir</button>
         <button id="btnSave" class="btn">Guardar</button>
       </div>
 
@@ -189,7 +189,7 @@
 
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-        <div style="font-weight:900">Lista de códigos guardados</div>
+        <div style="font-weight:900">Lista de códigos guardados (➕ = pasar a Productos)</div>
         <div class="actions">
           <button class="btn btn-outline btn-small" id="btnImprimir">🖨 Imprimir lista</button>
           <button class="btn btn-outline btn-small" id="btnBorrarTodo">🗑️ Borrar todo</button>
@@ -259,7 +259,7 @@
     return String(s||'').toUpperCase().replace(/\s+/g,'').replace(/[^A-Z0-9]/g,'');
   }
 
-  function drawBarcode(svgOrSelector, code, height=35){
+  function drawBarcode(svgOrSelector, code, height=11){
     try{
       const v = sanitizeCode(code);
       if(!v){
@@ -267,7 +267,7 @@
         if(svg) while(svg.firstChild) svg.removeChild(svg.firstChild);
         return;
       }
-      JsBarcode(svgOrSelector, v, {format:'CODE128', height, margin:0, displayValue:false});
+      JsBarcode(svgOrSelector, v, {format:'CODE128', height: height, margin:0, displayValue:false});
     }catch(e){
       console.error(e);
     }
@@ -297,7 +297,7 @@
     const code = base + seq;
 
     $('codigo').value = code;
-    drawBarcode('#barcode', code, 35);
+    drawBarcode('#barcode', code, 11);
     setStatus('Sugerido.');
   }
 
@@ -306,7 +306,7 @@
     $('grupo').value = '';
     $('desc').value = '';
     $('codigo').value = '';
-    drawBarcode('#barcode', '', 35);
+    drawBarcode('#barcode', '', 11);
   }
 
   function renderList(){
@@ -329,12 +329,13 @@
           <div class="actions">
             <button class="btn btn-outline btn-small" data-act="edit" data-id="${escapeHtml(r.id)}">✏️</button>
             <button class="btn btn-outline btn-small" data-act="del" data-id="${escapeHtml(r.id)}">🗑️</button>
+            <button class="btn btn-outline btn-small" data-act="send" data-id="${escapeHtml(r.id)}" title="Pasar a Productos">➕</button>
           </div>
         </td>
       `;
       tbody.appendChild(tr);
       const svg = document.getElementById(bid);
-      if(svg) drawBarcode(svg, r.code, 22);
+      if(svg) drawBarcode(svg, r.code, 11);
     }
 
     tbody.querySelectorAll('button[data-act]').forEach(b=>{
@@ -343,6 +344,7 @@
         const id = b.getAttribute('data-id');
         if(act === 'del') return delRecord(id);
         if(act === 'edit') return editRecord(id);
+        if(act === 'send') return sendToProducts(id);
       });
     });
   }
@@ -366,15 +368,49 @@
     $('grupo').value = r.grupo || '';
     $('desc').value = r.descripcion || '';
     $('codigo').value = r.code || '';
-    drawBarcode('#barcode', r.code || '', 35);
+    drawBarcode('#barcode', r.code || '', 11);
     setStatus('Editando… cambia y vuelve a Guardar.');
     window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+
+  function sendToProducts(id){
+    const r = getRecords().find(x => String(x.id) === String(id));
+    if(!r){ setStatus('No se encontró el registro.'); return; }
+
+    const payload = {
+      type: 'MITIENDA_GENCODIGO_TO_PRODUCT',
+      producto: {
+        codigo: sanitizeCode(r.code || ''),
+        nombre: (r.descripcion || '').trim()
+      }
+    };
+
+    try{
+      if(window.opener && !window.opener.closed){
+        window.opener.postMessage(payload, '*');
+        setStatus('✅ Enviado a MiTienda (Productos).');
+        return;
+      }
+    }catch(e){ console.warn(e); }
+
+    // Fallback: copiar JSON al portapapeles
+    const txt = JSON.stringify(payload.producto);
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(()=>{
+        setStatus('No detecté MiTienda abierto. Producto copiado (JSON) al portapapeles.');
+      }).catch(()=>{
+        setStatus('No detecté MiTienda abierto. Copia manual: ' + txt);
+      });
+    } else {
+      setStatus('No detecté MiTienda abierto. Copia manual: ' + txt);
+    }
   }
 
   $('btnGen').addEventListener('click', sugerir);
 
   $('codigo').addEventListener('input', ()=>{
-    drawBarcode('#barcode', $('codigo').value, 35);
+    drawBarcode('#barcode', $('codigo').value, 11);
   });
 
   $('btnSave').addEventListener('click', ()=>{
