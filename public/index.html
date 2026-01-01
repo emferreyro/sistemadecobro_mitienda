@@ -62,6 +62,9 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 .scanner-area{width:100%;height:360px;background:#000;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#fff;}
 .footer-note{padding:8px 0;color:#6b7280;font-size:13px;text-align:center;}
 .notice-limit{background:#fff7e6;border:1px solid #f3d9a6;padding:10px;border-radius:8px;color:#7a5b00;margin-bottom:10px;}
+
+.notice-inv{background:#fee2e2;border:1px solid #fecaca;color:#991b1b;padding:10px 12px;border-radius:12px;margin:10px 0;}
+body.dark .notice-inv{background:#2a1215;border-color:#7f1d1d;color:#fecaca;}
 .right-controls{display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:8px;}
 .total-wrap{display:flex;align-items:center;gap:12px;}
 .total-amount{font-size:28px;font-weight:900;color:var(--rojo-dark);}
@@ -749,11 +752,11 @@ btnAddProd.addEventListener('click', ()=>{
   }
   const editIndex = prodCodigo.dataset.editIndex;
   if(typeof editIndex !== 'undefined'){
-    productos[Number(editIndex)] = { codigo, nombre, precio };
+    productos[Number(editIndex)] = { ...(productos[Number(editIndex)]||{}), codigo, nombre, precio };
     delete prodCodigo.dataset.editIndex;
   } else {
     if(productos.find(p=> p.codigo === codigo)){ if(!confirm('Código ya existe. ¿Deseas agregar duplicado?')) return; }
-    productos.push({ codigo, nombre, precio });
+    productos.push({ codigo, nombre, precio, costo: 0, inventariado: false, stock: null });
   }
   saveProducts(); renderProducts();
   try {
@@ -907,13 +910,53 @@ btnFinalizar.addEventListener('click', ()=> {
     return;
   }
   const total = currentTotal;
-  const now = new Date();
+  
+// === Inventario progresivo (fase 1): permitir venta pero generar alertas en historial ===
+const warnings = [];
+const prodIndexByCode = new Map(productos.map((p, i)=> [String(p.codigo), i]));
+
+// Clonar items y anotar inventario por renglón
+const itemsVenta = carrito.map(it => {
+  const code = String(it.codigo || '');
+  const idx = prodIndexByCode.get(code);
+  const prod = (typeof idx !== 'undefined') ? productos[idx] : null;
+
+  let inv = false;
+  let stockAntes = null;
+  let stockDespues = null;
+  let invAviso = '';
+
+  if(prod && prod.inventariado){
+    inv = true;
+    stockAntes = (prod.stock === null || typeof prod.stock === 'undefined') ? null : Number(prod.stock);
+    if(stockAntes === null || !Number.isFinite(stockAntes)){
+      invAviso = `⚠️ Producto inventariado, venta sin registro de existencia: ${code} — ${prod.nombre}`;
+      warnings.push(invAviso);
+    } else {
+      const qty = Math.max(1, Number(it.cantidad) || 1);
+      if(stockAntes < qty){
+        invAviso = `⚠️ Venta excede existencia (${stockAntes}) en: ${code} — ${prod.nombre} (vendidos ${qty})`;
+        warnings.push(invAviso);
+      }
+      stockDespues = Math.max(0, Math.floor(stockAntes - qty));
+      // Actualizar stock del producto (sin bloquear venta)
+      prod.stock = stockDespues;
+    }
+  }
+
+  return { ...it, inventariado: inv, stockAntes, stockDespues, invAviso };
+});
+
+// Persistir productos si hubo cambios de inventario
+saveProducts();
+const now = new Date();
   const venta = {
     id: historial.length + 1,
     fecha: now.toLocaleString(),
     fechaISO: now.toISOString(),
     total: Number(total.toFixed(2)),
-    items: carrito.map(x=> ({...x})),
+    items: itemsVenta,
+    warnings: warnings,
     pago: pago,
     cambio: Number((pago - total).toFixed(2))
   };
@@ -1390,7 +1433,7 @@ function handleImportFile(file){
         const nombre = (it.nombre || '').toString().trim();
         const precio = Number(it.precio) || 0;
         if(!codigo || !nombre || precio <= 0) continue;
-        cleaned.push({ codigo, nombre, precio });
+        cleaned.push({ codigo, nombre, precio, costo: 0, inventariado: false, stock: null });
       }
       if(cleaned.length === 0){
         alert('No se encontraron productos válidos en el archivo.');
