@@ -4,9 +4,15 @@
 <html lang="es">
 <head><script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4/dist/fp.min.js">
 // Inventario progresivo: solo FULLV registra (descuenta) stock; MiTienda solo refleja
-const INVENTARIO_ACTIVO = true;
+const window.INVENTARIO_ACTIVO = true;
 
 </script><script src="js/guardFullv.js"></script>
+<script>
+// ✅ Configuración global
+// Nota: si un <script> tiene atributo src, el navegador IGNORA el código inline dentro de esa etiqueta.
+// Por eso definimos window.INVENTARIO_ACTIVO aquí (para que "Finalizar venta" no falle por ReferenceError).
+window.INVENTARIO_ACTIVO = true;
+</script>
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>Mi Tienda — Sistema de cobro</title>
@@ -1083,7 +1089,7 @@ btnFinalizar.addEventListener('click', ()=> {
         }
         stockDespues = Math.max(0, Math.floor(stockAntes - qty));
         // Actualizar stock del producto (sin bloquear venta)
-        if(INVENTARIO_ACTIVO){
+        if(window.INVENTARIO_ACTIVO){
           prod.stock = stockDespues;
         } else {
           stockDespues = stockAntes; // solo reflejo
@@ -1095,7 +1101,7 @@ btnFinalizar.addEventListener('click', ()=> {
   });
 
   // Persistir productos solo si inventario está activo
-  if(INVENTARIO_ACTIVO) saveProducts();
+  if(window.INVENTARIO_ACTIVO) saveProducts();
 
 const ahora = new Date();
   const venta = {
