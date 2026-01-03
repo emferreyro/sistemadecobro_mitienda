@@ -173,7 +173,85 @@ body.dark .table-wrap{ background:#181818; border-color:#2c2c2c; }
 body.dark th, body.dark td{ border-bottom-color:#2c2c2c; }
 body.dark th{ color:#ccc; }
 body.dark .small{ color:#aaa; }
-  </style>
+  
+
+/* === 🟩🟦 TEMA NEON (copiado de fullv) === */
+html.neon, body.neon { background-color:#050b12; color:#e8f4ff; }
+body.neon header{ background:linear-gradient(180deg,#0b1f3a 0%, #071423 100%); color:#e8f4ff; border-bottom-color: rgba(45,212,255,0.25); }
+body.neon .panel, body.neon .card, body.neon .modal-box{ background: rgba(11,22,36,0.92); color:#e8f4ff; border-color: rgba(45,212,255,0.20); }
+body.neon input, body.neon textarea, body.neon select{ background:#0a1626; border-color: rgba(45,212,255,0.22); color:#e8f4ff; }
+body.neon .btn-outline{ border-color: rgba(45,212,255,0.30); color:#e8f4ff; background: rgba(7,20,35,0.35); }
+body.neon .btn-outline:hover{ border-color: rgba(52,255,106,0.55); }
+body.neon .btn-amarillo{ background: linear-gradient(180deg,#34ff6a 0%, #16c752 100%); color:#06110a; }
+body.neon .btn-rojo{ background: linear-gradient(180deg,#ff3b4d 0%, #b51224 100%); color:#fff; }
+body.neon th, body.neon td{ border-bottom-color: rgba(45,212,255,0.14); }
+body.neon th{ color: rgba(232,244,255,0.80); }
+
+</style>
+
+<style id="neon-contrast-fix">
+/* 🔧 Ajustes de contraste para TEMA NEON */
+html.neon body, body.neon { color:#e8f4ff !important; }
+body.neon .small, body.neon .small-muted, body.neon label { color: rgba(232,244,255,0.82) !important; }
+body.neon th { color: rgba(232,244,255,0.88) !important; }
+body.neon .total-amount { color: #34ff6a !important; }
+
+/* Cards/listas: asegurar que NO queden en blanco */
+body.neon .product-item,
+body.neon .history-item,
+body.neon .panel .product-item,
+body.neon #right-products .product-item,
+body.neon #products-list .product-item{
+  background: rgba(10,22,38,0.85) !important;
+  color:#e8f4ff !important;
+  border-color: rgba(45,212,255,0.22) !important;
+}
+body.neon #right-products .product-item strong,
+body.neon #products-list .product-item strong{
+  color:#e8f4ff !important;
+}
+body.neon #right-products .product-item .small,
+body.neon #products-list .product-item .small{
+  color: rgba(232,244,255,0.78) !important;
+}
+
+/* Inputs placeholder legible */
+body.neon input::placeholder,
+body.neon textarea::placeholder{
+  color: rgba(232,244,255,0.55) !important;
+}
+
+/* Botones dentro de cards (Agregar) */
+body.neon #right-products .product-item button,
+body.neon #products-list .product-item button{
+  color: #fff !important;
+}
+
+/* Badges de inventario */
+body.neon .low-stock{
+  background: rgba(255,59,77,0.16) !important;
+  color: #ff8b97 !important;
+  border: 1px solid rgba(255,59,77,0.35) !important;
+}
+
+/* ✅ Tabla (fondo blanco) -> en NEON debe ser oscuro para que se lea */
+body.neon .table-wrap{
+  background: rgba(7,20,35,0.65) !important;
+  border-color: rgba(45,212,255,0.22) !important;
+}
+body.neon .table-wrap table{ color:#e8f4ff !important; }
+body.neon .table-wrap th{
+  color: rgba(232,244,255,0.88) !important;
+}
+body.neon .table-wrap td{
+  color: rgba(232,244,255,0.92) !important;
+}
+body.neon .table-wrap th, body.neon .table-wrap td{
+  border-bottom-color: rgba(45,212,255,0.14) !important;
+}
+
+</style>
+
 </head>
 <body>
 <header class="mitienda-header">
@@ -335,26 +413,32 @@ body.dark .small{ color:#aaa; }
   // Tema
   const THEME_KEY='sistemacobro_theme_v2';
   function applyTheme(theme){
+    // Soporta: 'light' | 'dark' | 'neon'
+    document.body.classList.remove('dark','neon');
+    document.documentElement.classList.remove('dark','neon');
+
     if(theme==='dark'){
       document.body.classList.add('dark');
       document.documentElement.classList.add('dark');
-    } else {
-      document.body.classList.remove('dark');
-      document.documentElement.classList.remove('dark');
+    } else if(theme==='neon'){
+      document.body.classList.add('neon');
+      document.documentElement.classList.add('neon');
     }
     localStorage.setItem(THEME_KEY,theme);
   }
   function detectPreferredTheme(){
     const saved=localStorage.getItem(THEME_KEY);
-    if(saved) return saved;
+    if(saved === 'dark' || saved === 'light' || saved === 'neon') return saved;
     return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
   }
   window.addEventListener('load', ()=> applyTheme(detectPreferredTheme()));
   document.getElementById('btnToggleTheme')?.addEventListener('click', ()=>{
-    const isDark=document.body.classList.contains('dark');
-    applyTheme(isDark?'light':'dark');
+    const current = document.body.classList.contains('neon') ? 'neon' :
+                    (document.body.classList.contains('dark') ? 'dark' : 'light');
+    const order = ['light','dark','neon'];
+    const next = order[(order.indexOf(current) + 1) % order.length];
+    applyTheme(next);
   });
-
   // Helpers
   const $ = (id) => document.getElementById(id);
   function stripAccents(s){
