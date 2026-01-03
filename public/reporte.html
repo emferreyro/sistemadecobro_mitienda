@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>MiTienda • Reporte</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap">
-  <style>
+    <style>
 :root{
   --rojo:#e53935; --rojo-dark:#b71c1c; --amarillo:#f5e131; --blanco:#ffffff; --gris:#d7d8db;
   --texto:#1f2937; --muted:#6b7280; --border:#e6e7ea; --radio:12px; --sombra: 0 6px 18px rgba(31,41,55,0.08);
@@ -13,18 +13,72 @@
 }
 html,body{height:100%;margin:0;background:var(--gris);color:var(--texto);}
 *{box-sizing:border-box}
-header{
-  position: sticky; top: 0; z-index: 1000;
-  background: var(--amarillo); color:#1f1f1f; font-weight:700;
-  box-shadow: var(--sombra); padding: 10px 16px; border-bottom: 1px solid rgba(0,0,0,0.04);
+/* ===== Header MiTienda (igual al generador, conservando variables de color del reporte) ===== */
+.mitienda-header{
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: var(--amarillo);
+  color: #1f1f1f;
+  font-weight: 700;
+  box-shadow: var(--sombra);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  display: flex;
+  justify-content: center;
 }
-.header-container{
-  max-width:1200px; margin:0 auto;
-  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+.header-wrap{
+  width: 1200px;
+  max-width: calc(100% - 40px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 0;
 }
-.title{font-size:18px;font-weight:900;margin:0;}
-.sub{font-size:13px;color:#374151;font-weight:600;margin-top:2px}
-.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.brand{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand img{ display:block; }
+.flag{
+  width: 38px;
+  height: auto;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
+}
+.logo{
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+.brand-text{
+  display: flex;
+  flex-direction: column;
+  line-height: 1.12;
+}
+.brand-title{
+  font-weight: 900;
+  font-size: 18px;
+  margin: 0;
+}
+.brand-sub{
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-top: 2px;
+}
+.header-actions{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Dark theme: conservar look oscuro del reporte */
+body.dark .mitienda-header{ background:#202020; color:#f5f5f5; border-bottom-color:#333; }
+body.dark .brand-sub{ color:#ccc; }
 main{max-width:1200px;margin:0 auto;padding:80px 18px 18px;}
 .grid{display:grid;grid-template-columns:1fr;gap:18px;align-items:start}
 @media (min-width:1100px){ .grid{grid-template-columns:420px 1fr;} }
@@ -122,13 +176,18 @@ body.dark .small{ color:#aaa; }
   </style>
 </head>
 <body>
-<header>
-  <div class="header-container">
-    <div>
-      <div class="title">📊 Reporte • MiTienda</div>
-      <div class="sub">Abre y lee el historial guardado en el sistema. (Opcional) También puedes cargar un CSV.</div>
+<header class="mitienda-header">
+  <div class="header-wrap">
+    <div class="brand">
+      <img src="imagenes/bandera-mx.png" class="flag" alt="MX">
+      <img src="imagenes/logo.png" class="logo" alt="Mi Tienda">
+      <div class="brand-text">
+        <div class="brand-title">Mi Tienda</div>
+        <div class="brand-sub">Sistema de cobro / Haciendo fácil tu día</div>
+      </div>
     </div>
-    <div class="header-right">
+
+    <div class="header-actions">
       <button id="btnToggleTheme" class="btn btn-outline btn-small" title="Cambiar tema">🌓 Tema</button>
     </div>
   </div>
@@ -205,7 +264,7 @@ body.dark .small{ color:#aaa; }
       <div class="row" style="justify-content:space-between;gap:12px">
         <div class="pill" id="scope">—</div>
         <div style="flex:1 1 240px;max-width:340px">
-          <input id="search" type="text" placeholder="Buscar artículo…" />
+          <input id="search" type="text" placeholder="Buscar artículo o código…" />
         </div>
       </div>
       <div class="table-wrap">
@@ -213,6 +272,7 @@ body.dark .small{ color:#aaa; }
           <thead>
             <tr>
               <th>Artículo</th>
+              <th class="right">Código / Barras</th>
               <th class="right">Piezas</th>
               <th class="right">Importe</th>
               <th class="right">#Ventas</th>
@@ -407,27 +467,41 @@ body.dark .small{ color:#aaa; }
     return lines.join("\r\n");
   }
 
+  
   function renderItems(){
     const q = stripAccents($("search").value);
-    const rows = (q ? ITEMS.filter(x=> stripAccents(x.item).includes(q)) : ITEMS);
+    const rows = (q ? ITEMS.filter(x=> stripAccents((x.item + " " + (x.code||""))).includes(q)) : ITEMS);
     const tbody = $("tblItems");
     tbody.innerHTML = "";
     const max = 250;
-    for(const it of rows.slice(0,max)){
+
+    // Render filas
+    for(let i=0;i<rows.slice(0,max).length;i++){
+      const it = rows[i];
       const tr = document.createElement("tr");
+
+      const code = (it.code ?? "").toString().trim();
+      const hasCode = !!code;
+
+      const svgId = hasCode ? `bc_${i}_${code.replace(/[^a-zA-Z0-9]/g,"_")}` : "";
       tr.innerHTML = `
         <td>${escapeHtml(it.item)}</td>
+        <td class="right">
+          ${hasCode ? `<div class="mono" style="font-weight:900">${escapeHtml(code)}</div>` : `<span class="small">—</span>`}
+        </td>
         <td class="right">${fmtNum(it.pieces)}</td>
         <td class="right">${money(it.amount)}</td>
         <td class="right">${it.salesCount.toLocaleString("es-MX")}</td>`;
       tbody.appendChild(tr);
     }
+
     if(rows.length>max){
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="4" class="small">Mostrando ${max} de ${rows.length}. Usa el buscador para filtrar.</td>`;
+      tr.innerHTML = `<td colspan="5" class="small">Mostrando ${max} de ${rows.length}. Usa el buscador para filtrar.</td>`;
       tbody.appendChild(tr);
     }
   }
+
 
   function renderMItems(){
     const tbody = $("tblMItems");
@@ -527,7 +601,7 @@ body.dark .small{ color:#aaa; }
     for(const r of filtered){
       if(r.key === "M-") continue;
       if(!map.has(r.key)){
-        map.set(r.key,{ item:r.label, pieces:0, amount:0, ventas:new Set() });
+        map.set(r.key,{ item:r.label, code:(r.codigo ? String(r.codigo).trim() : ""), pieces:0, amount:0, ventas:new Set() });
       }
       const it = map.get(r.key);
       it.pieces += r.cant;
@@ -535,7 +609,11 @@ body.dark .small{ color:#aaa; }
       it.ventas.add(r.ventaId);
     }
     ITEMS = Array.from(map.values()).map(x=>({
-      item:x.item, pieces:x.pieces, amount:x.amount, salesCount:x.ventas.size
+      item:x.item,
+      code:x.code || "",
+      pieces:x.pieces,
+      amount:x.amount,
+      salesCount:x.ventas.size
     })).sort((a,b)=> b.pieces - a.pieces);
 
     const txMap = new Map();

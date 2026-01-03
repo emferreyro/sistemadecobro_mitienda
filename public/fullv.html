@@ -512,7 +512,13 @@ document.getElementById('modalAceptar').onclick = () => {
 </div>
 <div class="right-controls" style="margin-bottom:8px">
 <button class="btn btn-amarillo btn-small" id="btn-low-stock" title="Ver artículos con inventario y menos de 5 piezas">⚠ Poco stock</button>
-<button class="btn btn-outline btn-small" id="btnExportProd">📤 Guardar lista</button>
+
+  <select id="prodExportFormat" class="select small" title="Formato de exportación" style="max-width:170px">
+    <option value="pdf">PDF (Imprimir)</option>
+    <option value="csv">CSV (Excel)</option>
+    <option value="json">JSON (Backup)</option>
+  </select>
+  <button class="btn btn-rojo btn-small" id="btnExportProdMulti">⬇️ Exportar</button>
 <button class="btn btn-outline btn-small" id="btnImportProd">📥 Cargar lista</button>
 <input accept=".json,application/json" id="inputImportProd" style="display:none" type="file"/>
 </div>
@@ -676,7 +682,9 @@ const shortcutProd = document.getElementById('shortcut-productos');
 const shortcutHist = document.getElementById('shortcut-hist');
 const btnContacto = document.getElementById('btnContacto');
 const productsWarningArea = document.getElementById('products-warning-area');
-const btnExportProd = document.getElementById('btnExportProd');
+const prodExportFormat = document.getElementById('prodExportFormat');
+const btnExportProdMulti = document.getElementById('btnExportProdMulti');
+const btnExportProd = document.getElementById('btnExportProd'); // (opcional) botón antiguo
 const btnImportProd = document.getElementById('btnImportProd');
 const inputImportProd = document.getElementById('inputImportProd');
 
@@ -1122,7 +1130,7 @@ const ahora = new Date();
   pagoInput.value = '';
   cambioLabel.textContent = formatMXN(0);
   cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
-  mostrarOpcionesTicket(venta);
+  // Ya no mostramos opciones de ticket al finalizar; se imprime desde Historial.
   showPanel(panelHistorial);
 });
 
@@ -1784,6 +1792,169 @@ if(btnScanProd) btnScanProd.addEventListener('click', ()=> {
 });
 
 /* BACKUP: Export / Import productos */
+
+/* 🖨️ Imprimir lista de productos (se guarda/abre como PDF desde el diálogo de impresión) */
+function imprimirListaProductos(){
+  if(!Array.isArray(productos) || productos.length === 0){
+    alert('No hay productos para imprimir.');
+    return;
+  }
+  // Orden: por código numérico si aplica, si no por texto
+  const rows = productos.slice().sort((a,b)=>{
+    const ac = (a?.codigo ?? '').toString();
+    const bc = (b?.codigo ?? '').toString();
+    const an = Number(ac), bn = Number(bc);
+    if(!Number.isNaN(an) && !Number.isNaN(bn)) return an - bn;
+    return ac.localeCompare(bc, 'es', {numeric:true, sensitivity:'base'});
+  });
+
+  const now = new Date();
+  const title = 'Lista de productos';
+  const head = `
+    <div class="hdr">
+      <div class="h1">${title}</div>
+      <div class="meta">${now.toLocaleString()}</div>
+      <div class="meta">Total de productos: <b>${rows.length}</b></div>
+    </div>`;
+
+  const tr = rows.map(p=>{
+    const codigo = (p?.codigo ?? '').toString();
+    const nombre = escapeHtml((p?.nombre ?? '').toString());
+    const precio = formatMXN(Number(p?.precio)||0);
+    const costo  = formatMXN(Number(p?.costo)||0);
+    const utilidad = formatMXN((Number(p?.precio)||0) - (Number(p?.costo)||0));
+    const inv = p?.inventariado ? 'Sí' : 'No';
+    const stock = (p?.inventariado ? (p?.stock==null ? '—' : String(p.stock)) : '—');
+    return `<tr>
+      <td class="mono">${escapeHtml(codigo)}</td>
+      <td>${nombre}</td>
+      <td class="right">${costo}</td>
+      <td class="right"><b>${precio}</b></td>
+      <td class="right">${utilidad}</td>
+      <td class="center">${inv}</td>
+      <td class="right">${escapeHtml(stock)}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!doctype html>
+  <html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>${title}</title>
+    <style>
+      :root{font-family: Arial, system-ui, -apple-system, Segoe UI, Roboto; color:#111;}
+      body{margin:18px;}
+      .hdr{margin-bottom:14px;}
+      .h1{font-size:18px;font-weight:800;margin-bottom:4px;}
+      .meta{font-size:12px;color:#555;line-height:1.35;}
+      table{width:100%;border-collapse:collapse;font-size:12px;}
+      th,td{border-bottom:1px solid #e5e7eb;padding:8px 6px;vertical-align:top;}
+      th{background:#f3f4f6;text-align:left;font-size:12px;}
+      .right{text-align:right;}
+      .center{text-align:center;}
+      .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+      @media print{
+        body{margin:0; padding:12mm;}
+        .hdr{page-break-after:avoid;}
+        tr{page-break-inside:avoid;}
+      }
+    </style>
+  </head>
+  <body>
+    ${head}
+    <table>
+      <thead>
+        <tr>
+          <th style="width:110px">Código</th>
+          <th>Producto</th>
+          <th style="width:90px" class="right">Costo</th>
+          <th style="width:90px" class="right">Precio</th>
+          <th style="width:90px" class="right">Utilidad</th>
+          <th style="width:70px" class="center">Inv.</th>
+          <th style="width:80px" class="right">Stock</th>
+        </tr>
+      </thead>
+      <tbody>${tr}</tbody>
+    </table>
+    <script>
+      // imprimir al abrir
+      setTimeout(()=>{ try{ window.focus(); window.print(); }catch(e){} }, 150);
+    <\/script>
+  </body>
+  </html>`;
+
+  const w = window.open('', '_blank');
+  if(!w){
+    alert('El navegador bloqueó la ventana emergente. Permite popups para imprimir.');
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
+
+
+
+/* ⬇️ Exportar productos a CSV (Excel) */
+function exportProductsToCsv(){
+  if(!Array.isArray(productos) || productos.length === 0){
+    alert('No hay productos para exportar.');
+    return;
+  }
+  const rows = productos.slice().sort((a,b)=>{
+    const ac = (a?.codigo ?? '').toString();
+    const bc = (b?.codigo ?? '').toString();
+    const an = Number(ac), bn = Number(bc);
+    if(!Number.isNaN(an) && !Number.isNaN(bn)) return an - bn;
+    return ac.localeCompare(bc, 'es', {numeric:true, sensitivity:'base'});
+  });
+
+  const header = ['Codigo','Nombre','Precio','Costo','Inventariado','Stock'];
+  const lines = [header.join(',')];
+
+  for(const p of rows){
+    const codigo = (p?.codigo ?? '').toString().replaceAll('"','""');
+    const nombre = (p?.nombre ?? '').toString().replaceAll('"','""');
+    const precio = Number(p?.precio)||0;
+    const costo  = Number(p?.costo)||0;
+    const inv = p?.inventariado ? 1 : 0;
+    const stock = (p?.inventariado ? (p?.stock==null ? '' : p.stock) : '');
+    // CSV con comillas para texto (por seguridad con comas)
+    lines.push([`"${codigo}"`,`"${nombre}"`,precio,costo,inv,stock].join(','));
+  }
+
+  const csv = lines.join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const now = new Date();
+  const fname = `productos_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}.csv`;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  alert('✅ CSV exportado: ' + fname);
+}
+
+/* ⬇️ Exportación según formato seleccionado */
+function exportProductosSegunFormato(){
+  const fmt = (prodExportFormat?.value || 'pdf').toLowerCase();
+  if(fmt === 'pdf'){
+    imprimirListaProductos(); // abre ventana e imprime (puedes guardar como PDF)
+  }else if(fmt === 'csv'){
+    exportProductsToCsv();
+  }else{
+    exportProductsToJson(); // backup JSON
+  }
+}
+if(btnExportProdMulti){
+  btnExportProdMulti.addEventListener('click', exportProductosSegunFormato);
+}
+
 function exportProductsToJson(){
   try {
     const data = JSON.stringify(productos, null, 2);
