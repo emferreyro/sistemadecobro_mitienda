@@ -1016,6 +1016,17 @@ function openManualModal(){
     </div>
   `;
   modal.appendChild(box); document.body.appendChild(modal);
+  // 🧪 Prueba 30 días -> abrir FULL DEMO
+  const trialBtn = document.getElementById('btnTrial30');
+  if (trialBtn) {
+    trialBtn.addEventListener('click', (e) => {
+      try { e.preventDefault(); e.stopPropagation(); } catch(_) {}
+      try { modal.remove(); } catch(_) {}
+      const target = new URL('fullv_demo.html', window.location.href).href;
+      window.location.assign(target);
+    });
+  }
+
   document.getElementById('manual-close').addEventListener('click', ()=> modal.remove());
   document.getElementById('manual-add').addEventListener('click', ()=>{
     const nombre = document.getElementById('manual-nombre').value.trim();
@@ -1587,6 +1598,11 @@ function openLoginModal(){
     <div style="display:flex;flex-direction:column;gap:8px">
       <input id="loginUser" type="text" placeholder="Usuario" autocomplete="off" />
       <input id="loginPass" type="password" placeholder="Contraseña" />
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px">
+        <small style="opacity:.85">¿No tienes acceso? Puedes probar FULL por 30 días.</small>
+        <button id="btnTrial30" class="btn btn-outline btn-small">🧪 Probar 30 días</button>
+      </div>
+
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
         <button id="btnLoginCancel" class="btn btn-outline">Cancelar</button>
         <button id="btnLoginConfirm" class="btn btn-amarillo">Entrar</button>
@@ -1595,7 +1611,19 @@ function openLoginModal(){
   `;
   modal.appendChild(box); document.body.appendChild(modal);
 
-  const closeFn = ()=> { modal.remove(); };
+  
+  // 🧪 DEMO: botón "Probar 30 días" -> abrir fullv_demo.html
+  const trialBtn = document.getElementById('btnTrial30');
+  if (trialBtn) {
+    trialBtn.addEventListener('click', (e) => {
+      try { e.preventDefault(); e.stopPropagation(); } catch(_) {}
+      try { modal.remove(); } catch(_) {}
+      const target = new URL('fullv_demo.html', window.location.href).href;
+      window.location.assign(target);
+    });
+  }
+
+const closeFn = ()=> { modal.remove(); };
   document.getElementById('login-close').addEventListener('click', closeFn);
   document.getElementById('btnLoginCancel').addEventListener('click', closeFn);
   document.getElementById('btnLoginConfirm').addEventListener('click', handleLoginConfirm);
@@ -1616,6 +1644,17 @@ function handleLoginConfirm(){
   }
 }
 btnVersionFull && btnVersionFull.addEventListener('click', openLoginModal);
+
+// Si regresa de DEMO por expiración, mostrar mensaje y abrir acceso
+(function(){
+  try{
+    const p = new URLSearchParams(window.location.search);
+    if(p.get('trial')==='expired'){
+      alert('🕒 Tu periodo de prueba de 30 días ha terminado. Si deseas continuar con la versión completa, solicita tu acceso.');
+      openLoginModal();
+    }
+  }catch(e){}
+})();
 btnVersionOffline && btnVersionOffline.addEventListener('click', ()=>{
   const ok = confirm('¿Deseas descargar la versión sin internet (archivo ZIP)?');
   if(ok){ window.location.href='Sistemadecobro_Mitienda.zip'; }
