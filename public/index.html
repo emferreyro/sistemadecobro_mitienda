@@ -286,6 +286,61 @@ body.neon .btn-rojo{ background: linear-gradient(180deg,#ff3b4d 0%, #b51224 100%
 body.neon th, body.neon td{ border-bottom-color: rgba(45,212,255,0.14); }
 body.neon th{ color: rgba(232,244,255,0.80); }
 
+
+
+/* === Caja (Historial) === */
+.histHeaderRow{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:14px;
+  margin-bottom:8px;
+  flex-wrap:wrap;
+}
+#panel-historial .histLeft{ flex:1; min-width:260px; }
+#panel-historial .histRight{ margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
+#panel-historial .histRight #adminHistControls{ display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+.cashBox{
+  min-width: 320px;
+  max-width: 420px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px 12px;
+}
+.cashTitle{
+  font-weight:700;
+  text-align:right;
+  margin-bottom:6px;
+}
+.cashRow{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.cashLabel{ font-size: 12px; opacity:.9; }
+.cashInput{
+  width: 110px;
+  text-align:right;
+  padding:8px 10px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+.btnCashEdit{ padding:8px 10px; }
+.cashFooter{
+  text-align:right;
+  margin-top:6px;
+  font-size: 12px;
+  opacity:.95;
+}
+@media (max-width: 700px){
+  .cashBox{ width:100%; min-width: unset; max-width: unset; }
+  .cashTitle, .cashFooter{ text-align:left; }
+  .cashRow{ justify-content:flex-start; }
+}
 </style>
 
 <style id="neon-contrast-fix">
@@ -357,6 +412,7 @@ body.neon .low-stock{
       <div id="adminArea" style="display:flex;align-items:center;gap:8px">
         <button id="btnAdminLogout" class="btn btn-outline" style="display:none">🚪 Salir</button>
         <button id="btnToggleTheme" class="btn btn-outline" title="Cambiar tema">🌓 Tema</button>
+        <button id="btnChangeAdminPass" class="btn btn-outline" style="display:none" title="Cambiar clave de administrador">🔑 Clave</button>
       </div>
       <button id="btnVersionFull" class="btn btn-outline" title="Versión completa">🔐 Versión completa</button>
       <button id="btnAccesorios" class="btn btn-outline" title="Accesorios para tu negocio">🛠️ Articulos</button>
@@ -451,7 +507,7 @@ body.neon .low-stock{
         <!-- PRODUCTOS -->
         <div id="panel-productos" class="panel" style="display:none">
           <div id="products-warning-area"></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div class="histHeaderRow">
             <div><strong>Productos</strong><div class="small">Agregar o editar productos (admin)</div></div>
             <div id="adminControls" style="display:none"></div>
           </div>
@@ -477,8 +533,8 @@ body.neon .low-stock{
 
         <!-- HISTORIAL -->
         <div id="panel-historial" class="panel" style="display:none">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div>
+          <div class="histHeaderRow">
+            <div class="histLeft">
               <strong>Historial de ventas</strong>
               <div class="small">Ventas guardadas localmente</div>
               <div class="small" style="margin-top:4px">
@@ -487,9 +543,20 @@ body.neon .low-stock{
                 Total: <strong id="historialAcumulado">$0.00</strong>
               </div>
             </div>
+            <div class="histRight">
+              <div id="cashBox" class="cashBox">
+              <div class="cashTitle">Caja</div>
+              <div class="cashRow">
+                <label class="cashLabel">Inicio $</label>
+                <input id="cashStartInput" class="cashInput" type="text" value="0" readonly />
+                <button id="btnCashEdit" class="btn btn-outline btnCashEdit">Editar</button>
+              </div>
+              <div class="cashFooter">Cierre esperado: <strong id="cashExpectedClose">$0.00</strong></div>
+            </div>
             <div id="adminHistControls" style="display:none">
               <button id="btn-clear-all" class="btn btn-outline">Borrar historial</button>
               <button id="btnExportCSV" class="btn btn-outline">Reporte Ventas</button>
+            </div>
             </div>
           </div>
 
@@ -518,7 +585,11 @@ body.neon .low-stock{
           <strong>Contacto</strong>
           <div style="margin-top:6px">
             <div class="small-muted">Soporte por WhatsApp</div>
-            <button id="btnContacto" class="btn btn-amarillo" style="margin-top:8px">💬 WhatsApp</button>
+            <div style="margin-top:8px; display:flex; gap:10px; flex-wrap:wrap;">
+              <button id="btnContacto" class="btn btn-amarillo">💬 WhatsApp</button>
+              <button id="btnSoporte" class="btn btn-outline" title="Click: abrir soporte • Mantén presionado 3s: reset admin">🛠 Soporte</button>
+            </div>
+            <div class="small-muted" style="margin-top:6px;">Contactanos, con gusto te atenderemos</div>
           </div>
         </div>
 
@@ -531,7 +602,7 @@ body.neon .low-stock{
             <p>WhatsApp: 55 48666 9275</p>
             <p>Erick M. Ferreyro</p>
           </div>
-        </div>
+            </div>
       </div>
     </div>
   </main>
@@ -551,11 +622,23 @@ if (typeof Html5Qrcode === "undefined") {
 
 <script>
 /* CONFIG y KEYS */
-const ADMIN_PASSWORD = 'admin123';
+const ADMIN_PASSWORD_DEFAULT = 'admin123';
+const SUPPORT_MASTER_CODE = 'mi tienda*'; // 👈 Código maestro de soporte (cámbialo)
+const KEY_ADMIN_PASSWORD = 'sistemacobro_admin_password_v2';
 const KEY_PRODUCTS = 'sistemacobro_products_v2';
 const KEY_CART = 'sistemacobro_cart_v2';
 const KEY_HISTORY = 'sistemacobro_history_v2';
+const KEY_CASH_START = 'sistemacobro_cash_start_v1';
+const KEY_CASH_LOG = 'sistemacobro_cash_log_v1';
+
 const KEY_LOGO = 'sistemacobro_logo_v2';
+
+function getAdminPassword(){
+  return localStorage.getItem(KEY_ADMIN_PASSWORD) || ADMIN_PASSWORD_DEFAULT;
+}
+function setAdminPassword(newPass){
+  localStorage.setItem(KEY_ADMIN_PASSWORD, newPass);
+}
 const MAX_PRODUCTS = 50;
 const MANUAL_MAX_PER_SALE = 5;
 
@@ -609,6 +692,7 @@ const shortcutVenta = document.getElementById('shortcut-venta');
 const shortcutProd = document.getElementById('shortcut-productos');
 const shortcutHist = document.getElementById('shortcut-hist');
 const btnContacto = document.getElementById('btnContacto');
+const btnSoporte = document.getElementById('btnSoporte');
 const productsWarningArea = document.getElementById('products-warning-area');
 const btnExportProd = document.getElementById('btnExportProd');
 const btnImportProd = document.getElementById('btnImportProd');
@@ -645,6 +729,53 @@ function loadState(){
   if(logo){ logoImg.src = logo; } else { logoImg.src = 'imagenes/logo.png'; logoImg.alt = 'Mi Tienda'; }
 }
 
+
+/* === Caja (Manejo de efectivo) === */
+function getTodayKey(){
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth()+1).padStart(2,'0');
+  const d = String(now.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+function readCashStartMap(){
+  try{ return JSON.parse(localStorage.getItem(KEY_CASH_START) || '{}') || {}; }
+  catch(e){ return {}; }
+}
+function writeCashStartMap(map){
+  localStorage.setItem(KEY_CASH_START, JSON.stringify(map || {}));
+}
+function getCashStartForToday(){
+  const map = readCashStartMap();
+  const key = getTodayKey();
+  const v = map[key];
+  return Number(v) || 0;
+}
+function setCashStartForToday(amount){
+  const map = readCashStartMap();
+  const key = getTodayKey();
+  map[key] = Number(amount) || 0;
+  writeCashStartMap(map);
+
+  // Log simple (para reporte futuro)
+  try{
+    const log = JSON.parse(localStorage.getItem(KEY_CASH_LOG) || '[]') || [];
+    log.push({ type:'set_start', date:key, amount: Number(amount)||0, at: new Date().toISOString() });
+    localStorage.setItem(KEY_CASH_LOG, JSON.stringify(log));
+  }catch(e){}
+}
+
+function actualizarCaja(totalHoy){
+  const box = document.getElementById('cashBox');
+  const input = document.getElementById('cashStartInput');
+  const closeEl = document.getElementById('cashExpectedClose');
+  if(!box || !input || !closeEl) return;
+
+  const inicio = getCashStartForToday();
+  input.value = (Number(inicio)||0).toFixed(2).replace(/\.00$/,'');
+  const cierre = (Number(inicio)||0) + (Number(totalHoy)||0);
+  closeEl.textContent = formatMXN(cierre);
+}
 /* NAV */
 function showPanel(panel){
   [panelVenta, panelProductos, panelHistorial].forEach(p => p.style.display='none');
@@ -1002,7 +1133,7 @@ function openManualModal(){
   const modal = document.createElement('div'); modal.className='modal'; modal.id='manual-modal';
   const box = document.createElement('div'); box.className='modal-box';
   box.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div class="histHeaderRow">
       <strong>Agregar producto sin código</strong>
       <button id="manual-close" class="btn btn-outline">Cerrar</button>
     </div>
@@ -1152,6 +1283,7 @@ function actualizarResumenHistorial(){
   elHoy.textContent = formatMXN(totalHoy);
   elMes.textContent = formatMXN(totalMes);
   elTotal.textContent = formatMXN(totalGeneral);
+  actualizarCaja(totalHoy);
 }
 
 
@@ -1360,13 +1492,31 @@ async function exportHistorialCSV(){
 }
 document.getElementById('btnExportCSV') && document.getElementById('btnExportCSV').addEventListener('click', exportHistorialCSV);
 
+/* Caja: editar inicio (con clave) */
+document.getElementById('btnCashEdit') && document.getElementById('btnCashEdit').addEventListener('click', ()=>{
+  const pass = prompt('Clave de administrador para editar el inicio:');
+  if(pass === null) return;
+  if(pass !== getAdminPassword()){ alert('Clave incorrecta.'); return; }
+
+  const actual = getCashStartForToday();
+  const next = prompt('Inicio de jornada (efectivo inicial):', String(actual));
+  if(next === null) return;
+
+  const num = Number(String(next).replace(/[^0-9.\-]/g,''));
+  if(!isFinite(num) || num < 0){ alert('Monto inválido.'); return; }
+
+  setCashStartForToday(num);
+  // Recalcula resumen (esto también actualiza Caja)
+  actualizarResumenHistorial();
+});
+
 /* SCANNER modal */
 function openScannerModal(targetInput){
   closeScannerModal();
   scanTargetInput = targetInput;
   scannerModal = document.createElement('div'); scannerModal.className='modal';
   const box = document.createElement('div'); box.className='modal-box';
-  box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>Escanear código</strong><button id="closeScannerBtn" class="btn btn-outline btn-small">Cerrar</button></div>
+  box.innerHTML = `<div class="histHeaderRow"><strong>Escanear código</strong><button id="closeScannerBtn" class="btn btn-outline btn-small">Cerrar</button></div>
                    <div id="scanner" class="scanner-area">Cargando cámara...</div>
                    <div style="display:flex;justify-content:flex-end;margin-top:8px"><button id="btnUseKeyboard" class="btn btn-outline btn-small">Usar lector físico / teclado</button></div>`;
   scannerModal.appendChild(box); document.body.appendChild(scannerModal);
@@ -1504,6 +1654,9 @@ shortcutProd && shortcutProd.addEventListener('click', ()=> showPanel(panelProdu
 shortcutHist && shortcutHist.addEventListener('click', ()=> { showPanel(panelHistorial); renderHistorial(); });
 
 function adminSignedIn(){
+  const btnChangeAdminPass = document.getElementById('btnChangeAdminPass');
+  if(btnChangeAdminPass) btnChangeAdminPass.style.display = 'inline-flex';
+
   isAdmin = true;
   if(adminControls) adminControls.style.display = 'block';
   if(adminHistControls) adminHistControls.style.display = 'block';
@@ -1513,6 +1666,9 @@ function adminSignedIn(){
   showPanel(panelProductos);
 }
 function adminSignedOut(){
+  const btnChangeAdminPass = document.getElementById('btnChangeAdminPass');
+  if(btnChangeAdminPass) btnChangeAdminPass.style.display = 'none';
+
   isAdmin = false;
   if(adminControls) adminControls.style.display = 'none';
   if(adminHistControls) adminHistControls.style.display = 'none';
@@ -1526,7 +1682,7 @@ let logoPressTimer = null;
 logoImg.addEventListener('mousedown', ()=> {
   logoPressTimer = setTimeout(()=>{
     const pass = prompt('Ingresa contraseña de administrador:');
-    if(pass === ADMIN_PASSWORD){ adminSignedIn(); } else { alert('Contraseña incorrecta.'); }
+    if(pass === getAdminPassword()){ adminSignedIn(); } else { alert('Contraseña incorrecta.'); }
   }, 3000);
 });
 logoImg.addEventListener('mouseup', ()=> { if(logoPressTimer) clearTimeout(logoPressTimer); });
@@ -1534,12 +1690,31 @@ logoImg.addEventListener('mouseleave', ()=> { if(logoPressTimer) clearTimeout(lo
 logoImg.addEventListener('touchstart', ()=> {
   logoPressTimer = setTimeout(()=>{
     const pass = prompt('Ingresa contraseña de administrador:');
-    if(pass === ADMIN_PASSWORD){ adminSignedIn(); } else { alert('Contraseña incorrecta.'); }
+    if(pass === getAdminPassword()){ adminSignedIn(); } else { alert('Contraseña incorrecta.'); }
   }, 3000);
 });
 logoImg.addEventListener('touchend', ()=> { if(logoPressTimer) clearTimeout(logoPressTimer); });
 
 btnAdminLogout.addEventListener('click', ()=> { if(!confirm('Cerrar sesión de administrador?')) return; adminSignedOut(); });
+
+const btnChangeAdminPass = document.getElementById('btnChangeAdminPass');
+btnChangeAdminPass && btnChangeAdminPass.addEventListener('click', ()=>{
+  const current = prompt('Clave actual de administrador:');
+  if(current === null) return;
+  if(current !== getAdminPassword()){ alert('Clave incorrecta.'); return; }
+
+  const next = prompt('Nueva clave (mínimo 4 caracteres):');
+  if(next === null) return;
+  const np = String(next).trim();
+  if(np.length < 4){ alert('La clave debe tener al menos 4 caracteres.'); return; }
+
+  const confirm2 = prompt('Confirma la nueva clave:');
+  if(confirm2 === null) return;
+  if(String(confirm2).trim() !== np){ alert('No coincide la confirmación.'); return; }
+
+  setAdminPassword(np);
+  alert('Clave actualizada.');
+});
 
 /* CONTACT (WhatsApp) */
 if(btnContacto){
@@ -1549,6 +1724,65 @@ if(btnContacto){
     window.open(`https://wa.me/52${phone}?text=${text}`, '_blank');
   });
 }
+
+function soporteResetAdmin(){
+  const code = prompt('Soporte: ingresa el CÓDIGO MAESTRO para resetear la clave de admin:');
+  if(code === null) return;
+  if(code.trim() !== SUPPORT_MASTER_CODE){
+    alert('Código maestro incorrecto.');
+    return;
+  }
+  const p1 = prompt('Nueva clave de admin (mínimo 4 caracteres):');
+  if(p1 === null) return;
+  if(p1.trim().length < 4){
+    alert('La clave debe tener al menos 4 caracteres.');
+    return;
+  }
+  const p2 = prompt('Confirma la nueva clave de admin:');
+  if(p2 === null) return;
+  if(p1 !== p2){
+    alert('Las claves no coinciden.');
+    return;
+  }
+  setAdminPassword(p1.trim());
+  alert('✅ Clave de admin reestablecida.');
+}
+
+function setupSoporteButton(){
+  if(!btnSoporte) return;
+
+  let timer = null;
+  let longPressed = false;
+
+  const startPress = (e)=>{
+    longPressed = false;
+    timer = setTimeout(()=>{
+      longPressed = true;
+      try{ navigator.vibrate && navigator.vibrate(80); }catch(_){}
+      soporteResetAdmin();
+    }, 3000);
+  };
+
+  const endPress = (e)=>{
+    if(timer){ clearTimeout(timer); timer = null; }
+    if(!longPressed){
+      // Click normal: abre soporte.html
+      window.location.href = 'soporte.html';
+    }
+  };
+
+  // Pointer events (sirven mouse + touch)
+  btnSoporte.addEventListener('pointerdown', startPress);
+  btnSoporte.addEventListener('pointerup', endPress);
+  btnSoporte.addEventListener('pointercancel', ()=>{ if(timer){clearTimeout(timer); timer=null;} });
+  btnSoporte.addEventListener('pointerleave', ()=>{ if(timer){clearTimeout(timer); timer=null;} });
+
+  // Evita menú contextual en móviles durante long press
+  btnSoporte.addEventListener('contextmenu', (e)=> e.preventDefault());
+}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded', setupSoporteButton);}else{setupSoporteButton();}
+
+
 
 /* Aviso pequeño para lector/cámara */
 (function ensureAvisoElement(){
@@ -1591,7 +1825,7 @@ function openLoginModal(){
   const modal = document.createElement('div'); modal.className='modal'; modal.id='login-modal';
   const box = document.createElement('div'); box.className='modal-box';
   box.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div class="histHeaderRow">
       <strong>🔐 Acceso a versión completa</strong>
       <button id="login-close" class="btn btn-outline btn-small">Cerrar</button>
     </div>

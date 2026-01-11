@@ -292,6 +292,51 @@ body.neon .btn-rojo{ background: linear-gradient(180deg,#ff3b4d 0%, #b51224 100%
 body.neon th, body.neon td{ border-bottom-color: rgba(45,212,255,0.14); }
 body.neon th{ color: rgba(232,244,255,0.80); }
 
+
+
+/* === Caja + Historial header (sync con FULLV) === */
+.historial-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.historial-header .hist-left{flex:1 1 420px; min-width:280px;}
+.historial-header .hist-center{flex:0 0 320px; display:flex; justify-content:center;}
+.hist-right{flex:0 0 auto; display:flex; gap:10px; justify-content:flex-end; align-items:flex-start;}
+.historial-header #adminHistControls{flex:0 0 auto; display:flex; gap:10px; justify-content:flex-end; align-items:center;}
+.cash-card{
+  border:1px solid rgba(0,0,0,0.10);
+  border-radius:12px;
+  padding:8px 10px;
+  width:260px;
+}
+.cash-title{font-weight:800; text-align:center; margin-bottom:4px;}
+.cash-row{display:flex; gap:8px; align-items:center; justify-content:center;}
+.cash-label{margin:0; font-size:12px; color:#6b7280; font-weight:700; white-space:nowrap;}
+#cashInicioInput{width:92px; padding:7px 9px; border-radius:10px; border:1px solid #e6e7ea; font-weight:800; text-align:right;}
+.cash-footer{margin-top:4px; font-size:12px; text-align:center; color:#6b7280;}
+
+body.dark .cash-card{background:#181818; border-color:#2c2c2c;}
+body.dark .cash-label, body.dark .cash-footer{color:#aaa;}
+body.dark #cashInicioInput{background:#222; border-color:#444; color:#f5f5f5;}
+body.neon .cash-card{background: rgba(11,22,36,0.92); border-color: rgba(45,212,255,0.20);}
+body.neon .cash-label, body.neon .cash-footer{color: rgba(232,244,255,0.80);}
+body.neon #cashInicioInput{background:#0a1626; border-color: rgba(45,212,255,0.22); color:#e8f4ff;}
+@media (max-width: 900px){
+  .historial-header .hist-center{flex:1 1 100%; justify-content:flex-start;}
+  .cash-card{width:100%;}
+  .cash-title, .cash-row, .cash-footer{text-align:left; justify-content:flex-start;}
+}
+.total-wrap{display:flex;align-items:center;gap:12px;}
+.total-amount{font-size:28px;font-weight:900;color:var(--rojo-dark);}
+.pay-change-row{display:flex;gap:12px;align-items:center;}
+.pay-field{display:flex;flex-direction:column;gap:6px;min-width:180px;}
+.change-amount{font-size:18px;font-weight:800;}
+.change-ok{color:#166534;} /* green */
+.change-low{color:#b91c1c;} /* red */
+/* === /Caja === */
 </style>
 
 <style id="ticket-thermal-override">
@@ -684,12 +729,29 @@ document.getElementById('modalAceptar').onclick = () => {
 </div>
 <!-- HISTORIAL -->
 <div class="panel" id="panel-historial" style="display:none">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-<div><strong>Historial de ventas</strong><div class="small">Ventas guardadas localmente</div><div class="small" style="margin-top:4px">Hoy: <strong id="historialHoy">$0.00</strong> · Mes: <strong id="historialMes">$0.00</strong> · Total: <strong id="historialAcumulado">$0.00</strong></div></div>
-<div id="adminHistControls" style="display:none">
+<div class="historial-header">
+  <div class="hist-left">
+    <div><strong>Historial de ventas</strong><div class="small">Ventas guardadas localmente</div><div class="small" style="margin-top:4px">Hoy: <strong id="historialHoy">$0.00</strong> · Mes: <strong id="historialMes">$0.00</strong> · Total: <strong id="historialAcumulado">$0.00</strong></div></div>
+  </div>
+  <div class="hist-center">
+    <div class="cash-card" id="cashCard">
+      <div class="cash-title">Caja</div>
+      <div class="cash-row">
+        <label class="cash-label" for="cashInicioInput">Inicio $</label>
+        <input id="cashInicioInput" type="number" min="0" step="0.01" value="0" />
+        <button class="btn btn-outline btn-small" id="cashEditBtn" type="button">Editar</button>
+      </div>
+      <div class="cash-footer">
+        Cierre esperado: <strong id="cashCierre">$0.00</strong>
+      </div>
+    </div>
+  </div>
+  <div class="hist-right">
+    <div id="adminHistControls" style="display:none">
 <button class="btn btn-outline" id="btn-clear-all">Borrar historial</button>
 <button class="btn btn-outline" id="btnExportCSV">Reporte Ventas</button>
 </div>
+  </div>
 </div>
 <div id="history-list" style="display:flex;flex-direction:column;gap:8px"></div>
 </div>
@@ -782,6 +844,8 @@ const KEY_CART = 'sistemacobro_cart_v2';
 const KEY_HISTORY = 'sistemacobro_history_v2';
 const KEY_LOGO = 'sistemacobro_logo_v2';
 const KEY_TICKET_CFG = 'sistemacobro_ticket_cfg_v1';
+const KEY_CASH_START = 'sistemacobro_cash_start_v1'; // Caja: inicio por día (compartido entre archivos)
+const KEY_CASH_LOG   = 'sistemacobro_cash_log_v1';   // Caja: log (compartido)
 const MAX_PRODUCTS = Infinity;
 const MANUAL_MAX_PER_SALE = 5;
 
@@ -870,6 +934,164 @@ const btnEscanear = document.getElementById('btnEscanear');
 function formatMXN(n){ return '$' + Number(n).toFixed(2); }
 function escapeHtml(str){ if(!str) return ''; return str.replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
+/* === 🧾 Caja (por día, en este equipo) === */
+// Caja (usa la misma ruta de localStorage que MiTienda)
+const CASH_PREFIX = 'sistemacobro_cash_v1_'; // legacy
+const CASH_LOG_KEY = CASH_PREFIX + 'log';      // legacy
+
+function cashDateKey(d=new Date()){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function cashStartKey(dateKey){ return CASH_PREFIX + 'start_' + dateKey; }
+
+
+function readCashStartMap(){
+  // Nuevo formato (MiTienda): un solo objeto { 'YYYY-MM-DD': number }
+  try{
+    const obj = JSON.parse(localStorage.getItem(KEY_CASH_START) || '{}') || {};
+    if(obj && typeof obj === 'object') return obj;
+  }catch(e){}
+  return {};
+}
+function writeCashStartMap(map){
+  localStorage.setItem(KEY_CASH_START, JSON.stringify(map || {}));
+}
+function migrateLegacyCashIfNeeded(){
+  // Migra claves legacy (FULLV v1): sistemacobro_cash_v1_start_YYYY-MM-DD -> KEY_CASH_START
+  try{
+    const current = readCashStartMap();
+    const hasAny = current && Object.keys(current).length>0;
+    const legacyMap = {};
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if(!k) continue;
+      const m = k.match(/^sistemacobro_cash_v1_start_(\d{4}-\d{2}-\d{2})$/);
+      if(m){
+        const raw = localStorage.getItem(k);
+        const v = parseMoney(raw);
+        legacyMap[m[1]] = Number(v)||0;
+      }
+    }
+    if(!hasAny && Object.keys(legacyMap).length>0){
+      writeCashStartMap(legacyMap);
+    }
+    // migra log legacy si existe
+    if(!localStorage.getItem(KEY_CASH_LOG) && localStorage.getItem(CASH_LOG_KEY)){
+      localStorage.setItem(KEY_CASH_LOG, localStorage.getItem(CASH_LOG_KEY));
+    }
+  }catch(e){}
+}
+
+function parseMoney(val){
+  if(val === null || typeof val === 'undefined') return 0;
+  const s = String(val).replace(/[^0-9.\-]/g,'');
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function getCashStartToday(){
+  migrateLegacyCashIfNeeded();
+  const map = readCashStartMap();
+  const k = cashDateKey();
+  return Number(map[k]) || 0;
+}
+
+function setCashStartToday(amount){
+  migrateLegacyCashIfNeeded();
+  const dateKey = cashDateKey();
+  const map = readCashStartMap();
+  map[dateKey] = Number(amount) || 0;
+  writeCashStartMap(map);
+
+  // Log simple (para reporte futuro)
+  try{
+    const logRaw = localStorage.getItem(KEY_CASH_LOG);
+    const log = logRaw ? (JSON.parse(logRaw)||[]) : [];
+    log.push({ type:'set_start', date:dateKey, amount:Number(amount)||0, at:new Date().toISOString() });
+    localStorage.setItem(KEY_CASH_LOG, JSON.stringify(log.slice(0,200)));
+  }catch(e){}
+}
+
+function updateCashUI(){
+  const inp = document.getElementById('cashInicioInput');
+  const cierreEl = document.getElementById('cashCierre');
+  if(!inp || !cierreEl) return;
+
+  const start = getCashStartToday();
+  inp.value = (Number(start)||0).toFixed(2).replace(/\.00$/,'');
+
+  const hoyEl = document.getElementById('historialHoy');
+  const ventasHoy = hoyEl ? parseMoney(hoyEl.textContent) : 0;
+  const cierre = start + ventasHoy;
+  cierreEl.textContent = formatMXN(cierre);
+}
+
+function initCashBox(){
+  const inp = document.getElementById('cashInicioInput');
+  const btn = document.getElementById('cashEditBtn');
+  if(!inp || !btn) return;
+
+  // FULLV: se asume modo admin; editable sin permisos.
+  // Modo seguro: se edita con botón (Editar/Guardar) para evitar cambios accidentales.
+  if(typeof inp.disabled === 'boolean') inp.disabled = true;
+
+  // Evitar duplicar listeners si renderHistorial corre varias veces
+  if(btn.__cashBound) { updateCashUI(); return; }
+  btn.__cashBound = true;
+
+  let editing = false;
+
+  function setEditing(on){
+    editing = !!on;
+    inp.disabled = !editing;
+    btn.textContent = editing ? 'Guardar' : 'Editar';
+    if(editing){
+      inp.focus();
+      inp.select?.();
+    }
+  }
+
+  function save(){
+    const val = Math.max(0, Number(inp.value) || 0);
+    setCashStartToday(val);
+    setEditing(false);
+    updateCashUI();
+  }
+
+  btn.addEventListener('click', ()=>{
+    if(!editing){
+      // cargar valor actual y permitir edición
+      const actual = getCashStartToday();
+      inp.value = (Number(actual)||0).toFixed(2).replace(/\.00$/,'');
+      setEditing(true);
+    }else{
+      save();
+    }
+  });
+
+  inp.addEventListener('keydown', (e)=>{
+    if(!editing) return;
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      save();
+    }
+    if(e.key === 'Escape'){
+      e.preventDefault();
+      setEditing(false);
+      updateCashUI();
+    }
+  });
+
+  inp.addEventListener('blur', ()=>{
+    if(editing) save();
+  });
+
+  updateCashUI();
+}
+
 /* PERSISTENCE helpers */
 function saveProducts(){ localStorage.setItem(KEY_PRODUCTS, JSON.stringify(productos)); }
 function saveCart(){ localStorage.setItem(KEY_CART, JSON.stringify(carrito)); }
@@ -909,6 +1131,11 @@ function showPanel(panel){
   if(panel === panelVenta) navVenta.classList.add('active');
   if(panel === panelProductos) navProductos.classList.add('active');
   if(panel === panelHistorial) navHistorial.classList.add('active');
+
+  if(panel === panelHistorial){
+    // Inicializar caja al entrar a Historial (FULLV/DEMO)
+    try{ setTimeout(initCashBox, 0); }catch(e){}
+  }
 
   if(panel === panelProductos){
     checkProductLimitOnOpen();
@@ -1365,6 +1592,7 @@ function renderHistorial(){
     });
   });
   actualizarResumenHistorial();
+  try{ initCashBox(); }catch(e){}
 }
 
 
