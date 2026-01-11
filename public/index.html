@@ -288,6 +288,19 @@ body.neon th{ color: rgba(232,244,255,0.80); }
 
 
 
+
+/* Variables por tema para componentes (Caja incluida) */
+body.dark{
+  --panel: #181818;
+  --border: #2c2c2c;
+  --text: #f1f1f1;
+}
+body.neon{
+  --panel: rgba(11,22,36,0.92);
+  --border: rgba(45,212,255,0.28);
+  --text: #e8f4ff;
+}
+
 /* === Caja (Historial) === */
 .histHeaderRow{
   display:flex;
@@ -301,11 +314,15 @@ body.neon th{ color: rgba(232,244,255,0.80); }
 #panel-historial .histRight{ margin-left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
 #panel-historial .histRight #adminHistControls{ display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
 .cashBox{
+  margin-top: 10px;
   min-width: 320px;
   max-width: 420px;
   border:1px solid var(--border);
-  border-radius:12px;
-  padding:10px 12px;
+  background: var(--panel);
+  color: var(--text);
+  border-radius:14px;
+  padding:14px 16px;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.22);
 }
 .cashTitle{
   font-weight:700;
@@ -1767,7 +1784,13 @@ function setupSoporteButton(){
     if(timer){ clearTimeout(timer); timer = null; }
     if(!longPressed){
       // Click normal: abre soporte.html
-      window.location.href = 'soporte.html';
+      (function(){
+        const w = 480, h = 640;
+        const left = Math.max(0, Math.floor((screen.width - w) / 2));
+        const top  = Math.max(0, Math.floor((screen.height - h) / 2));
+        const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+        window.open('soporte.html', 'SoporteMiTienda', features);
+      })();
     }
   };
 
