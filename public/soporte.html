@@ -8,8 +8,12 @@
     :root{
       --bg:#0b0f14;
       --panel:#111827;
-      --neon:#22d3ee;
+      --neon:#22d3ee;      /* filas 1–2 */
       --neon2:#a78bfa;
+      --orange:#fb923c;    /* filas 3–4 */
+      --orange-border:#fdba74;
+      --blue:#38bdf8;      /* fila 5 */
+      --blue-border:#7dd3fc;
       --ok:#22c55e;
       --warn:#eab308;
       --danger:#ef4444;
@@ -40,6 +44,15 @@
       border-radius:14px;padding:10px;min-height:70px;box-shadow:0 6px 20px rgba(0,0,0,.25);
       display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px
     }
+    /* Grupos de color por fila */
+    .row-a{border-color:rgba(34,211,238,.45)}
+    .row-a .price{color:var(--neon)}
+
+    .row-b{border-color:var(--orange-border)}
+    .row-b .price{color:var(--orange)}
+
+    .row-c{border-color:var(--blue-border)}
+    .row-c .price{color:var(--blue)}
     .prod:active{transform:scale(.98)}
     .prod .name{font-size:13px;text-align:center}
     .prod .price{font-size:14px;color:var(--neon)}
@@ -144,8 +157,14 @@
     // ===== Render =====
     function render(){
       grid.innerHTML='';
-      state.products.forEach(p=>{
-        const b=document.createElement('div');b.className='prod';
+      state.products.forEach((p,idx)=>{
+        const b=document.createElement('div');
+        // asignar grupo de color por fila
+        const row = Math.floor(idx / 4); // 0-4
+        let rowClass = 'row-a';
+        if(row === 2 || row === 3) rowClass = 'row-b';
+        if(row === 4) rowClass = 'row-c';
+        b.className = 'prod ' + rowClass;
         b.innerHTML=`<div class=\"qty\">${p.qty}</div><div class=\"name\">${p.name}</div><div class=\"price\">${fmt(p.price)}</div>`;
         // Triple-tap para editar (evita el menú de selección del sistema)
         let tapCount = 0;
