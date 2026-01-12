@@ -56,6 +56,17 @@
     .prod .name{font-size:13px;text-align:center}
     .prod .price{font-size:14px;color:var(--neon)}
 
+    /* Producto desactivado (sin texto): se ve apagado y no vende */
+    .prod.inactive{
+      background:#020617 !important;
+      border:1px dashed rgba(167,139,250,.35) !important;
+      box-shadow:none !important;
+      opacity:.35;
+      cursor:pointer;
+    }
+    .prod.inactive .qty{display:none}
+
+
     /* Grupos de color por fila */
     .row-a{
       background:linear-gradient(180deg, rgba(34,211,238,.18), rgba(2,6,23,.9));
@@ -140,7 +151,10 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
       <div id="btnReset" class="btn danger">RESET</div>
       <div id="btnUndo" class="btn warn">UNDO</div>
       <div id="btnFinalizar" class="btn ok disabled">FINALIZAR</div>
-      <div class="btn secondary">&nbsp;</div>
+      <div id="dayTotalBox" class="btn secondary" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:default">
+  <div style="font-size:11px;color:#9ca3af;letter-spacing:.3px">DÍA</div>
+  <div id="dayTotalVal" style="font-size:16px;font-weight:900;color:#e5e7eb">$0.00</div>
+</div>
     </div>
 
     <div class="pay">
@@ -205,7 +219,12 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
 <script>
     // ===== Estado =====
     const state = {
-      products: Array.from({length:20}, (_,i)=>({id:i,name:`Producto ${i+1}`,price:0,qty:0})),
+      products: Array.from({length:20}, (_,i)=>({
+        id:i,
+        name: (i===0 || i===8 || i===16) ? 'Producto' : '',
+        price: 0,
+        qty: 0
+      })),
       history: [],
       total: 0,
       pago: 0,
@@ -274,6 +293,37 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
       state.dayTotal = 0;
       saveDay();
     }
+
+    // ===== Productos (nombres/precios) persistentes =====
+    const PRODUCTS_KEY = 'neontap_products_v1';
+
+    function saveProducts(){
+      try{
+        const data = state.products.map(p => ({
+          name: p.name,
+          price: Number(p.price || 0)
+        }));
+        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(data));
+      }catch(e){
+        console.warn('No se pudo guardar productos', e);
+      }
+    }
+
+    function loadProducts(){
+      try{
+        const raw = localStorage.getItem(PRODUCTS_KEY);
+        if(!raw) return;
+        const data = JSON.parse(raw);
+        if(!Array.isArray(data)) return;
+        data.forEach((sp, i) => {
+          if(!state.products[i]) return;
+          if(typeof sp.name === 'string') state.products[i].name = sp.name;
+          if(typeof sp.price === 'number') state.products[i].price = sp.price;
+        });
+      }catch(e){
+        console.warn('No se pudo cargar productos', e);
+      }
+    }
 // ===== UI refs =====
     const grid = document.getElementById('grid');
     const totalEl = document.getElementById('total');
@@ -282,6 +332,7 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
     const btnUndo = document.getElementById('btnUndo');
     const btnReset = document.getElementById('btnReset');
     const btnFinalizar = document.getElementById('btnFinalizar');
+    const dayTotalVal = document.getElementById('dayTotalVal');
 
     // ===== Render =====
     function render(){
@@ -294,6 +345,17 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
         if(row === 2 || row === 3) rowClass = 'row-b';
         if(row === 4) rowClass = 'row-c';
         b.className = 'prod ' + rowClass;
+        const isActive = (p.name && String(p.name).trim().length > 0);
+        if(!isActive){
+          b.classList.add('inactive');
+          b.innerHTML = '';
+          // Sin texto: no vende; un toque abre edición para configurar
+          b.addEventListener('click', () => openEdit(p));
+          b.addEventListener('contextmenu', (e) => e.preventDefault());
+          grid.appendChild(b);
+          return;
+        }
+
         b.innerHTML=`<div class=\"qty\">${p.qty}</div><div class=\"name\">${p.name}</div><div class=\"price\">${fmt(p.price)}</div>`;
         const qtyEl = b.querySelector('.qty');
         qtyEl.addEventListener('pointerup', (e) => {
@@ -328,12 +390,13 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
         b.addEventListener('click', registerTap);
         b.addEventListener('contextmenu', (e) => e.preventDefault());
         grid.appendChild(b);
-      });
+});
       state.total = computeTotal();
       totalEl.textContent = fmt(state.total);
       // PAGO editable: si el usuario está escribiendo, no lo pisamos
       if (!isEditingPago) pagoEl.textContent = fmt(state.pago);
       cambioEl.textContent = fmt(Math.max(0, state.pago - state.total));
+      if(dayTotalVal) dayTotalVal.textContent = fmt(Number(state.dayTotal||0));
       updateFinalizeUI();
     }
 
@@ -360,6 +423,7 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
     pagoEl.addEventListener('input', () => {
       state.pago = parseMoney(pagoEl.textContent);
       cambioEl.textContent = fmt(Math.max(0, state.pago - state.total));
+      if(dayTotalVal) dayTotalVal.textContent = fmt(Number(state.dayTotal||0));
       updateFinalizeUI();
     });
 
@@ -411,7 +475,14 @@ document.getElementById('qSave').onclick = () => {
     let editing=null;
     function openEdit(p){ editing=p; eName.value=p.name; ePrice.value=p.price; dlgEdit.showModal(); }
     document.getElementById('eCancel').onclick=()=>dlgEdit.close();
-    document.getElementById('eSave').onclick=()=>{ editing.name=eName.value; editing.price=+ePrice.value||0; dlgEdit.close(); render(); };
+    document.getElementById('eSave').onclick=()=>{ 
+      editing.name = (eName.value || '').trim();
+      editing.price = +ePrice.value || 0;
+      if(!editing.name){ editing.qty = 0; }
+      saveProducts();
+      dlgEdit.close();
+      render();
+    };
 
     // ===== Reset / Undo =====
     const dlgConfirm=document.getElementById('dlgConfirm');
@@ -591,10 +662,12 @@ document.getElementById('dResetDay').onclick = () => {
 
 // ===== Init =====
 
+    loadProducts();
     loadDay();
-    window.addEventListener('beforeunload', saveDay);
+    window.addEventListener('beforeunload', () => { saveProducts(); saveDay(); });
     render();
+    saveProducts();
     saveDay();
-  </script>
+</script>
 </body>
 </html>
