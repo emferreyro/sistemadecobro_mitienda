@@ -12,8 +12,8 @@
       --neon2:#a78bfa;
       --orange:#fb923c;    /* filas 3–4 */
       --orange-border:#fdba74;
-      --blue:#38bdf8;      /* fila 5 */
-      --blue-border:#7dd3fc;
+      --purple:#7c3aed;    /* fila 5 (especial sin brillo) */
+      --purple-border:#a78bfa;
       --ok:#22c55e;
       --warn:#eab308;
       --danger:#ef4444;
@@ -60,9 +60,12 @@
     .row-b .price{color:var(--orange)}
 
     .row-c{
-      background:linear-gradient(180deg, rgba(56,189,248,.22), rgba(2,6,23,.9));
-      border-color:var(--blue-border)
+      background:linear-gradient(180deg, rgba(124,58,237,.35), rgba(2,6,23,.9));
+      border-color:var(--purple-border);
+      box-shadow:none
     }
+    .row-c .price{color:var(
+    .row-c .price{color:var(--blue);font-weight:800}
     .row-c .price{color:var(--blue)}
     .row-c .price{color:var(--blue)}
     .prod:active{transform:scale(.98)}
