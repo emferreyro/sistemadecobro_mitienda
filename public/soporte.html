@@ -8,12 +8,8 @@
     :root{
       --bg:#0b0f14;
       --panel:#111827;
-      --neon:#22d3ee;      /* filas 1–2 */
+      --neon:#22d3ee;
       --neon2:#a78bfa;
-      --orange:#fb923c;    /* filas 3–4 */
-      --orange-border:#fdba74;
-      --purple:#7c3aed;    /* fila 5 (especial sin brillo) */
-      --purple-border:#a78bfa;
       --ok:#22c55e;
       --warn:#eab308;
       --danger:#ef4444;
@@ -24,16 +20,7 @@
     }
     *{box-sizing:border-box;font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif}
     body{margin:0;background:radial-gradient(1200px 600px at 50% -10%, #0f172a, var(--bg));color:var(--text)}
-    .app{
-      max-width:480px;
-      margin:0 auto;
-      min-height:100vh;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      padding:10px;
-      overflow:hidden
-    }
+    .app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;gap:10px;padding:10px}
     .total{
       background:linear-gradient(180deg,#0b1220,#0b1220);
       border:1px solid rgba(34,211,238,.35);
@@ -49,37 +36,17 @@
       display:grid;
       grid-template-columns:repeat(4,1fr);
       gap:10px;
-      /* quitar flex:1 para que no empuje lo de abajo */
     }
     .prod{
+      user-select:none;
+      -webkit-user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      cursor:pointer;
       position:relative;background:var(--btn);border:1px solid rgba(167,139,250,.25);
       border-radius:14px;padding:10px;min-height:70px;box-shadow:0 6px 20px rgba(0,0,0,.25);
       display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px
     }
-    /* Grupos de color por fila */
-    .row-a{
-      background:linear-gradient(180deg, rgba(34,211,238,.18), rgba(2,6,23,.9));
-      border-color:rgba(34,211,238,.55)
-    }
-    .row-a .price{color:var(--neon)}
-    .row-a .price{color:var(--neon)}
-
-    .row-b{
-      background:linear-gradient(180deg, rgba(251,146,60,.22), rgba(2,6,23,.9));
-      border-color:var(--orange-border)
-    }
-    .row-b .price{color:var(--orange)}
-    .row-b .price{color:var(--orange)}
-
-    .row-c{
-      background:linear-gradient(180deg, rgba(124,58,237,.35), rgba(2,6,23,.9));
-      border-color:var(--purple-border);
-      box-shadow:none
-    }
-    .row-c .price{color:var(--neon)}
-    .row-c .price{color:var(--blue);font-weight:800}
-    .row-c .price{color:var(--blue)}
-    .row-c .price{color:var(--blue)}
     .prod:active{transform:scale(.98)}
     .prod .name{font-size:13px;text-align:center}
     .prod .price{font-size:14px;color:var(--neon)}
@@ -94,7 +61,13 @@
       gap:10px;
       margin-top:6px
     }
-    .btn{border-radius:14px;padding:14px;text-align:center;font-weight:700}
+    .btn{
+      user-select:none;
+      -webkit-user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      cursor:pointer;
+border-radius:14px;padding:14px;text-align:center;font-weight:700}
     .btn.ok{background:linear-gradient(180deg,#16a34a,#22c55e);color:#052e16}
     .btn.warn{background:linear-gradient(180deg,#facc15,#eab308);color:#3f2d0b}
     .btn.danger{background:linear-gradient(180deg,#f87171,#ef4444);color:#3b0a0a}
@@ -153,6 +126,7 @@
 
     <div class="footer">
       <div id="btnDay" class="btn secondary">ACUMULADO DEL DÍA</div>
+      <div id="status" style="text-align:center;color:#9ca3af;font-size:12px">Cargando…</div>
     </div>
   </div>
 
@@ -176,7 +150,18 @@
     </div>
   </dialog>
 
-  <script>
+<dialog id="dlgQty">
+  <h3>Editar cantidad</h3>
+  <p style="margin:6px 0 10px;color:#9ca3af">Ingresa la cantidad para este producto.</p>
+  <input id="qValue" type="number" inputmode="numeric" min="0" step="1"
+         style="width:100%;padding:10px;border-radius:12px;border:1px solid #1f2937;background:#111827;color:#e5e7eb;font-size:18px" />
+  <div class="modal-actions" style="margin-top:12px">
+    <button id="qCancel">Cancelar</button>
+    <button id="qSave">Guardar</button>
+  </div>
+</dialog>
+
+<script>
     // ===== Estado =====
     const state = {
       products: Array.from({length:20}, (_,i)=>({id:i,name:`Producto ${i+1}`,price:0,qty:0})),
@@ -199,15 +184,20 @@
     // ===== Render =====
     function render(){
       grid.innerHTML='';
-      state.products.forEach((p,idx)=>{
-        const b=document.createElement('div');
-        // asignar grupo de color por fila
-        const row = Math.floor(idx / 4); // 0-4
-        let rowClass = 'row-a';
-        if(row === 2 || row === 3) rowClass = 'row-b';
-        if(row === 4) rowClass = 'row-c';
-        b.className = 'prod ' + rowClass;
+      state.products.forEach(p=>{
+        const b=document.createElement('div');b.className='prod';
         b.innerHTML=`<div class=\"qty\">${p.qty}</div><div class=\"name\">${p.name}</div><div class=\"price\">${fmt(p.price)}</div>`;
+        const qtyEl = b.querySelector('.qty');
+        qtyEl.addEventListener('pointerup', (e) => {
+          e.stopPropagation();
+          openQty(p);
+        });
+        qtyEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openQty(p);
+        });
+        qtyEl.addEventListener('contextmenu', (e) => e.preventDefault());
+
         // Triple-tap para editar (evita el menú de selección del sistema)
         let tapCount = 0;
         let tapTimer = null;
@@ -240,7 +230,36 @@
       p.qty++; state.total += p.price; state.history.push({p,delta:1}); render();
     }
 
-    // ===== Edit product =====
+    // ===== Edit qty (tap en el numerito) =====
+const dlgQty = document.getElementById('dlgQty');
+const qValue = document.getElementById('qValue');
+let editingQty = null;
+
+function openQty(p){
+  editingQty = p;
+  qValue.value = p.qty;
+  dlgQty.showModal();
+  qValue.focus();
+  qValue.select?.();
+}
+
+function recomputeTotal(){
+  state.total = state.products.reduce((sum, x) => sum + (x.qty * x.price), 0);
+  // Al editar cantidad manualmente, limpiamos historial para no romper UNDO
+  state.history = [];
+}
+
+document.getElementById('qCancel').onclick = () => dlgQty.close();
+document.getElementById('qSave').onclick = () => {
+  const newQty = Math.max(0, Math.floor(Number(qValue.value || 0)));
+  if(editingQty) editingQty.qty = newQty;
+  recomputeTotal();
+  dlgQty.close();
+  render();
+};
+
+// ===== Edit product =====
+
     const dlgEdit = document.getElementById('dlgEdit');
     const eName = document.getElementById('eName');
     const ePrice = document.getElementById('ePrice');
@@ -264,7 +283,11 @@
       render();
     };
 
-    // ===== Init =====
+    const statusEl = document.getElementById('status');
+if(statusEl) statusEl.textContent = 'Listo ✓';
+
+// ===== Init =====
+
     render();
   </script>
 </body>
