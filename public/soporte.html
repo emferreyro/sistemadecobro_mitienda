@@ -147,12 +147,27 @@
       state.products.forEach(p=>{
         const b=document.createElement('div');b.className='prod';
         b.innerHTML=`<div class=\"qty\">${p.qty}</div><div class=\"name\">${p.name}</div><div class=\"price\">${fmt(p.price)}</div>`;
-        let pressTimer;
-        b.addEventListener('mousedown',()=>{
-          pressTimer=setTimeout(()=>openEdit(p),450);
-        });
-        b.addEventListener('mouseup',()=>{ if(pressTimer){ clearTimeout(pressTimer); add(p); }});
-        b.addEventListener('mouseleave',()=>pressTimer&&clearTimeout(pressTimer));
+        // Triple-tap para editar (evita el menú de selección del sistema)
+        let tapCount = 0;
+        let tapTimer = null;
+        const TAP_WINDOW_MS = 450;
+
+        const registerTap = () => {
+          tapCount++;
+          if (tapTimer) clearTimeout(tapTimer);
+          tapTimer = setTimeout(() => {
+            if (tapCount >= 3) {
+              openEdit(p);
+            } else {
+              // 1 o 2 toques = agregar (mantiene rapidez)
+              for (let k = 0; k < tapCount; k++) add(p);
+            }
+            tapCount = 0;
+          }, TAP_WINDOW_MS);
+        };
+
+        b.addEventListener('click', registerTap);
+        b.addEventListener('contextmenu', (e) => e.preventDefault());
         grid.appendChild(b);
       });
       totalEl.textContent = fmt(state.total);
