@@ -24,7 +24,16 @@
     }
     *{box-sizing:border-box;font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif}
     body{margin:0;background:radial-gradient(1200px 600px at 50% -10%, #0f172a, var(--bg));color:var(--text)}
-    .app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;gap:10px;padding:10px}
+    .app{
+      max-width:480px;
+      margin:0 auto;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      padding:10px;
+      overflow:hidden
+    }
     .total{
       background:linear-gradient(180deg,#0b1220,#0b1220);
       border:1px solid rgba(34,211,238,.35);
@@ -37,7 +46,10 @@
     .total .value{font-size:36px;font-weight:800;letter-spacing:.5px}
 
     .grid{
-      display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex:1
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+      /* quitar flex:1 para que no empuje lo de abajo */
     }
     .prod{
       position:relative;background:var(--btn);border:1px solid rgba(167,139,250,.25);
@@ -64,7 +76,7 @@
       border-color:var(--purple-border);
       box-shadow:none
     }
-    .row-c .price{color:var(
+    .row-c .price{color:var(--neon)}
     .row-c .price{color:var(--blue);font-weight:800}
     .row-c .price{color:var(--blue)}
     .row-c .price{color:var(--blue)}
@@ -76,19 +88,34 @@
       color:#e5e7eb;border-radius:999px;padding:2px 8px;font-size:12px
     }
 
-    .actions{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    .actions{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+      margin-top:6px
+    }
     .btn{border-radius:14px;padding:14px;text-align:center;font-weight:700}
     .btn.ok{background:linear-gradient(180deg,#16a34a,#22c55e);color:#052e16}
     .btn.warn{background:linear-gradient(180deg,#facc15,#eab308);color:#3f2d0b}
     .btn.danger{background:linear-gradient(180deg,#f87171,#ef4444);color:#3b0a0a}
     .btn.secondary{background:#020617;border:1px solid rgba(167,139,250,.35)}
 
-    .pay{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .pay{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-top:6px
+    }
     .field{background:#020617;border:1px solid rgba(34,211,238,.35);border-radius:14px;padding:10px}
     .field .label{font-size:12px;color:var(--muted)}
     .field .value{font-size:22px;font-weight:800}
 
-    .footer{display:grid;grid-template-columns:1fr;gap:10px}
+    .footer{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:10px;
+      margin-top:6px
+    }
 
     dialog{border:none;border-radius:16px;background:#020617;color:var(--text);padding:16px}
     dialog::backdrop{background:rgba(0,0,0,.55)}
