@@ -97,6 +97,11 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
     .btn.warn{background:linear-gradient(180deg,#facc15,#eab308);color:#3f2d0b}
     .btn.danger{background:linear-gradient(180deg,#f87171,#ef4444);color:#3b0a0a}
     .btn.secondary{background:#020617;border:1px solid rgba(167,139,250,.35)}
+    .btn.disabled{opacity:.35;filter:saturate(.6);pointer-events:none}
+    .btn.payEditable{cursor:text}
+    .value[contenteditable="true"]{outline:none}
+    .value[contenteditable="true"]:focus{box-shadow:0 0 0 2px rgba(34,211,238,.25) inset;border-radius:10px}
+
 
     .pay{
       display:grid;
@@ -133,15 +138,15 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
 
     <div class="actions">
       <div id="btnReset" class="btn danger">RESET</div>
-      <div id="btnUndo" class="btn ok">COBRAR</div>
-      <div class="btn secondary">&nbsp;</div>
+      <div id="btnUndo" class="btn warn">UNDO</div>
+      <div id="btnFinalizar" class="btn ok disabled">FINALIZAR</div>
       <div class="btn secondary">&nbsp;</div>
     </div>
 
     <div class="pay">
       <div class="field">
         <div class="label">PAGO</div>
-        <div id="pago" class="value">$0.00</div>
+        <div id="pago" class="value payEditable" contenteditable="true" spellcheck="false">$0.00</div>
       </div>
       <div class="field">
         <div class="label">CAMBIO</div>
@@ -186,6 +191,17 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
   </div>
 </dialog>
 
+<dialog id="dlgDay">
+  <h3>Reporte del día</h3>
+  <div id="daySummary" style="color:#9ca3af;font-size:12px;margin-top:6px"></div>
+  <div id="dayList" style="margin-top:10px;max-height:55vh;overflow:auto;border:1px solid #1f2937;border-radius:12px;padding:10px"></div>
+  <div class="modal-actions" style="margin-top:12px;gap:8px;flex-wrap:wrap">
+    <button id="dClose">Cerrar</button>
+    <button id="dPdf">PDF</button>
+    <button id="dResetDay" style="background:#111827;color:#e5e7eb;border:1px solid #1f2937;border-radius:10px;padding:10px 12px">Reiniciar día</button>
+  </div>
+</dialog>
+
 <script>
     // ===== Estado =====
     const state = {
@@ -193,18 +209,79 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
       history: [],
       total: 0,
       pago: 0,
-      dayTotal: 0
+      dayTotal: 0,
+      sales: []
     };
+
+    let isEditingPago = false;
 
     const fmt = v => `$${v.toFixed(2)}`;
 
-    // ===== UI refs =====
+    // Total siempre se calcula desde cantidades x precio (evita desfaces)
+    function computeTotal(){
+      return state.products.reduce((sum, x) => sum + (Number(x.qty||0) * Number(x.price||0)), 0);
+    }
+
+    
+    function canFinalize(){
+      return state.total > 0 && state.pago >= state.total;
+    }
+
+    function updateFinalizeUI(){
+      if(!btnFinalizar) return;
+      if(canFinalize()) btnFinalizar.classList.remove('disabled');
+      else btnFinalizar.classList.add('disabled');
+    }
+
+    // ===== Ventas del día (se guardan en el navegador) =====
+    const DAY_KEY = 'neontap_day_sales_v1';
+
+    function todayKey(){
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const da = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${da}`;
+    }
+
+    function loadDay(){
+      try{
+        const raw = localStorage.getItem(DAY_KEY);
+        if(!raw) return;
+        const data = JSON.parse(raw);
+        if(data.date !== todayKey()){
+          // día nuevo
+          return;
+        }
+        if(Array.isArray(data.sales)) state.sales = data.sales;
+        if(typeof data.dayTotal === 'number') state.dayTotal = data.dayTotal;
+      }catch(e){
+        console.warn('No se pudo cargar ventas del día', e);
+      }
+    }
+
+    function saveDay(){
+      try{
+        const data = { date: todayKey(), dayTotal: Number(state.dayTotal||0), sales: state.sales || [] };
+        localStorage.setItem(DAY_KEY, JSON.stringify(data));
+      }catch(e){
+        console.warn('No se pudo guardar ventas del día', e);
+      }
+    }
+
+    function resetDay(){
+      state.sales = [];
+      state.dayTotal = 0;
+      saveDay();
+    }
+// ===== UI refs =====
     const grid = document.getElementById('grid');
     const totalEl = document.getElementById('total');
     const pagoEl = document.getElementById('pago');
     const cambioEl = document.getElementById('cambio');
     const btnUndo = document.getElementById('btnUndo');
     const btnReset = document.getElementById('btnReset');
+    const btnFinalizar = document.getElementById('btnFinalizar');
 
     // ===== Render =====
     function render(){
@@ -252,13 +329,50 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
         b.addEventListener('contextmenu', (e) => e.preventDefault());
         grid.appendChild(b);
       });
+      state.total = computeTotal();
       totalEl.textContent = fmt(state.total);
-      pagoEl.textContent = fmt(state.pago);
+      // PAGO editable: si el usuario está escribiendo, no lo pisamos
+      if (!isEditingPago) pagoEl.textContent = fmt(state.pago);
       cambioEl.textContent = fmt(Math.max(0, state.pago - state.total));
+      updateFinalizeUI();
     }
 
+    // ===== PAGO editable =====
+    const parseMoney = (txt) => {
+      const cleaned = String(txt || '').replace(/[^0-9.,-]/g,'').replace(',', '.');
+      const v = Number(cleaned);
+      return Number.isFinite(v) ? Math.max(0, v) : 0;
+    };
+
+    pagoEl.addEventListener('focus', () => {
+      isEditingPago = true;
+      // mostrar número "crudo" para editar
+      pagoEl.textContent = (Number(state.pago || 0)).toFixed(2);
+      // mover cursor al final
+      const range = document.createRange();
+      range.selectNodeContents(pagoEl);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    });
+
+    pagoEl.addEventListener('input', () => {
+      state.pago = parseMoney(pagoEl.textContent);
+      cambioEl.textContent = fmt(Math.max(0, state.pago - state.total));
+      updateFinalizeUI();
+    });
+
+    pagoEl.addEventListener('blur', () => {
+      isEditingPago = false;
+      render(); // vuelve a formato $ y refresca
+    });
+
+
     function add(p){
-      p.qty++; state.total += p.price; state.history.push({p,delta:1}); render();
+      p.qty++;
+      state.history.push({p,delta:1});
+      render();
     }
 
     // ===== Edit qty (tap en el numerito) =====
@@ -275,7 +389,7 @@ function openQty(p){
 }
 
 function recomputeTotal(){
-  state.total = state.products.reduce((sum, x) => sum + (x.qty * x.price), 0);
+  state.total = computeTotal();
   // Al editar cantidad manualmente, limpiamos historial para no romper UNDO
   state.history = [];
 }
@@ -301,25 +415,186 @@ document.getElementById('qSave').onclick = () => {
 
     // ===== Reset / Undo =====
     const dlgConfirm=document.getElementById('dlgConfirm');
-    document.getElementById('cNo').onclick=()=>dlgConfirm.close();
-    document.getElementById('cYes').onclick=()=>{ state.products.forEach(p=>p.qty=0); state.total=0; state.history=[]; dlgConfirm.close(); render(); };
-    btnReset.onclick=()=>{ document.getElementById('confirmText').textContent='¿Borrar venta actual?'; dlgConfirm.showModal(); };
-
-    let undoMode=false;
-    btnUndo.onclick=()=>{
-      if(!undoMode){ // cobrar
-        state.dayTotal += state.total; state.products.forEach(p=>p.qty=0); state.total=0; state.history=[]; undoMode=true; btnUndo.classList.remove('ok'); btnUndo.classList.add('warn'); btnUndo.textContent='UNDO'; render(); return;
-      }
-      const last=state.history.pop(); if(last){ last.p.qty=Math.max(0,last.p.qty-1); state.total=Math.max(0,state.total-last.p.price); }
-      render();
+    let confirmAction = null;
+    document.getElementById('cNo').onclick = () => { confirmAction = null; dlgConfirm.close(); };
+    document.getElementById('cYes').onclick = () => { const fn = confirmAction; confirmAction = null; dlgConfirm.close(); fn && fn(); };
+    function askConfirm(text, action){
+      document.getElementById('confirmText').textContent = text;
+      confirmAction = action;
+      dlgConfirm.showModal();
+    }
+    btnReset.onclick = () => {
+      askConfirm('¿Borrar venta actual?', () => {
+        state.products.forEach(p=>p.qty=0);
+        state.total=0;
+        state.pago=0;
+        state.history=[];
+        render();
+      });
     };
+
+    // FINALIZAR: solo se activa si PAGO >= TOTAL
+    if (btnFinalizar) {
+      btnFinalizar.onclick = () => {
+        if (!canFinalize()) return;
+        const change = Math.max(0, state.pago - state.total);
+        askConfirm(`¿Finalizar venta?\nCambio: ${fmt(change)}`, () => {
+          // Registrar venta
+          const items = state.products
+            .filter(p => Number(p.qty||0) > 0)
+            .map(p => ({
+              id: p.id,
+              name: p.name,
+              qty: Number(p.qty||0),
+              price: Number(p.price||0),
+              line: Number(p.qty||0) * Number(p.price||0)
+            }));
+          const sale = {
+            ts: Date.now(),
+            total: Number(state.total||0),
+            pago: Number(state.pago||0),
+            cambio: Number(change||0),
+            items
+          };
+          state.sales = state.sales || [];
+          state.sales.push(sale);
+
+          state.dayTotal += state.total;
+          saveDay();
+
+          state.products.forEach(p=>p.qty=0);
+          state.total=0;
+          state.pago=0;
+          state.history=[];
+          render();
+        });
+      };
+    }
+
+    // UNDO (amarillo): deshacer 1 acción a la vez
+btnUndo.onclick = () => {
+  const last = state.history.pop();
+  if (!last) return;
+  last.p.qty = Math.max(0, last.p.qty - 1);
+  render();
+};
 
     const statusEl = document.getElementById('status');
 if(statusEl) statusEl.textContent = 'Listo ✓';
 
+// ===== Reporte del día (ACUMULADO DEL DÍA) =====
+const btnDay = document.getElementById('btnDay');
+const dlgDay = document.getElementById('dlgDay');
+const daySummary = document.getElementById('daySummary');
+const dayList = document.getElementById('dayList');
+
+function money(v){ return fmt(Number(v||0)); }
+function formatTime(ts){
+  try{
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }catch{ return ''; }
+}
+
+function buildReportHTML(){
+  const sales = state.sales || [];
+  const rows = sales.map((s, idx) => {
+    const items = (s.items||[]).map(it => `
+      <tr>
+        <td style="padding:4px 0">${it.qty} x ${it.name}</td>
+        <td style="padding:4px 0;text-align:right">${money(it.line)}</td>
+      </tr>
+    `).join('');
+    return `
+      <div style="margin:14px 0 10px">
+        <div style="display:flex;justify-content:space-between;font-weight:700">
+          <div>#${idx+1} • ${formatTime(s.ts)}</div>
+          <div>${money(s.total)}</div>
+        </div>
+        <div style="color:#555;font-size:12px;margin-top:4px">Pago: ${money(s.pago)} • Cambio: ${money(s.cambio)}</div>
+        <table style="width:100%;margin-top:8px;border-collapse:collapse">${items}</table>
+        <div style="border-top:1px dashed #aaa;margin-top:10px"></div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+  <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+    <h2 style="margin:0 0 6px">Reporte del día</h2>
+    <div style="font-size:12px;color:#333;margin-bottom:10px">Fecha: ${todayKey()}</div>
+    <div style="font-size:13px;margin-bottom:12px">Ventas: <b>${sales.length}</b> • Total vendido: <b>${money(state.dayTotal)}</b></div>
+    ${sales.length ? rows : '<div style="color:#555">Aún no hay ventas finalizadas hoy.</div>'}
+  </div>`;
+}
+
+function openDayReport(){
+  const sales = state.sales || [];
+  daySummary.textContent = `Ventas: ${sales.length}  •  Total vendido: ${money(state.dayTotal)}`;
+  if(!sales.length){
+    dayList.innerHTML = '<div style="color:#9ca3af">Aún no hay ventas finalizadas hoy.</div>';
+  }else{
+    dayList.innerHTML = sales.map((s, idx) => {
+      const items = (s.items||[]).map(it => `
+        <div style="display:flex;justify-content:space-between;gap:10px;color:#e5e7eb;font-size:12px;margin:2px 0">
+          <div>${it.qty} x ${it.name}</div>
+          <div>${money(it.line)}</div>
+        </div>
+      `).join('');
+      return `
+        <div style="padding:10px;border:1px solid #1f2937;border-radius:12px;margin-bottom:10px;background:#0b1220">
+          <div style="display:flex;justify-content:space-between;gap:10px">
+            <div style="font-weight:800">#${idx+1} • ${formatTime(s.ts)}</div>
+            <div style="font-weight:800">${money(s.total)}</div>
+          </div>
+          <div style="color:#9ca3af;font-size:12px;margin-top:4px">Pago: ${money(s.pago)} • Cambio: ${money(s.cambio)}</div>
+          <div style="margin-top:8px">${items}</div>
+        </div>
+      `;
+    }).join('');
+  }
+  dlgDay.showModal();
+}
+
+if(btnDay){
+  btnDay.onclick = () => openDayReport();
+}
+
+document.getElementById('dClose').onclick = () => dlgDay.close();
+
+document.getElementById('dPdf').onclick = () => {
+  // PDF vía impresión del navegador (Guardar como PDF)
+  const w = window.open('', '_blank');
+  const html = buildReportHTML();
+  w.document.open();
+  w.document.write(
+    `<!doctype html><html><head><meta charset="utf-8">
+    <title>Reporte del día</title>
+    <style>
+      @page{ margin: 14mm; }
+      body{ background:#fff; color:#000; }
+    </style>
+  </head><body>${html}` +
+    '<scr' + 'ipt>window.onload=()=>{ window.print(); };</scr' + 'ipt>' +
+    `</body></html>`
+  );
+  w.document.close();
+};
+
+document.getElementById('dResetDay').onclick = () => {
+  askConfirm('¿Reiniciar acumulado del día y borrar reporte?', () => {
+    resetDay();
+    dlgDay.close();
+    render();
+  });
+};
+
+
 // ===== Init =====
 
+    loadDay();
+    window.addEventListener('beforeunload', saveDay);
     render();
+    saveDay();
   </script>
 </body>
 </html>
