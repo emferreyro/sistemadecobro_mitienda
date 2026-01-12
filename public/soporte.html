@@ -10,7 +10,12 @@
       --panel:#111827;
       --neon:#22d3ee;
       --neon2:#a78bfa;
-      --ok:#22c55e;
+      
+      --orange:#fb923c;    /* filas 3–4 */
+      --orange-border:#fdba74;
+      --purple:#7c3aed;    /* fila 5 (especial) */
+      --purple-border:#a78bfa;
+--ok:#22c55e;
       --warn:#eab308;
       --danger:#ef4444;
       --btn:#1f2937;
@@ -50,6 +55,26 @@
     .prod:active{transform:scale(.98)}
     .prod .name{font-size:13px;text-align:center}
     .prod .price{font-size:14px;color:var(--neon)}
+
+    /* Grupos de color por fila */
+    .row-a{
+      background:linear-gradient(180deg, rgba(34,211,238,.18), rgba(2,6,23,.9));
+      border-color:rgba(34,211,238,.55)
+    }
+    .row-a .price{color:var(--neon)}
+
+    .row-b{
+      background:linear-gradient(180deg, rgba(251,146,60,.22), rgba(2,6,23,.9));
+      border-color:var(--orange-border)
+    }
+    .row-b .price{color:var(--orange)}
+
+    .row-c{
+      background:linear-gradient(180deg, rgba(124,58,237,.35), rgba(2,6,23,.9));
+      border-color:var(--purple-border);
+      box-shadow:none
+    }
+    .row-c .price{color:var(--neon)}
     .qty{
       position:absolute;top:6px;right:6px;background:#020617;border:1px solid rgba(34,211,238,.45);
       color:#e5e7eb;border-radius:999px;padding:2px 8px;font-size:12px
@@ -184,8 +209,14 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
     // ===== Render =====
     function render(){
       grid.innerHTML='';
-      state.products.forEach(p=>{
-        const b=document.createElement('div');b.className='prod';
+      state.products.forEach((p,idx)=>{
+        const b=document.createElement('div');
+        // asignar grupo de color por fila
+        const row = Math.floor(idx / 4); // 0-4
+        let rowClass = 'row-a';
+        if(row === 2 || row === 3) rowClass = 'row-b';
+        if(row === 4) rowClass = 'row-c';
+        b.className = 'prod ' + rowClass;
         b.innerHTML=`<div class=\"qty\">${p.qty}</div><div class=\"name\">${p.name}</div><div class=\"price\">${fmt(p.price)}</div>`;
         const qtyEl = b.querySelector('.qty');
         qtyEl.addEventListener('pointerup', (e) => {
