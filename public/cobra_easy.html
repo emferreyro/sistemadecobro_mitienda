@@ -139,7 +139,47 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
   </style>
 </head>
 <body>
-  <div class="app">
+
+  <!-- ===== Acceso Cobra-easy (Teléfono + PIN) ===== -->
+  <div id="authOverlay" style="position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:18px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+    <div style="max-width:520px;width:100%;background:#020617;border:1px solid rgba(34,211,238,.35);border-radius:16px;padding:18px;box-shadow:0 0 18px rgba(34,211,238,.22)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="font-size:20px;font-weight:900;color:#e5e7eb">🐍 cobra-easy</div>
+        <div style="margin-left:auto;color:#9ca3af;font-size:12px">Acceso</div>
+      </div>
+
+      <div id="authMsg" style="color:#cbd5e1;line-height:1.35;margin-bottom:12px">
+        Ingresa para comenzar tu <b>prueba de 15 días</b> o continuar con tu plan.
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr;gap:10px">
+        <div style="display:grid;gap:6px">
+          <div style="font-size:12px;color:#9ca3af">Teléfono</div>
+          <input id="authPhone" inputmode="tel" autocomplete="tel" placeholder="Ej. 5522334455"
+                 style="width:100%;padding:12px;border-radius:12px;border:1px solid #1f2937;background:#0b1220;color:#e5e7eb;font-size:16px" />
+        </div>
+        <div style="display:grid;gap:6px">
+          <div style="font-size:12px;color:#9ca3af">PIN</div>
+          <input id="authPin" inputmode="numeric" autocomplete="one-time-code" placeholder="4 a 6 dígitos" type="password"
+                 style="width:100%;padding:12px;border-radius:12px;border:1px solid #1f2937;background:#0b1220;color:#e5e7eb;font-size:16px" />
+        </div>
+        <button id="authBtn" style="width:100%;padding:12px 14px;border-radius:12px;border:0;background:#22c55e;color:#052e16;font-weight:900;font-size:15px;cursor:pointer">
+          Entrar / Iniciar prueba
+        </button>
+
+        <button id="authPlans" style="width:100%;padding:10px 14px;border-radius:12px;border:1px solid rgba(167,139,250,.35);background:#020617;color:#e5e7eb;font-weight:800;font-size:14px;cursor:pointer">
+          Ver planes / Descargar PWA
+        </button>
+
+        <div id="authHint" style="color:#94a3b8;font-size:12px;line-height:1.35">
+          • La prueba dura <b>15 días</b> con todas las funciones.<br>
+          • Si tu prueba termina, la app se bloquea hasta renovar.
+        </div>
+      </div>
+    </div>
+  </div>
+
+<div class="app">
     <div class="total">
       <div class="label">TOTAL</div>
       <div id="total" class="value">$0.00</div>
@@ -215,6 +255,177 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
     <button id="dResetDay" style="background:#111827;color:#e5e7eb;border:1px solid #1f2937;border-radius:10px;padding:10px 12px">Reiniciar día</button>
   </div>
 </dialog>
+
+
+<script>
+/* ===== COBRA-EASY: Control de acceso (Teléfono + PIN) =====
+   Backend (Vercel):
+   - POST /api/cobra/auth/start_or_login  { phone, pin } -> { ok, token, sessExp, expired, activeUntil, ... }
+   - GET  /api/cobra/auth/status          (Authorization: Bearer <token>) -> { ok, expired, activeUntil, ... }
+*/
+(function(){
+  const OVER = document.getElementById('authOverlay');
+  const MSG  = document.getElementById('authMsg');
+  const INP_PHONE = document.getElementById('authPhone');
+  const INP_PIN   = document.getElementById('authPin');
+  const BTN  = document.getElementById('authBtn');
+  const BTN_PLANS = document.getElementById('authPlans');
+
+  const API_LOGIN  = '/api/cobra/auth/start_or_login';
+  const API_STATUS = '/api/cobra/auth/status';
+
+  const PLANS_URL = '/cobra/planes.html';
+
+  const LS_TOKEN = 'cobra_auth_token_v1';
+  const LS_CACHE = 'cobra_auth_cache_v1';
+
+  const now = () => Date.now();
+
+  function normPhone(v){
+    return String(v||'').replace(/\D/g,'');
+  }
+
+  function showOverlay(text){
+    if(text) MSG.innerHTML = text;
+    if(OVER) OVER.style.display = 'flex';
+  }
+  function hideOverlay(){
+    if(OVER) OVER.style.display = 'none';
+  }
+
+  function saveAuth(token, payload){
+    try{
+      localStorage.setItem(LS_TOKEN, token);
+      const cache = {
+        phone: payload.phone || null,
+        activeUntil: payload.activeUntil || null,
+        sessExp: payload.sessExp || null,
+        ts: new Date().toISOString()
+      };
+      localStorage.setItem(LS_CACHE, JSON.stringify(cache));
+    }catch(e){}
+  }
+
+  function loadCache(){
+    try{
+      const raw = localStorage.getItem(LS_CACHE);
+      if(!raw) return null;
+      return JSON.parse(raw);
+    }catch(e){ return null; }
+  }
+
+  function isCacheValid(cache){
+    try{
+      if(!cache) return false;
+      const au = cache.activeUntil ? Date.parse(cache.activeUntil) : 0;
+      const se = cache.sessExp ? Date.parse(cache.sessExp) : 0;
+      const t = now();
+      return (au && t < au) && (se && t < se);
+    }catch(e){ return false; }
+  }
+
+  async function statusOnline(token){
+    const r = await fetch(API_STATUS, {
+      method:'GET',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.error || 'status failed');
+    return data;
+  }
+
+  async function bootGate(){
+    const token = localStorage.getItem(LS_TOKEN);
+    const cache = loadCache();
+
+    if(!token){
+      showOverlay();
+      return false;
+    }
+
+    try{
+      const data = await statusOnline(token);
+
+      if(data.expired){
+        showOverlay(`Tu acceso expiró.<br><br>
+        Si esta app te fue funcional, puedes descargarla e instalarla (incluye modo offline) y elegir un plan.`);
+        return false;
+      }
+
+      saveAuth(token, {
+        phone: data.phone,
+        activeUntil: data.activeUntil,
+        sessExp: data.sessExp || (cache && cache.sessExp) || null
+      });
+
+      hideOverlay();
+      return true;
+
+    }catch(e){
+      if(isCacheValid(cache)){
+        hideOverlay();
+        return true;
+      }
+      showOverlay('No se pudo validar tu acceso (sin conexión).<br><br>Conéctate a internet para continuar.');
+      return false;
+    }
+  }
+
+  if(BTN_PLANS){
+    BTN_PLANS.addEventListener('click', () => {
+      window.location.href = PLANS_URL;
+    });
+  }
+
+  if(BTN){
+    BTN.addEventListener('click', async () => {
+      const phone = normPhone(INP_PHONE.value);
+      const pin = String(INP_PIN.value || '').trim();
+
+      if(phone.length < 10){
+        showOverlay('Escribe un teléfono válido (10 dígitos).');
+        return;
+      }
+      if(pin.length < 4){
+        showOverlay('Escribe un PIN válido (mínimo 4 dígitos).');
+        return;
+      }
+
+      BTN.disabled = true;
+      BTN.textContent = 'Validando...';
+
+      try{
+        const r = await fetch(API_LOGIN, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ phone, pin })
+        });
+        const data = await r.json();
+        if(!data.ok) throw new Error(data.error || 'No se pudo iniciar sesión');
+
+        if(data.expired){
+          saveAuth(data.token, data);
+          showOverlay(`Tu prueba de 15 días terminó.<br><br>
+          Si esta app te fue funcional, puedes descargarla e instalarla (incluye modo offline) y elegir un plan.`);
+          return;
+        }
+
+        saveAuth(data.token, data);
+        hideOverlay();
+        location.reload();
+
+      }catch(e){
+        showOverlay('No se pudo validar. Revisa teléfono/PIN o tu conexión.');
+      }finally{
+        BTN.disabled = false;
+        BTN.textContent = 'Entrar / Iniciar prueba';
+      }
+    });
+  }
+
+  window.__cobraAuthReady = bootGate();
+})();
+</script>
 
 <script>
     // ===== Estado =====
@@ -678,12 +889,15 @@ document.getElementById('dResetDay').onclick = () => {
 
 // ===== Init =====
 
-    loadProducts();
-    loadDay();
-    window.addEventListener('beforeunload', () => { saveProducts(); saveDay(); });
-    render();
-    saveProducts();
-    saveDay();
+    (window.__cobraAuthReady || Promise.resolve(true)).then((ok) => {
+      if(!ok) return;
+      loadProducts();
+      loadDay();
+      window.addEventListener('beforeunload', () => { saveProducts(); saveDay(); });
+      render();
+      saveProducts();
+      saveDay();
+    });
 </script>
 </body>
 </html>
