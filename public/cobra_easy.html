@@ -451,7 +451,7 @@ function openQty(p){
   qValue.value = p.qty;
   dlgQty.showModal();
   qValue.focus();
-  qValue.select?.();
+  if (qValue && typeof qValue.select === 'function') qValue.select();
 }
 
 function recomputeTotal(){
@@ -566,7 +566,7 @@ function formatTime(ts){
   try{
     const d = new Date(ts);
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  }catch{ return ''; }
+  }catch(e){ return ''; }
 }
 
 function buildReportHTML(){
@@ -691,7 +691,7 @@ document.getElementById('dResetDay').onclick = () => {
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js")
+      navigator.serviceWorker.register("/sw.js?v=2")
         .catch(err => console.error("SW error:", err));
     });
   }
