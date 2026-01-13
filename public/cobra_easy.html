@@ -270,9 +270,32 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
   const INP_PIN   = document.getElementById('authPin');
   const BTN  = document.getElementById('authBtn');
   const BTN_PLANS = document.getElementById('authPlans');
+  const API_ENDPOINTS = {
+    login:  ['/api/cobra/auth/start_or_login', '/api/cobra/auth/start_or_login.js'],
+    status: ['/api/cobra/auth/status',        '/api/cobra/auth/status.js']
+  };
 
-  const API_LOGIN  = '/api/cobra/auth/start_or_login';
-  const API_STATUS = '/api/cobra/auth/status';
+  async function fetchJsonWithFallback(urls, options){
+    let lastErr = null;
+    for(const url of urls){
+      try{
+        const r = await fetch(url, options);
+        const ct = (r.headers.get('content-type') || '').toLowerCase();
+        const isJson = ct.includes('application/json') || ct.includes('application/problem+json');
+        const payload = isJson ? await r.json() : { ok:false, error:`HTTP ${r.status}` };
+        if(!r.ok && (!payload || payload.ok !== true)){
+          // 4xx/5xx -> try next endpoint
+          lastErr = new Error(payload?.error || `HTTP ${r.status}`);
+          continue;
+        }
+        return payload;
+      }catch(e){
+        lastErr = e;
+        continue;
+      }
+    }
+    throw lastErr || new Error('No se pudo conectar.');
+  }
 
   const PLANS_URL = '/cobra/planes.html';
 
@@ -325,11 +348,10 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
   }
 
   async function statusOnline(token){
-    const r = await fetch(API_STATUS, {
+    const data = await fetchJsonWithFallback(API_ENDPOINTS.status, {
       method:'GET',
       headers: { 'Authorization': 'Bearer ' + token }
     });
-    const data = await r.json();
     if(!data.ok) throw new Error(data.error || 'status failed');
     return data;
   }
@@ -395,12 +417,11 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
       BTN.textContent = 'Validando...';
 
       try{
-        const r = await fetch(API_LOGIN, {
+        const data = await fetchJsonWithFallback(API_ENDPOINTS.login, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ phone, pin })
         });
-        const data = await r.json();
         if(!data.ok) throw new Error(data.error || 'No se pudo iniciar sesión');
 
         if(data.expired){
