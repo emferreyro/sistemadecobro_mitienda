@@ -137,6 +137,8 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
     .knum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
     .knum button{padding:12px;border-radius:12px;background:#111827;color:#e5e7eb;border:1px solid #1f2937}
   </style>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#22d3ee">
 </head>
 <body>
   <div class="app">
@@ -650,7 +652,9 @@ document.getElementById('dPdf').onclick = async () => {
         body{ padding:0; }
       }
     </style>
-  </head><body>
+    <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#22d3ee">
+</head><body>
     <div class="top">
       <div class="btnPrint" onclick="window.print()">Imprimir / Guardar PDF</div>
       <div class="hint">
@@ -659,7 +663,17 @@ document.getElementById('dPdf').onclick = async () => {
       </div>
     </div>
     ${reportInner}
-  </body></html>`;
+  
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js")
+        .catch(err => console.error("SW error:", err));
+    });
+  }
+</script>
+
+</body></html>`;
 
   const blob = new Blob([doc], {type:'text/html;charset=utf-8'});
   const url = URL.createObjectURL(blob);
@@ -685,5 +699,15 @@ document.getElementById('dResetDay').onclick = () => {
     saveProducts();
     saveDay();
 </script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js")
+        .catch(err => console.error("SW error:", err));
+    });
+  }
+</script>
+
 </body>
 </html>
