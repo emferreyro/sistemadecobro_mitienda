@@ -139,6 +139,8 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
   </style>
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#22d3ee">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#22d3ee">
 </head>
 <body>
   <div class="app">
@@ -699,6 +701,16 @@ document.getElementById('dResetDay').onclick = () => {
     saveProducts();
     saveDay();
 </script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js")
+        .catch(err => console.error("SW error:", err));
+    });
+  }
+</script>
+
 
 <script>
   if ("serviceWorker" in navigator) {
