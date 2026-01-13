@@ -172,6 +172,7 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
 
     <div class="footer">
       <div id="btnDay" class="btn secondary">ACUMULADO DEL DÍA</div>
+      <div id="btnInstall" class="btn secondary" style="display:none">INSTALAR APP</div>
       <div id="status" style="text-align:center;color:#9ca3af;font-size:12px">Cargando…</div>
     </div>
   </div>
@@ -214,6 +215,8 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
   <div class="modal-actions" style="margin-top:12px;gap:8px;flex-wrap:wrap">
     <button id="dClose">Cerrar</button>
     <button id="dPdf">PDF</button>
+    <button id="dSave">Guardar</button>
+    <button id="dShare">Compartir</button>
     <button id="dResetDay" style="background:#111827;color:#e5e7eb;border:1px solid #1f2937;border-radius:10px;padding:10px 12px">Reiniciar día</button>
   </div>
 </dialog>
@@ -555,6 +558,35 @@ btnUndo.onclick = () => {
     const statusEl = document.getElementById('status');
 if(statusEl) statusEl.textContent = 'Listo ✓';
 
+// ===== Instalación PWA (no se puede "forzar", pero sí mostrar botón cuando el navegador lo permite) =====
+let deferredInstallPrompt = null;
+const btnInstall = document.getElementById('btnInstall');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Evita que el navegador muestre su mini-infobar; usaremos nuestro botón.
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if (btnInstall) btnInstall.style.display = 'block';
+});
+
+if (btnInstall) {
+  btnInstall.onclick = async () => {
+    try{
+      if(!deferredInstallPrompt){
+        alert('Instalación no disponible en este navegador.\nUsa el menú del navegador: "Agregar a pantalla principal" o "Instalar app".');
+        return;
+      }
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      btnInstall.style.display = 'none';
+    }catch(e){
+      console.warn('Install error', e);
+    }
+  };
+}
+
+
 // ===== Reporte del día (ACUMULADO DEL DÍA) =====
 const btnDay = document.getElementById('btnDay');
 const dlgDay = document.getElementById('dlgDay');
@@ -690,6 +722,62 @@ document.getElementById('dPdf').onclick = async () => {
 
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 };
+
+// ===== Guardar / Compartir reporte (más compatible que PDF en algunos Huawei/PWA) =====
+function buildReportDoc(){
+  const reportInner = buildReportHTML();
+  return `<!doctype html><html><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reporte del día</title>
+    <style>
+      @page{ margin: 14mm; }
+      body{ background:#fff; color:#000; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; padding:16px; }
+      h2{ margin:0 0 6px; }
+    </style>
+  </head><body>${reportInner}</body></html>`;
+}
+
+function downloadReportHTML(){
+  const doc = buildReportDoc();
+  const blob = new Blob([doc], {type:'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fname = `reporte_${todayKey()}.html`;
+  a.href = url;
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+async function shareReport(){
+  const doc = buildReportDoc();
+  const blob = new Blob([doc], {type:'text/html;charset=utf-8'});
+  const fname = `reporte_${todayKey()}.html`;
+  try{
+    // Web Share (Android Chrome suele soportar). Algunos Huawei no.
+    if (navigator.share && navigator.canShare) {
+      const file = new File([blob], fname, {type:'text/html'});
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ title: 'Reporte del día', text: `Reporte ${todayKey()}`, files: [file] });
+        return;
+      }
+    }
+    // Si no se puede compartir archivos, al menos descarga.
+    downloadReportHTML();
+  }catch(e){
+    console.warn('Share error', e);
+    downloadReportHTML();
+  }
+}
+
+const dSave = document.getElementById('dSave');
+if(dSave) dSave.onclick = () => downloadReportHTML();
+
+const dShare = document.getElementById('dShare');
+if(dShare) dShare.onclick = () => shareReport();
+
 
 document.getElementById('dResetDay').onclick = () => {
   askConfirm('¿Reiniciar acumulado del día y borrar reporte?', () => {
