@@ -635,8 +635,7 @@ if(btnDay){
 document.getElementById('dClose').onclick = () => dlgDay.close();
 
 document.getElementById('dPdf').onclick = async () => {
-  // En celular, window.print() automático puede ser bloqueado o abrir "about:blank".
-  // Abrimos el reporte en una nueva pestaña (URL tipo blob:) con un botón grande para imprimir/guardar.
+  // Genera el reporte como HTML y abre/imprime de la forma más compatible (PWA/Android).
   const reportInner = buildReportHTML();
   const doc = `<!doctype html><html><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -652,20 +651,43 @@ document.getElementById('dPdf').onclick = async () => {
         body{ padding:0; }
       }
     </style>
-</head><body>
+  </head><body>
     <div class="top">
       <div class="btnPrint" onclick="window.print()">Imprimir / Guardar PDF</div>
       <div class="hint">
-        • En Android/iPhone: al imprimir podrás <b>Guardar en Archivos/Drive</b> o <b>Compartir</b> (WhatsApp, correo, etc.).<br>
+        • En Android/iPhone: al imprimir podrás <b>Guardar en Archivos/Drive</b> o <b>Compartir</b>.<br>
         • Si no aparece impresión, usa el menú del navegador: <b>Compartir</b> / <b>Imprimir</b>.
       </div>
     </div>
     ${reportInner}
-</body></html>`;
+  </body></html>`;
 
   const blob = new Blob([doc], {type:'text/html;charset=utf-8'});
   const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+
+  // 1) Intento abrir pestaña nueva (funciona en muchos navegadores)
+  let opened = null;
+  try { opened = window.open(url, '_blank'); } catch(e) { opened = null; }
+
+  // 2) Si el navegador/PWA bloquea window.open, intentamos con <a target=_blank>
+  if(!opened){
+    try{
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }catch(e){}
+  }
+
+  // 3) Último recurso (PWA standalone): navegar en la misma ventana al reporte
+  // (esto casi siempre funciona cuando el popup está bloqueado)
+  if(!opened){
+    setTimeout(() => { try{ window.location.href = url; }catch(e){} }, 50);
+  }
+
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 };
 
