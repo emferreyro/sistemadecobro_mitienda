@@ -139,8 +139,6 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
   </style>
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#22d3ee">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <meta name="theme-color" content="#22d3ee">
 </head>
 <body>
   <div class="app">
@@ -654,8 +652,6 @@ document.getElementById('dPdf').onclick = async () => {
         body{ padding:0; }
       }
     </style>
-    <link rel="manifest" href="/manifest.webmanifest">
-  <meta name="theme-color" content="#22d3ee">
 </head><body>
     <div class="top">
       <div class="btnPrint" onclick="window.print()">Imprimir / Guardar PDF</div>
@@ -665,16 +661,6 @@ document.getElementById('dPdf').onclick = async () => {
       </div>
     </div>
     ${reportInner}
-  
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js")
-        .catch(err => console.error("SW error:", err));
-    });
-  }
-</script>
-
 </body></html>`;
 
   const blob = new Blob([doc], {type:'text/html;charset=utf-8'});
@@ -710,16 +696,5 @@ document.getElementById('dResetDay').onclick = () => {
     });
   }
 </script>
-
-
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js")
-        .catch(err => console.error("SW error:", err));
-    });
-  }
-</script>
-
 </body>
 </html>
