@@ -436,10 +436,8 @@ body.neon .low-stock{
       <button id="btnGenCodigo" class="btn btn-outline" title="Generador de códigos">🏷️ Códigos</button>
       <button id="btnAcerca" class="btn btn-outline" title="Acerca de">ℹ️ Acerca de</button>
             <button id="btnVideo" class="btn btn-outline" title="Video">🎬 Video</button>
-          <button id="btnCobraEasy" class="btn btn-outline" title="cobra-easy">
-            🐍 cobra-easy
-          </button>
-          <button id="btnVersionOffline" class="btn btn-outline" title="Versión sin internet">💾 V. offline</button>
+      <button id="btnCopperEasy" class="btn btn-outline" title="Ventas rápidas" type="button">🐍 cobra-easy</button>
+      <button id="btnVersionOffline" class="btn btn-outline" title="Versión sin internet">💾 V. offline</button>
     </div>
   </div>
 </header>
@@ -731,8 +729,8 @@ const btnAccesorios = document.getElementById('btnAccesorios');
 const btnAcerca = document.getElementById('btnAcerca');
 
 
-const btnVideo = document.getElementById('btnVideo');const btnCobraEasy = document.getElementById('btnCobraEasy');
-/* UTIL */
+const btnVideo = document.getElementById('btnVideo');
+const btnCopperEasy = document.getElementById('btnCopperEasy');/* UTIL */
 function formatMXN(n){ return '$' + Number(n).toFixed(2); }
 function escapeHtml(str){ if(!str) return ''; return str.replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
@@ -1946,20 +1944,6 @@ btnVideo && btnVideo.addEventListener('click', ()=>{
   window.open('video.html', 'mitiendaVideo', features);
 });
 
-
-if(btnCobraEasy){
-  btnCobraEasy.addEventListener('click', ()=>{
-    // Abre cobra-easy en ventana flotante (tamaño tipo calculadora)
-    const w = 420;
-    const h = 820;
-    const left = Math.max(0, Math.floor((screen.width - w) / 2));
-    const top  = Math.max(0, Math.floor((screen.height - h) / 2));
-    const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`;
-    const url = 'cobra/cobra_easy.html';
-    const win = window.open(url, 'cobraEasy', features);
-    if(win && win.focus) win.focus();
-  });
-}
 btnAcerca && btnAcerca.addEventListener('click', ()=>{
   // Abrir "Acerca de" en una ventana flotante centrada
   const w = 980, h = 720;
@@ -1995,3 +1979,84 @@ btnToggleTheme.addEventListener('click', ()=>{
 <script src="js/acceso.js"></script>
 </body>
 </html>
+
+
+
+
+<script>
+(function(){
+  const btnCopperEasy = document.getElementById('btnCopperEasy');
+  if(!btnCopperEasy) return;
+
+  btnCopperEasy.addEventListener('click', () => {
+    const url = 'cobra_easy.html';
+
+    const w = 430;  // ancho tipo calculadora
+    const h = 820;  // alto tipo calculadora
+
+    // Centrado basado en el área disponible (mejor en setups con barra de tareas / múltiples monitores)
+    const availLeft = (typeof screen.availLeft === 'number') ? screen.availLeft : 0;
+    const availTop  = (typeof screen.availTop  === 'number') ? screen.availTop  : 0;
+    const availW    = screen.availWidth  || screen.width;
+    const availH    = screen.availHeight || screen.height;
+
+    const left = Math.floor(availLeft + (availW - w) / 2);
+    const top  = Math.floor(availTop  + (availH - h) / 2);
+
+    // OJO: si reusamos el mismo nombre, el navegador puede conservar la última posición.
+    // Por eso abrimos con un nombre único por sesión.
+    const name = 'cobra_easy_' + Date.now();
+    const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+
+    const win = window.open(url, name, features);
+
+    if(!win){
+      window.location.href = url;
+      return;
+    }
+
+    // Forzar posición/tamaño después de abrir (algunos navegadores ignoran left/top del features)
+    try{
+      win.resizeTo(w, h);
+      win.moveTo(left, top);
+      win.focus();
+    }catch(e){}
+  });
+})();
+</script>
+
+
+<script>
+(function(){
+  const btnCopperEasy = document.getElementById('btnCopperEasy');
+  if(!btnCopperEasy) return;
+
+  btnCopperEasy.addEventListener('click', () => {
+    const url = 'cobra_easy.html';
+
+    const w = 430;  // ancho tipo calculadora
+    const h = 820;  // alto tipo calculadora
+
+    // En vez de centrar (que algunos navegadores ignoran o acomodan raro),
+    // abrimos con un offset fijo desde la esquina superior-izquierda del monitor actual.
+    const availLeft = (typeof screen.availLeft === 'number') ? screen.availLeft : 0;
+    const availTop  = (typeof screen.availTop  === 'number') ? screen.availTop  : 0;
+
+    const left = Math.floor(availLeft + 30);
+    const top  = Math.floor(availTop + 30);
+
+    // Nombre único para evitar que el navegador recuerde posición anterior
+    const name = 'cobra_easy_' + Date.now();
+    const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+
+    const win = window.open(url, name, features);
+
+    if(!win){
+      // Si bloquea popups, abre en pestaña
+      window.open(url, '_blank');
+      return;
+    }
+    try { win.focus(); } catch(e){}
+  });
+})();
+</script>
