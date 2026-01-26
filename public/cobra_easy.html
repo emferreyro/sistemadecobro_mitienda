@@ -570,6 +570,52 @@ btnUndo.onclick = () => {
     const statusEl = document.getElementById('status');
 if(statusEl) statusEl.textContent = 'Listo ✓';
 
+
+// ===== Instalación PWA (Android/Chrome/Edge) =====
+let deferredInstallPrompt = null;
+const btnInstall = document.getElementById('btnInstall');
+
+function isStandalone(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Evita el mini-infobar automático y guarda el evento para dispararlo con un botón
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if(btnInstall && !isStandalone()){
+    btnInstall.style.display = '';
+  }
+});
+
+if(btnInstall){
+  btnInstall.addEventListener('click', async () => {
+    try{
+      // Si no hay prompt (por ejemplo iPhone/Safari o ya no es elegible) mostramos una ayuda
+      if(!deferredInstallPrompt){
+        alert('Si no aparece el instalador: abre el menú del navegador y elige "Agregar a pantalla principal".\n\nNota: en iPhone (Safari) no existe botón automático; se instala desde Compartir.');
+        return;
+      }
+      btnInstall.classList.add('disabled');
+      deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      btnInstall.style.display = 'none';
+      btnInstall.classList.remove('disabled');
+      // Si canceló, el navegador decide cuándo volverá a ser elegible.
+    }catch(err){
+      console.warn('Error al intentar instalar', err);
+      btnInstall.classList.remove('disabled');
+    }
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  if(btnInstall) btnInstall.style.display = 'none';
+});
+
+
 // ===== Reporte del día (ACUMULADO DEL DÍA) =====
 const btnDay = document.getElementById('btnDay');
 const dlgDay = document.getElementById('dlgDay');
