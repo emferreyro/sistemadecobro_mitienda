@@ -136,6 +136,19 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
     .modal-actions{display:flex;gap:10px;justify-content:flex-end}
     .knum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
     .knum button{padding:12px;border-radius:12px;background:#111827;color:#e5e7eb;border:1px solid #1f2937}
+  
+    .app-footer{
+      padding:6px 6px 10px;
+      text-align:center;
+      font-size:10.5px;
+      color:var(--muted);
+      opacity:.7;
+    }
+    .app-footer a{
+      color:var(--muted);
+      text-decoration:none;
+    }
+
   </style>
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#22d3ee">
@@ -173,8 +186,15 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
     <div class="footer">
       <div id="btnDay" class="btn secondary">ACUMULADO DEL DÍA</div>
       <div id="btnInstall" class="btn secondary" style="display:none">INSTALAR APP</div>
-      <div id="status" style="text-align:center;color:#9ca3af;font-size:12px">Cargando…</div>
-    </div>
+      <div id="status" style="text-align:center;color:#9ca3af;font-size:11px;margin-bottom:4px">Cargando…</div>
+    
+    <footer class="app-footer">
+      Diseñada por <strong>Erick M. Ferreyro</strong> · © 2026<br>
+      <a href="tel:+525548669275">55 4866 9275</a> ·
+      <a href="mailto:emf_soporte@outlook.com">emf_soporte@outlook.com</a>
+    </footer>
+
+</div>
   </div>
 
   <dialog id="dlgEdit">
@@ -682,7 +702,20 @@ document.getElementById('dPdf').onclick = async () => {
         .top{ display:none; }
         body{ padding:0; }
       }
-    </style>
+    
+    .app-footer{
+      padding:6px 6px 10px;
+      text-align:center;
+      font-size:10.5px;
+      color:var(--muted);
+      opacity:.7;
+    }
+    .app-footer a{
+      color:var(--muted);
+      text-decoration:none;
+    }
+
+  </style>
   </head><body>
     <div class="top">
       <div class="btnPrint" onclick="window.print()">Imprimir / Guardar PDF</div>
@@ -733,7 +766,20 @@ function buildReportDoc(){
       @page{ margin: 14mm; }
       body{ background:#fff; color:#000; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; padding:16px; }
       h2{ margin:0 0 6px; }
-    </style>
+    
+    .app-footer{
+      padding:6px 6px 10px;
+      text-align:center;
+      font-size:10.5px;
+      color:var(--muted);
+      opacity:.7;
+    }
+    .app-footer a{
+      color:var(--muted);
+      text-decoration:none;
+    }
+
+  </style>
   </head><body>${reportInner}</body></html>`;
 }
 
