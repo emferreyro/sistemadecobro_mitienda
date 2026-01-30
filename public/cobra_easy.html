@@ -186,7 +186,7 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
     <div class="footer">
       <div id="btnDay" class="btn secondary">ACUMULADO DEL DÍA</div>
       <div id="btnInstall" class="btn secondary" style="display:none">INSTALAR APP</div>
-      <div id="status" style="text-align:center;color:#9ca3af;font-size:11px;margin-bottom:4px">Cargando…</div>
+      <div id="status" style="text-align:center;color:#9ca3af;font-size:11px;margin-bottom:4px;cursor:pointer" onclick="toggleManosLibres()">🎙️ Toca para activar Manos Libres</div>
     
     <footer class="app-footer">
       Diseñada por <strong>Erick M. Ferreyro</strong> · © 2026<br>
@@ -576,7 +576,7 @@ btnUndo.onclick = () => {
 };
 
     const statusEl = document.getElementById('status');
-if(statusEl) statusEl.textContent = 'Listo ✓';
+if(statusEl){ statusEl.textContent = '🎙️ Toca para activar Manos Libres'; statusEl.style.cursor='pointer'; }
 
 // ===== Instalación PWA (no se puede "forzar", pero sí mostrar botón cuando el navegador lo permite) =====
 let deferredInstallPrompt = null;
@@ -842,6 +842,182 @@ document.getElementById('dResetDay').onclick = () => {
     render();
     saveProducts();
     saveDay();
+
+
+    // =========================
+    // VOZ (Manos Libres)
+    // =========================
+    (function(){
+      const statusEl = document.getElementById('status');
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+
+      let escuchaActiva = false;
+
+      // Diccionario números (básico)
+      const numDic = {
+        "cero":0,
+        "un":1,"uno":1,"una":1,
+        "dos":2,"tres":3,"cuatro":4,"cinco":5,
+        "seis":6,"siete":7,"ocho":8,"nueve":9,"diez":10
+      };
+
+      const digitToWord = { "0":"cero","1":"uno","2":"dos","3":"tres","4":"cuatro","5":"cinco","6":"seis","7":"siete","8":"ocho","9":"nueve","10":"diez" };
+
+      function norm(s){
+        return String(s || '')
+          .toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // sin acentos
+          .replace(/[^\w\s]/g,' ') // signos fuera
+          .replace(/\s+/g,' ')
+          .trim();
+      }
+
+      function parseCantidad(fraseNorm){
+        // Regla:
+        // - si la 1ª palabra es número -> cantidad
+        // - si NO, pero la última palabra es número -> cantidad
+        // - si no hay -> 1
+        const words = fraseNorm.split(' ').filter(Boolean);
+        if(!words.length) return 1;
+
+        const first = words[0];
+        const last = words[words.length - 1];
+
+        const toNum = (w) => {
+          if(/^\d+$/.test(w)) return parseInt(w, 10);
+          if(numDic[w] != null) return numDic[w];
+          return null;
+        };
+
+        let n = toNum(first);
+        if(n == null) n = toNum(last);
+        if(n == null || !Number.isFinite(n) || n <= 0) return 1;
+        return Math.min(50, n); // límite razonable
+      }
+
+      function nameVariants(name){
+        const n = norm(name);
+        const variants = new Set([n]);
+
+        // Reemplaza dígitos por palabras: "producto 1" -> "producto uno"
+        const withWords = n.replace(/\b(\d+)\b/g, (m) => digitToWord[m] || m);
+        variants.add(withWords);
+
+        // Reemplaza palabras por dígitos (solo 0-10): "producto uno" -> "producto 1"
+        let withDigits = n;
+        for(const [w, v] of Object.entries(numDic)){
+          if(v <= 10){
+            withDigits = withDigits.replace(new RegExp(`\\b${w}\\b`, 'g'), String(v));
+          }
+        }
+        variants.add(withDigits);
+
+        return Array.from(variants).filter(Boolean);
+      }
+
+      function findProducto(fraseNorm){
+        // Busca SOLO productos con nombre (como pediste)
+        // Hace match por variantes para soportar "producto uno" vs "producto 1"
+        for(const p of (state.products || [])){
+          if(!p || !p.name) continue;
+          const vars = nameVariants(p.name);
+          if(vars.some(v => v && fraseNorm.includes(v))) return p;
+        }
+        return null;
+      }
+
+      function setStatusIdle(){
+        if(!statusEl) return;
+        statusEl.classList.remove('active');
+        statusEl.textContent = '🎙️ Toca para activar Manos Libres';
+      }
+
+      function setStatusActive(text){
+        if(!statusEl) return;
+        statusEl.classList.add('active');
+        statusEl.textContent = text || '🟢 VOZ ACTIVA';
+      }
+
+      function procesarVoz(fraseRaw){
+        const frase = norm(fraseRaw);
+
+        // Comandos rápidos
+        if(frase.includes('borrar') || frase.includes('reset')) {
+          const el = document.getElementById('btnReset');
+          el && el.click();
+          return;
+        }
+        if(frase.includes('cobrar') || frase.includes('finalizar')) {
+          const el = document.getElementById('btnFinalizar');
+          el && el.click();
+          return;
+        }
+
+        const cantidad = parseCantidad(frase);
+        const prod = findProducto(frase);
+
+        if(prod){
+          for(let i=0; i<cantidad; i++) add(prod);
+        }
+      }
+
+      // Expone la función para el onclick del HTML y para el binding del init
+      window.toggleManosLibres = function toggleManosLibres(){
+        if(!recognition){
+          if(statusEl) statusEl.textContent = '🎙️ Voz no disponible en este navegador';
+          return;
+        }
+
+        escuchaActiva = !escuchaActiva;
+
+        if(escuchaActiva){
+          try{
+            recognition.start();
+            setStatusActive('🟢 VOZ ACTIVA (toca para apagar)');
+          }catch(e){
+            // Si ya estaba iniciada, no hacemos nada
+            setStatusActive('🟢 VOZ ACTIVA (toca para apagar)');
+          }
+        }else{
+          try{ recognition.stop(); }catch(e){}
+          setStatusIdle();
+        }
+      };
+
+      if(recognition){
+        recognition.lang = 'es-MX';
+        recognition.continuous = true;
+        recognition.interimResults = false;
+
+        recognition.onresult = (event) => {
+          const res = event.results[event.results.length - 1];
+          const voz = res && res[0] ? res[0].transcript : '';
+          setStatusActive(`🎙️ "${norm(voz)}"`);
+          procesarVoz(voz);
+        };
+
+        recognition.onerror = (e) => {
+          // No apagamos a fuerza; solo informamos
+          if(statusEl){
+            statusEl.textContent = '🎙️ Error de voz. Toca para reintentar.';
+          }
+          escuchaActiva = false;
+        };
+
+        recognition.onend = () => {
+          // Reinicio automático mientras esté activo
+          if(escuchaActiva){
+            try{ recognition.start(); }catch(e){}
+          }
+        };
+      }
+
+      // Estado inicial (sin pisar diseño)
+      setStatusIdle();
+    })();
+
 </script>
 
 <script>
