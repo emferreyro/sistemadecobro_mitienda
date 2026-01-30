@@ -212,7 +212,7 @@ border-radius:14px;padding:14px;text-align:center;font-weight:700}
 
     <div class="actions">
       <div id="btnReset" class="btn danger">RESET</div>
-      <div id="btnUndo" class="btn warn">UNDO</div>
+      <div id="btnUndo" class="btn warn">CORREGIR</div>
       <div id="btnFinalizar" class="btn ok disabled">FINALIZAR</div>
       <div id="dayTotalBox" class="btn secondary" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:default">
   <div style="font-size:11px;color:#9ca3af;letter-spacing:.3px">DÍA</div>
@@ -1082,6 +1082,51 @@ document.getElementById('dResetDay').onclick = () => {
 
       function procesarVoz(fraseRaw){
         const frase = norm(fraseRaw);
+
+
+
+        // ===== CORREGIR POR VOZ =====
+        if(
+          frase.includes('corregir') ||
+          frase.includes('corrige') ||
+          frase.includes('deshacer') ||
+          frase.includes('quita uno') ||
+          frase.includes('borra uno')
+        ){
+          btnUndo.click();
+          return;
+        }
+
+        // ===== PAGO POR VOZ =====
+        // Frases ejemplo: "pago 200", "pago con 150.50", "pago dos" (fallback)
+        if(frase.includes('pago')){
+          const tokens = frase.split(' ').filter(Boolean);
+          let monto = null;
+
+          // Busca la primera ocurrencia de un número (entero o decimal) DESPUÉS de "pago"
+          const iPago = tokens.indexOf('pago');
+          if(iPago !== -1){
+            for(let i=iPago+1; i<tokens.length; i++){
+              const t = tokens[i].replace(',', '.');
+              if(/^\d+(\.\d{1,2})?$/.test(t)){
+                monto = parseFloat(t);
+                break;
+              }
+            }
+          }
+
+          // Si no hay número explícito, usa el parser de cantidad como fallback (por ejemplo "pago dos")
+          if(monto == null){
+            const c = parseCantidad(frase);
+            if(c > 0) monto = c;
+          }
+
+          if(monto != null && isFinite(monto) && monto >= 0){
+            state.pago = monto;
+            render();
+          }
+          return;
+        }
 
         // Comandos rápidos
         if(frase.includes('borrar') || frase.includes('reset')) {
