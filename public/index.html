@@ -1082,7 +1082,12 @@ if (btnAgregar){
 }
 if (btnLimpiar){
   btnLimpiar.addEventListener('click', ()=>{
-    if(inputBusqueda) inputBusqueda.value='';
+
+    carrito = [];
+    saveCart();
+    renderCart();
+
+if(inputBusqueda) inputBusqueda.value='';
     if(cantidadInput) cantidadInput.value=1;
     if(pagoInput) pagoInput.value='';
     if(cambioLabel){
