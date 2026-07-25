@@ -875,8 +875,7 @@ function renderProducts(){
   rightProducts.innerHTML = '';
   productos.forEach((p, idx) => {
     const div = document.createElement('div'); div.className='product-item';
-    const adminBtns = isAdmin ? `<button data-idx="${idx}" class="btn btn-outline btn-small btn-edit">✏️</button>
-      <button data-idx="${idx}" class="btn btn-outline btn-small btn-del">🗑️</button>` : '';
+    const adminBtns = `<button data-idx="${idx}" class="btn btn-outline btn-small btn-edit" title="Editar producto">✏️</button>`;
     div.innerHTML = `<div><div style="font-weight:700">${p.codigo} — ${escapeHtml(p.nombre)}</div><div class="small">Precio: ${formatMXN(p.precio)}</div></div>
                      <div style="display:flex;gap:8px;align-items:center">
                        ${adminBtns}
@@ -908,28 +907,22 @@ function renderProducts(){
     });
   });
 
-  if(isAdmin){
-    document.querySelectorAll('.btn-edit').forEach(b=> b.addEventListener('click', e=> {
-      const i = Number(e.currentTarget.getAttribute('data-idx'));
-      const p = productos[i];
-      prodCodigo.value = p.codigo; prodNombre.value = p.nombre; prodPrecio.value = p.precio;
-      prodCodigo.dataset.editIndex = i;
-      prodNombre.focus();
-    }));
-    document.querySelectorAll('.btn-del').forEach(b=> b.addEventListener('click', e=> {
-      const i = Number(e.currentTarget.getAttribute('data-idx'));
-      if(!confirm('Eliminar producto ' + productos[i].codigo + ' ?')) return;
-      productos.splice(i,1); saveProducts(); renderProducts();
-      checkProductLimitOnOpen();
-    }));
-  }
+  document.querySelectorAll('.btn-edit').forEach(b=> b.addEventListener('click', e=> {
+    const i = Number(e.currentTarget.getAttribute('data-idx'));
+    const p = productos[i];
+    prodCodigo.value = p.codigo; prodNombre.value = p.nombre; prodPrecio.value = p.precio;
+    prodCodigo.dataset.editIndex = i;
+    checkProductLimitOnOpen();
+    prodNombre.focus();
+  }));
 }
 
 const LIMIT_MESSAGE = "Esta versión de sistema de cobro es gratuita pero solo te permite el registro de 50 productos.\n\nSi te gustó y quieres hacer más registros contáctanos para obtener una mejor versión.";
 
 function checkProductLimitOnOpen(){
   productsWarningArea.innerHTML = '';
-  if(productos.length >= MAX_PRODUCTS){
+  const editandoProducto = typeof prodCodigo.dataset.editIndex !== 'undefined';
+  if(productos.length >= MAX_PRODUCTS && !editandoProducto){
     const div = document.createElement('div');
     div.className = 'notice-limit';
     div.textContent = LIMIT_MESSAGE;
