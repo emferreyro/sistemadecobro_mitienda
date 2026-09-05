@@ -6,7 +6,11 @@
 // Inventario progresivo: solo FULLV registra (descuenta) stock; MiTienda solo refleja
 const window.INVENTARIO_ACTIVO = true;
 
-</script><script src="js/guardFullv.js"></script>
+</script><script>
+// DEMO: omitir validación de licencia FULL antes de cargar cualquier guardia
+window.DEMO_SKIP_AUTH = true;
+</script>
+<!-- En modo DEMO no se carga guardFullv.js para evitar validación contra autorizados.json -->
 <script>
 // ✅ Configuración global
 // Nota: si un <script> tiene atributo src, el navegador IGNORA el código inline dentro de esa etiqueta.
