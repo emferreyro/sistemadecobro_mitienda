@@ -471,8 +471,8 @@ body.neon .low-stock{
   const remainingMs = end - now;
   const remainingDays = Math.max(0, Math.ceil(remainingMs / MS));
 
-  if (now > end) {
-    window.location.href = "sistemadecobro_mitienda.html?trial=expired#trial_expired";
+  if (now >= end) {
+    window.location.href = "./?trial=expired#trial_expired";
     return;
   }
 
@@ -589,7 +589,7 @@ document.body.appendChild(overlay);
 
 // Al presionar "Aceptar", redirigir
 document.getElementById('modalAceptar').onclick = () => {
-  window.location.href = 'sistemadecobro_mitienda.html';
+  window.location.href = './';
 };
 })();
 </script>
