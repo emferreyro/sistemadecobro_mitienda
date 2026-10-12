@@ -21,9 +21,15 @@
     @media(max-width:900px){.hero{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:640px){.categories{grid-template-columns:1fr}.catalog-head{align-items:stretch;flex-direction:column}.search{min-width:0;width:100%}.grid{grid-template-columns:1fr}.hero{padding-top:38px}.top-action{padding:9px 10px}.top-action span{display:none}.brand-logo{width:118px;height:48px}.brand-text{display:none}}
   </style>
+
+<style id="miTiendaKioscoTouchStyles">
+.kiosco-volver{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:48px;padding:10px 17px;border-radius:12px;border:2px solid #111;background:#f5e131;color:#161616;font:800 15px system-ui,Arial,sans-serif;cursor:pointer;touch-action:manipulation;white-space:nowrap;box-shadow:0 2px 8px #0003;position:relative;z-index:1010}
+.kiosco-volver:focus-visible{outline:3px solid #2678ff;outline-offset:3px}
+@media(max-width:600px){.kiosco-volver{min-height:52px;padding:10px 12px;font-size:14px}}
+</style>
 </head>
 <body>
-<header><div class="container topbar"><a class="brand" href="index.html" aria-label="Ir al inicio de SYScontrol"><img class="brand-logo" src="imagenes/logo.png" alt="SYScontrol CCYS"><div class="brand-text"><strong>CATÁLOGO DE SOLUCIONES</strong><small>Paquetes · Accesorios · APPS</small></div></a><button class="top-action" onclick="openGeneral()">💬 <span>Contactar</span></button></div></header>
+<header><div class="container topbar"><a class="brand" href="index.html" aria-label="Ir al inicio de SYScontrol"><img class="brand-logo" src="imagenes/logo.png" alt="SYScontrol CCYS"><div class="brand-text"><strong>CATÁLOGO DE SOLUCIONES</strong><small>Paquetes · Accesorios · APPS</small></div></a><button type="button" class="kiosco-volver" onclick="volverMiTiendaKiosco()" aria-label="Cerrar catálogo y regresar a Mi Tienda">← Volver a Mi Tienda</button> <button class="top-action" onclick="openGeneral()">💬 <span>Contactar</span></button></div></header>
 
 <main class="container">
   <section class="hero">
@@ -110,6 +116,21 @@
   document.querySelector('#whatsappBtn').addEventListener('click',sendWhatsapp);
   document.querySelector('#year').textContent=new Date().getFullYear();
   render();
+</script>
+
+<script id="miTiendaKioscoTouchScript">
+function volverMiTiendaKiosco(){
+  try {
+    if (window.opener && !window.opener.closed) {
+      window.opener.focus();
+      window.close();
+      // Si el navegador impide cerrar la ventana, ofrece ruta de regreso.
+      setTimeout(function(){ window.location.assign('index.html'); }, 250);
+      return;
+    }
+  } catch (e) { /* Continuar a la ruta segura */ }
+  window.location.assign('index.html');
+}
 </script>
 </body>
 </html>

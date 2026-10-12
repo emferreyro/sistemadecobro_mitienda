@@ -252,6 +252,12 @@ body.neon .table-wrap th, body.neon .table-wrap td{
 
 </style>
 
+
+<style id="miTiendaKioscoTouchStyles">
+.kiosco-volver{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:48px;padding:10px 17px;border-radius:12px;border:2px solid #111;background:#f5e131;color:#161616;font:800 15px system-ui,Arial,sans-serif;cursor:pointer;touch-action:manipulation;white-space:nowrap;box-shadow:0 2px 8px #0003;position:relative;z-index:1010}
+.kiosco-volver:focus-visible{outline:3px solid #2678ff;outline-offset:3px}
+@media(max-width:600px){.kiosco-volver{min-height:52px;padding:10px 12px;font-size:14px}}
+</style>
 </head>
 <body>
 <header class="mitienda-header">
@@ -266,7 +272,8 @@ body.neon .table-wrap th, body.neon .table-wrap td{
     </div>
 
     <div class="header-actions">
-      <button id="btnToggleTheme" class="btn btn-outline btn-small" title="Cambiar tema">🌓 Tema</button>
+      <button type="button" class="kiosco-volver" onclick="volverMiTiendaKiosco()" aria-label="Cerrar reporte y regresar a Mi Tienda">← Cerrar reporte</button>
+       <button id="btnToggleTheme" class="btn btn-outline btn-small" title="Cambiar tema">🌓 Tema</button>
     </div>
   </div>
 </header>
@@ -909,6 +916,21 @@ body.neon .table-wrap th, body.neon .table-wrap td{
 
   // Auto-intento al abrir
   window.addEventListener("load", loadFromLocalHistory);
+</script>
+
+<script id="miTiendaKioscoTouchScript">
+function volverMiTiendaKiosco(){
+  try {
+    if (window.opener && !window.opener.closed) {
+      window.opener.focus();
+      window.close();
+      // Si el navegador impide cerrar la ventana, ofrece ruta de regreso.
+      setTimeout(function(){ window.location.assign('index.html'); }, 250);
+      return;
+    }
+  } catch (e) { /* Continuar a la ruta segura */ }
+  window.location.assign('index.html');
+}
 </script>
 </body>
 </html>
