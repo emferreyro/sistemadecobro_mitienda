@@ -1445,9 +1445,29 @@ function imprimirTicket(venta){
     font-size: 13px;
     line-height: 1.25;
   }
+  /* Controles táctiles: únicamente visibles en pantalla */
+  .ticket-touch-controls{
+    position:sticky;top:0;z-index:9999;display:flex;gap:10px;
+    padding:12px;background:#f4f4f4;border-bottom:1px solid #ccc;
+    font-family:Arial,sans-serif;
+  }
+  .ticket-touch-controls button{
+    flex:1;min-height:54px;padding:12px 8px;border:0;border-radius:10px;
+    font-size:17px;font-weight:bold;cursor:pointer;touch-action:manipulation;
+  }
+  .ticket-touch-print{background:#f5e131;color:#111;}
+  .ticket-touch-close{background:#d32f2f;color:white;}
+  @media print{
+    .ticket-touch-controls{display:none !important;}
+    html,body{width:58mm;}
+  }
 </style>
 </head>
 <body>
+  <div class="ticket-touch-controls">
+    <button type="button" class="ticket-touch-print" onclick="window.print()">🖨 Imprimir de nuevo</button>
+    <button type="button" class="ticket-touch-close" onclick="window.close(); if(!window.closed && window.opener){window.opener.focus();}">✕ Cerrar ticket</button>
+  </div>
   <div class="ticket-wrapper">
     <pre class="ticket">${safeText}</pre>
   </div>
@@ -1928,7 +1948,7 @@ btnGenCodigo && btnGenCodigo.addEventListener('click', ()=>{
 
 
 btnAccesorios && btnAccesorios.addEventListener('click', ()=>{
-  window.open('Productos.html','_blank');
+  window.open('Productos.html','MiTiendaCatalogo');
 });
 
 
