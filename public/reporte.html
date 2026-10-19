@@ -298,7 +298,10 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
 
     <label>Cargar CSV (opcional)</label>
-    <input id="file" type="file" accept=".csv,text/csv" />
+    <input id="file" type="file" accept=".csv,text/csv" multiple />
+    <div class="hint" style="margin-top:6px">Selecciona varios cierres a la vez o agrega otros después. Los archivos se combinan para la consulta, sin modificar los originales.</div>
+    <div id="csvList" class="small" style="margin-top:10px" aria-live="polite"></div>
+    <button id="clearCsv" class="btn btn-outline btn-small" type="button" style="display:none;margin-top:8px">Quitar todos los CSV</button>
     <div class="hint" style="margin-top:6px">Si usas CSV, debe tener las columnas: <span class="mono">Venta ID, Fecha, Total, Código, Nombre, Cant, Precio, Subtotal</span>.</div>
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
@@ -340,6 +343,8 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
   <section class="card">
     <div class="kpis">
       <div class="kpi"><div class="t">Ventas (importe)</div><div id="kSales" class="v">—</div></div>
+      <div class="kpi"><div class="t">Efectivo</div><div id="kCash" class="v">—</div></div>
+      <div class="kpi"><div class="t">Tarjeta</div><div id="kCard" class="v">—</div></div>
       <div class="kpi"><div class="t">Utilidad</div><div id="kProfit" class="v">—</div></div>
       <div class="kpi"><div class="t">Transacciones</div><div id="kTx" class="v">—</div></div>
       <div class="kpi"><div class="t">Más vendido (piezas)</div><div id="kTop" class="v">—</div></div>
@@ -543,6 +548,8 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
   }
 
   // State
+  let CSV_FILES = [];
+  let LOCAL_ROWS = [];
   let RAW = [];
   let ITEMS = [];
   let TX = [];
@@ -562,6 +569,8 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     $("tblItems").innerHTML = "";
     $("tblMItems").innerHTML = "";
     $("kSales").textContent = "—";
+    $("kCash").textContent = "—";
+    $("kCard").textContent = "—";
     $("kProfit").textContent = "—";
     $("kTx").textContent = "—";
     $("kTop").textContent = "—";
@@ -807,7 +816,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     const txMap = new Map();
     for(const r of filtered){
       const k = r.ventaId;
-      if(!txMap.has(k)) txMap.set(k,{ ventaId:k, dt:r.dt, total:r.total });
+      if(!txMap.has(k)) txMap.set(k,{ ventaId:k, dt:r.dt, total:r.total, metodoPago:r.metodoPago });
     }
     TX = Array.from(txMap.values()).sort((a,b)=> a.dt - b.dt);
 
@@ -874,6 +883,10 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     const totalSales = TX.reduce((s,t)=> s + (t.total||0), 0);
     REPORT_SALES_TOTAL = totalSales;
     $("kSales").textContent = money(totalSales);
+    const cash = TX.reduce((sum,t)=>sum + (t.metodoPago === "Tarjeta" ? 0 : t.total||0),0);
+    const card = TX.reduce((sum,t)=>sum + (t.metodoPago === "Tarjeta" ? t.total||0 : 0),0);
+    $("kCash").textContent = money(cash);
+    $("kCard").textContent = money(card);
     $("kProfit").textContent = money(PROFIT_TOTAL);
     $("kTx").textContent = TX.length.toLocaleString("es-MX");
     $("kTop").textContent = ITEMS.length ? `${ITEMS[0].item} (${fmtNum(ITEMS[0].pieces)} pzas)` : "—";
@@ -929,6 +942,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
           fechaRaw,
           fechaISO,
           total,
+          metodoPago: v.metodoPago === "Tarjeta" ? "Tarjeta" : "Efectivo",
           codigo: (it.codigo ?? "").toString().trim(),
           nombre: (it.nombre ?? "").toString().trim(),
           cant: safeNum(it.cantidad),
@@ -939,50 +953,89 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
       }
     }
 
-    RAW = rows;
+    LOCAL_ROWS = rows;
+    if(CSV_FILES.length) return;
+    RAW = LOCAL_ROWS;
     $("run").disabled = false;
     setStatus(`Historial cargado: ${RAW.length} filas (${hist.length} ventas).`);
     generateReports();
   }
 
-  // CSV input
-  document.getElementById("file").addEventListener("change", async (e)=>{
-    const f = e.target.files?.[0];
-    $("run").disabled = !f;
-    $("export").disabled = true;
-    setStatus(f ? `Archivo: ${f.name}` : "");
-    RAW = []; ITEMS = []; TX = []; M_GROUPS = []; ITEMS_EXPORT = "";
-    clearOutputs();
-    if(!f) return;
-
-    const text = await f.text();
-    const {header, rows} = parseCSV(text);
-    const idx = {};
-    header.forEach((h,i)=> idx[h.replace(/\uFEFF/g,"").trim()] = i);
-
-    const required = ["Venta ID","Fecha","Total","Código","Nombre","Cant","Precio","Subtotal"];
-    const missing = required.filter(k=>idx[k]===undefined);
-    if(missing.length){
-      alert("Faltan columnas en el CSV: " + missing.join(", "));
-      return;
+  // CSV: múltiples cierres acumulables. Cada archivo tiene un identificador propio
+  // para evitar que las ventas #1 de dos cierres distintos se confundan.
+  function csvFingerprint(content){
+    let h = 2166136261;
+    for(let i=0; i<content.length; i++) { h ^= content.charCodeAt(i); h = Math.imul(h,16777619); }
+    return content.length + ":" + (h>>>0).toString(16);
+  }
+  function renderCsvList(){
+    const list = $("csvList"); list.innerHTML = "";
+    $("clearCsv").style.display = CSV_FILES.length ? "inline-block" : "none";
+    if(!CSV_FILES.length){ list.textContent="Sin archivos CSV cargados. Se consulta el historial local."; return; }
+    const totalRows = CSV_FILES.reduce((n,f)=>n+f.rows.length,0);
+    const title = document.createElement("div");
+    title.textContent = CSV_FILES.length + " archivo(s) • " + totalRows + " renglones";
+    title.style.fontWeight="700"; list.appendChild(title);
+    for(const file of CSV_FILES){
+      const row=document.createElement("div");
+      row.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;flex-wrap:wrap";
+      const desc=document.createElement("span"); desc.textContent=file.name+" ("+file.rows.length+" renglones)";
+      const remove=document.createElement("button"); remove.type="button";
+      remove.className="btn btn-outline btn-small"; remove.textContent="Quitar";
+      remove.addEventListener("click",()=>{
+        CSV_FILES=CSV_FILES.filter(f=>f.key!==file.key);
+        refreshSources();
+      });
+      row.append(desc,remove);list.appendChild(row);
     }
-
-    RAW = rows.map(r=>({
-      ventaId: r[idx["Venta ID"]],
-      fechaRaw: r[idx["Fecha"]],
-      total: safeNum(r[idx["Total"]]),
-      codigo: (r[idx["Código"]]||"").trim(),
-      nombre: (r[idx["Nombre"]]||"").trim(),
-      cant: safeNum(r[idx["Cant"]]),
-      precio: safeNum(r[idx["Precio"]]),
-      subtotal: safeNum(r[idx["Subtotal"]]),
-      dt: null,
-      fechaISO: null
-    }));
-
-    $("run").disabled = false;
-    setStatus(`CSV cargado: ${RAW.length} filas. Listo para generar reportes.`);
+  }
+  function refreshSources(){
+    RAW = CSV_FILES.length ? CSV_FILES.flatMap(f=>f.rows) : LOCAL_ROWS.slice();
+    ITEMS=[]; TX=[]; M_GROUPS=[]; ITEMS_EXPORT="";
+    clearOutputs();
+    $("export").disabled=true; $("exportComplete").disabled=true; $("exportChart").disabled=true;
+    $("ventasChart").textContent="Carga el historial para ver la gráfica.";
+    $("run").disabled=!RAW.length;
+    renderCsvList();
+    if(RAW.length){ generateReports(); }
+    else setStatus("No hay datos. Selecciona archivos CSV o registra ventas.");
+  }
+  document.getElementById("file").addEventListener("change",async(e)=>{
+    const files=Array.from(e.target.files||[]);
+    if(!files.length)return;
+    let added=0, skipped=0, errors=[];
+    for(const file of files){
+      try{
+        const content=await file.text();
+        const key=csvFingerprint(content);
+        if(CSV_FILES.some(f=>f.key===key)){skipped++;continue;}
+        const {header,rows}=parseCSV(content);
+        const idx={}; header.forEach((h,i)=>idx[h.replace(/\uFEFF/g,"").trim()]=i);
+        const required=["Venta ID","Fecha","Total","Código","Nombre","Cant","Precio","Subtotal"];
+        const missing=required.filter(col=>idx[col]===undefined);
+        if(missing.length){errors.push(file.name+": faltan "+missing.join(", "));continue;}
+        const fileId="cierre:"+key+":";
+        const parsed=rows.filter(r=>r.some(c=>String(c||"").trim())).map(r=>({
+          ventaId:fileId+String(r[idx["Venta ID"]]??""),
+          fechaRaw:r[idx["Fecha"]],
+          total:safeNum(r[idx["Total"]]),
+          codigo:(r[idx["Código"]]||"").trim(),
+          nombre:(r[idx["Nombre"]]||"").trim(),
+          cant:safeNum(r[idx["Cant"]]),
+          precio:safeNum(r[idx["Precio"]]),
+          subtotal:safeNum(r[idx["Subtotal"]]),
+          metodoPago:idx["Método de pago"]!==undefined && String(r[idx["Método de pago"]]||"").trim().toLowerCase()==="tarjeta" ? "Tarjeta" : "Efectivo",
+          dt:null,fechaISO:null
+        }));
+        CSV_FILES.push({name:file.name,key,rows:parsed}); added++;
+      }catch(err){errors.push(file.name+": "+err.message);}
+    }
+    e.target.value=""; // permite volver a seleccionar el mismo archivo
+    refreshSources();
+    setStatus("Archivos agregados: "+added+(skipped?" • duplicados omitidos: "+skipped:"")+(errors.length?" • errores: "+errors.length:""));
+    if(errors.length) alert("Algunos archivos no se cargaron:\n"+errors.join("\n"));
   });
+  $("clearCsv").addEventListener("click",()=>{CSV_FILES=[];refreshSources();});
   document.getElementById("run").addEventListener("click", generateReports);
 
   document.getElementById("export").addEventListener("click", ()=>{
@@ -1034,7 +1087,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
   });
 
   // Auto-intento al abrir
-  window.addEventListener("load", loadFromLocalHistory);
+  window.addEventListener("load", ()=>{renderCsvList();loadFromLocalHistory();});
 </script>
 
 <script id="miTiendaKioscoTouchScript">
