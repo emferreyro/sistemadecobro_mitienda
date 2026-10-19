@@ -187,6 +187,31 @@ body.neon .btn-rojo{ background: linear-gradient(180deg,#ff3b4d 0%, #b51224 100%
 body.neon th, body.neon td{ border-bottom-color: rgba(45,212,255,0.14); }
 body.neon th{ color: rgba(232,244,255,0.80); }
 
+
+.summary-table{display:grid;grid-template-columns: minmax(220px,1.2fr) minmax(220px,1.4fr) minmax(120px,.8fr);border:1px solid #e8eaee;border-radius:14px;overflow:hidden;background:#fff}
+.summary-row{display:contents}
+.summary-cell{padding:12px 14px;border-bottom:1px solid #eef0f3}
+.summary-row:last-child .summary-cell{border-bottom:none}
+.summary-head .summary-cell{background:#f8fafc;font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+.summary-label{font-weight:900}
+.summary-desc{color:var(--muted);font-size:13px;line-height:1.3}
+.summary-value{font-weight:900;font-size:20px;color:var(--rojo-dark);text-align:right;align-self:center;overflow-wrap:anywhere}
+body.dark .summary-table, body.neon .summary-table{background:transparent;border-color:#2c2c2c}
+body.dark .summary-head .summary-cell, body.neon .summary-head .summary-cell{background:rgba(255,255,255,0.04);color:#cbd5e1}
+body.dark .summary-cell, body.neon .summary-cell{border-bottom-color:#2c2c2c}
+body.dark .summary-desc{color:#c0c7d1}
+body.neon .summary-desc{color:rgba(232,244,255,0.80)}
+body.dark .summary-value{color:#f5e131}
+body.neon .summary-value{color:#34ff6a}
+@media (max-width:760px){
+  .summary-table{grid-template-columns: 1fr}
+  .summary-head{display:none}
+  .summary-row{display:grid;grid-template-columns:1fr;gap:4px;padding:12px 14px;border-bottom:1px solid #eef0f3}
+  .summary-cell{padding:0;border:none}
+  .summary-value{text-align:left;font-size:22px;margin-top:4px}
+  body.dark .summary-row, body.neon .summary-row{border-bottom-color:#2c2c2c}
+}
+
 </style>
 
 <style id="neon-contrast-fix">
@@ -341,16 +366,57 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
   </section>
 
   <section class="card">
-    <div class="kpis">
-      <div class="kpi"><div class="t">Ventas (importe)</div><div id="kSales" class="v">—</div></div>
-      <div class="kpi"><div class="t">Efectivo</div><div id="kCash" class="v">—</div></div>
-      <div class="kpi"><div class="t">Tarjeta</div><div id="kCard" class="v">—</div></div>
-      <div class="kpi"><div class="t">Utilidad</div><div id="kProfit" class="v">—</div></div>
-      <div class="kpi"><div class="t">Transacciones</div><div id="kTx" class="v">—</div></div>
-      <div class="kpi"><div class="t">Más vendido (piezas)</div><div id="kTop" class="v">—</div></div>
-      <div class="kpi"><div class="t">Menos vendido (piezas)</div><div id="kLow" class="v">—</div></div>
-      <div class="kpi"><div class="t">M- piezas</div><div id="kMPieces" class="v">—</div></div>
-      <div class="kpi"><div class="t">M- importe</div><div id="kMAmount" class="v">—</div></div>
+    <div class="summary-table" aria-label="Resumen general del reporte">
+      <div class="summary-row summary-head">
+        <div class="summary-cell">Indicador</div>
+        <div class="summary-cell">Descripción</div>
+        <div class="summary-cell" style="text-align:right">Valor</div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-cell summary-label">Ventas acumuladas</div>
+        <div class="summary-cell summary-desc">Total en pesos de los archivos de cierre seleccionados.</div>
+        <div class="summary-cell summary-value" id="kSales">—</div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-cell summary-label">Cobros en efectivo</div>
+        <div class="summary-cell summary-desc">Total de operaciones cobradas en efectivo.</div>
+        <div class="summary-cell summary-value" id="kCash">—</div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-cell summary-label">Cobros con tarjeta</div>
+        <div class="summary-cell summary-desc">Total de operaciones cobradas con tarjeta.</div>
+        <div class="summary-cell summary-value" id="kCard">—</div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-cell summary-label">Utilidad estimada</div>
+        <div class="summary-cell summary-desc">Calculada solo para productos con código y con costo capturado.</div>
+        <div class="summary-cell summary-value" id="kProfit">—</div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-cell summary-label">Operaciones acumuladas</div>
+        <div class="summary-cell summary-desc">Número de transacciones incluidas en los archivos cargados.</div>
+        <div class="summary-cell summary-value" id="kTx">—</div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-cell summary-label">Artículo más vendido</div>
+        <div class="summary-cell summary-desc">Producto con código con mayor número de piezas vendidas.</div>
+        <div class="summary-cell summary-value" id="kTop">—</div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-cell summary-label">Artículo menos vendido</div>
+        <div class="summary-cell summary-desc">Producto con código con menor número de piezas vendidas.</div>
+        <div class="summary-cell summary-value" id="kLow">—</div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-cell summary-label">Registros sin código o a granel</div>
+        <div class="summary-cell summary-desc">Cantidad de registros con código M- dentro de los archivos cargados.</div>
+        <div class="summary-cell summary-value" id="kMPieces">—</div>
+      </div>
+      <div class="summary-row">
+        <div class="summary-cell summary-label">Ventas sin código o a granel</div>
+        <div class="summary-cell summary-desc">Importe total de registros con código M-.</div>
+        <div class="summary-cell summary-value" id="kMAmount">—</div>
+      </div>
     </div>
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
@@ -773,7 +839,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     const excludeZero = $("excludeZero").checked;
 
     const filtered = [];
-    const M_TOTAL = { pieces: 0, amount: 0 };
+    const M_TOTAL = { pieces: 0, amount: 0, records: 0 };
 
     for(const r of RAW){
       const d = r.dt ?? parseMXDateTime(r.fechaRaw) ?? (r.fechaISO ? new Date(r.fechaISO) : null);
@@ -785,6 +851,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
       if(r.codigo && String(r.codigo).startsWith("M-")){
         M_TOTAL.pieces += r.cant;
         M_TOTAL.amount += r.subtotal;
+        M_TOTAL.records += 1;
         filtered.push({...r, dt:d, label:r.nombre, key:"M-"});
         continue;
       }
@@ -892,7 +959,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     $("kTop").textContent = ITEMS.length ? `${ITEMS[0].item} (${fmtNum(ITEMS[0].pieces)} pzas)` : "—";
     const low = ITEMS.slice().filter(x=>x.pieces>0).sort((a,b)=> a.pieces - b.pieces)[0];
     $("kLow").textContent = low ? `${low.item} (${fmtNum(low.pieces)} pzas)` : "—";
-    $("kMPieces").textContent = fmtNum(M_TOTAL.pieces);
+    $("kMPieces").textContent = M_TOTAL.records.toLocaleString("es-MX");
     $("kMAmount").textContent = money(M_TOTAL.amount);
 
     const scopeParts = [];
