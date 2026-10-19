@@ -431,13 +431,24 @@ body.neon .low-stock{
   #inputBusqueda { min-width: 0; }
   #panel-venta .table { display: block; max-width: 100%; overflow-x: auto; }
   #panel-venta .table th, #panel-venta .table td { padding: 8px 5px; }
-  #panel-venta .total-wrap { gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-  #panel-venta .pay-change-row { margin-left: 0 !important; flex-wrap: wrap; gap: 8px; }
+  #panel-venta .total-wrap { gap: 10px; flex-wrap: nowrap; justify-content: flex-end; align-items:flex-start; }
+  #panel-venta .total-wrap > div:first-child { min-width: 95px; padding-top: 22px; }
+  #panel-venta .pay-change-row {
+    margin-left: 0 !important;
+    display: grid;
+    grid-template-columns: 150px 170px;
+    grid-template-areas:
+      "metodo pago"
+      "cambio cambio";
+    gap: 8px 10px;
+    align-items: end;
+  }
   #panel-venta .pay-field { min-width: 0; gap: 4px; }
-  #panel-venta .pay-field:first-child { flex: 0 1 130px; min-width: 120px !important; }
-  #panel-venta .pay-field:nth-child(2) { flex: 0 1 138px; min-width: 125px !important; }
-  #panel-venta .pay-field:last-child { min-width: 78px !important; }
+  #panel-venta .pay-field:first-child { grid-area: metodo; min-width: 0 !important; }
+  #panel-venta .pay-field:nth-child(2) { grid-area: pago; min-width: 0 !important; }
+  #panel-venta .pay-field:last-child { grid-area: cambio; min-width: 0 !important; }
   #panel-venta #pago, #panel-venta #metodoPago { width: 100%; max-width: 100%; }
+  #panel-venta .change-amount { min-height: 24px; }
   .total-amount { font-size: 26px; }
   .historial-header .hist-left { min-width: 0; }
 }
@@ -1511,7 +1522,13 @@ function updatePaymentChange(){
     cambioLabel.textContent = formatMXN(0);
     return;
   }
-  const pago = Math.max(0, Number(pagoInput.value) || 0);
+  // Sin cantidad recibida, Cambio permanece en cero mientras se agregan artículos.
+  const rawPago = String(pagoInput.value ?? '').trim();
+  if(rawPago === ''){
+    cambioLabel.textContent = formatMXN(0);
+    return;
+  }
+  const pago = Math.max(0, Number(rawPago) || 0);
   const diff = Number((pago - currentTotal).toFixed(2));
   cambioLabel.textContent = formatMXN(Math.abs(diff));
   cambioLabel.classList.add(diff >= 0 ? 'change-ok' : 'change-low');
