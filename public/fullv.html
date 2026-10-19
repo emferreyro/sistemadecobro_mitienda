@@ -931,7 +931,10 @@ function updateCashUI(){
   if(!inp || !cierreEl) return;
 
   const start = getCashStartToday();
-  inp.value = (Number(start)||0).toFixed(2).replace(/\.00$/,'');
+  // No sobrescribir un importe que el administrador está editando.
+  if (!inp.dataset.cashEditing) {
+    inp.value = (Number(start)||0).toFixed(2).replace(/\.00$/,'');
+  }
 
   const hoyEl = document.getElementById('historialHoy');
   const ventasHoy = hoyEl ? parseMoney(hoyEl.textContent) : 0;
@@ -946,17 +949,18 @@ function initCashBox(){
 
   // FULLV: se asume modo admin; editable sin permisos.
   // Modo seguro: se edita con botón (Editar/Guardar) para evitar cambios accidentales.
-  if(typeof inp.disabled === 'boolean') inp.disabled = true;
-
-  // Evitar duplicar listeners si renderHistorial corre varias veces
+  // Evitar reiniciar el estado del campo en cada renderizado.
   if(btn.__cashBound) { updateCashUI(); return; }
   btn.__cashBound = true;
+  inp.disabled = true;
 
   let editing = false;
 
   function setEditing(on){
     editing = !!on;
     inp.disabled = !editing;
+    if (editing) inp.dataset.cashEditing = 'true';
+    else delete inp.dataset.cashEditing;
     btn.textContent = editing ? 'Guardar' : 'Editar';
     if(editing){
       inp.focus();
@@ -1487,7 +1491,15 @@ document.getElementById('btnSinCodigo') && document.getElementById('btnSinCodigo
 /* HISTORIAL */
 function renderHistorial(){
   historyList.innerHTML = '';
-  if(historial.length === 0){ const p = document.createElement('div'); p.className='small'; p.textContent='No hay ventas registradas aún.'; historyList.appendChild(p); return; }
+  if(historial.length === 0){
+    const p = document.createElement('div');
+    p.className='small';
+    p.textContent='No hay ventas registradas aún.';
+    historyList.appendChild(p);
+    actualizarResumenHistorial();
+    initCashBox();
+    return;
+  }
   historial.forEach(v=>{
     const d = document.createElement('div'); d.className = 'history-item';
     d.innerHTML = `<div><div style="font-weight:700">Venta #${v.id}</div><div class="small">${v.fecha}</div></div>
