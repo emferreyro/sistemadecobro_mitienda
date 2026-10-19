@@ -717,7 +717,6 @@ document.getElementById('modalAceptar').onclick = () => {
   </div>
 
   <div id="adminHistControls" style="display:none">
-<button class="btn btn-outline" id="btn-clear-all">Borrar historial</button>
 <button class="btn btn-outline" id="btnExportCSV" type="button">Cierre de ventas</button>
 </div>
 </div>
@@ -879,7 +878,6 @@ const prodPrecio = document.getElementById('prod-precio');
 const prodStock = document.getElementById('prod-stock');
 const prodInventariado = document.getElementById('prod-inventariado');
 const btnAddProd = document.getElementById('btn-add-prod');
-const btnClearAll = document.getElementById('btn-clear-all');
 const btnExportCSV = document.getElementById('btnExportCSV');
 const btnScanProd = document.getElementById('btnScanProd');
 const btnAdminLogout = document.getElementById('btnAdminLogout');
@@ -2130,20 +2128,8 @@ function mostrarOpcionesTicket(venta){
   document.getElementById('btnTicketWhats').onclick = ()=>{ enviarTicketWhatsApp(venta); };
 }
 
-/* CLEAR ALL (admin) - solo historial + carrito, NO productos */
-if(btnClearAll){
-  btnClearAll.addEventListener('click', () => {
-    if(!confirm('¿Borrar TODO el historial de ventas? Esta acción es irreversible, pero tus productos se conservarán.')) return;
-    historial = [];
-    carrito = [];
-    saveHistory();
-    saveCart();
-    renderCart();
-    renderHistorial();
-    alert('Historial de ventas borrado. Los productos registrados se mantienen sin cambios.');
-  });
-  actualizarResumenHistorial();
-}
+/* Actualizar el resumen del historial sin habilitar borrado directo. */
+actualizarResumenHistorial();
 
 function parseVentaDate(v){
   if(!v) return null;
