@@ -582,9 +582,16 @@ document.getElementById('modalAceptar').onclick = () => {
 <div class="small">Total</div>
 <div class="total-amount" id="total">$0.00</div>
 </div>
-<div class="pay-change-row" style="margin-left:12px;">
+<div class="pay-change-row" style="margin-left:12px;flex-wrap:wrap;">
+<div class="pay-field" style="min-width:145px">
+<label for="metodoPago">Método de pago</label>
+<select id="metodoPago" style="padding:10px 12px;border:1px solid #e6e7ea;border-radius:10px;font-size:15px;min-height:42px">
+<option value="Efectivo">Efectivo</option>
+<option value="Tarjeta">Tarjeta</option>
+</select>
+</div>
 <div class="pay-field">
-<label for="pago">Su pago $</label>
+<label for="pago" id="labelPago">Su pago $</label>
 <input id="pago" min="0" placeholder="0.00" step="0.01" type="number"/>
 </div>
 <div class="pay-field" style="min-width:120px">
@@ -847,6 +854,8 @@ const btnTicketConfig     = document.getElementById('btnTicketConfig');
 const btnReporte          = document.getElementById('btnReporte');
 const btnCloseTicketCfg   = document.getElementById('btnCloseTicketCfg');
 const pagoInput = document.getElementById('pago');
+const metodoPagoInput = document.getElementById('metodoPago');
+const labelPago = document.getElementById('labelPago');
 const logoFile = document.getElementById('logoFile');
 const cambioLabel = document.getElementById('cambio');
 
@@ -950,9 +959,14 @@ function updateCashUI(){
     inp.value = (Number(start)||0).toFixed(2).replace(/\.00$/,'');
   }
 
-  const hoyEl = document.getElementById('historialHoy');
-  const ventasHoy = hoyEl ? parseMoney(hoyEl.textContent) : 0;
-  const cierre = start + ventasHoy;
+  // El cierre de efectivo excluye ventas con tarjeta; las antiguas se toman como efectivo.
+  const hoy = new Date();
+  const ventasEfectivoHoy = historial.reduce((s,v) => {
+    const fecha = parseVentaDate(v);
+    if(!fecha || fecha.getFullYear() !== hoy.getFullYear() || fecha.getMonth() !== hoy.getMonth() || fecha.getDate() !== hoy.getDate()) return s;
+    return s + ((v.metodoPago === 'Tarjeta') ? 0 : (Number(v.total) || 0));
+  }, 0);
+  const cierre = start + ventasEfectivoHoy;
   cierreEl.textContent = formatMXN(cierre);
 }
 
@@ -1443,20 +1457,30 @@ if(inputBusqueda) inputBusqueda.value='';
 
 /* Payment & Change logic */
 function updatePaymentChange(){
+  const tarjeta = metodoPagoInput && metodoPagoInput.value === 'Tarjeta';
+  pagoInput.disabled = !!tarjeta;
+  pagoInput.placeholder = tarjeta ? 'Cobro con tarjeta' : '0.00';
+  if(labelPago) labelPago.textContent = tarjeta ? 'Importe en tarjeta $' : 'Su pago $';
+  cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
+  if(tarjeta){
+    pagoInput.value = currentTotal.toFixed(2);
+    cambioLabel.textContent = formatMXN(0);
+    return;
+  }
   const pago = Math.max(0, Number(pagoInput.value) || 0);
   const diff = Number((pago - currentTotal).toFixed(2));
   cambioLabel.textContent = formatMXN(Math.abs(diff));
-  cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
-  if(diff >= 0){
-    cambioLabel.classList.add('change-ok','blink-green');
-  } else {
-    cambioLabel.classList.add('change-low','blink-red');
-  }
+  cambioLabel.classList.add(diff >= 0 ? 'change-ok' : 'change-low');
 }
-pagoInput && pagoInput.addEventListener('input', ()=> { updatePaymentChange(); });
+pagoInput && pagoInput.addEventListener('input', updatePaymentChange);
+metodoPagoInput && metodoPagoInput.addEventListener('change', () => {
+  if(metodoPagoInput.value === 'Efectivo') pagoInput.value = '';
+  updatePaymentChange();
+});
 
 btnFinalizar.addEventListener('click', ()=> {
-  const pago = Math.max(0, Number(pagoInput.value) || 0);
+  const metodoPago = (metodoPagoInput && metodoPagoInput.value === 'Tarjeta') ? 'Tarjeta' : 'Efectivo';
+  const pago = metodoPago === 'Tarjeta' ? currentTotal : Math.max(0, Number(pagoInput.value) || 0);
   if(carrito.length === 0){ alert('El carrito está vacío.'); return; }
   if(pago < currentTotal){
     const faltante = Number((currentTotal - pago).toFixed(2));
@@ -1516,8 +1540,9 @@ const ahora = new Date();
     total: Number(total.toFixed(2)),
     items: itemsVenta,
     warnings: warnings,
+    metodoPago: metodoPago,
     pago: pago,
-    cambio: Number((pago - total).toFixed(2))
+    cambio: metodoPago === 'Tarjeta' ? 0 : Number((pago - total).toFixed(2))
   };
   historial.unshift(venta);
   carrito = [];
@@ -1527,6 +1552,8 @@ const ahora = new Date();
   
   initCashBox();
 pagoInput.value = '';
+  if(metodoPagoInput) metodoPagoInput.value = 'Efectivo';
+  updatePaymentChange();
   cambioLabel.textContent = formatMXN(0);
   cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
   // Ya no mostramos opciones de ticket al finalizar; se imprime desde Historial.
@@ -1537,6 +1564,8 @@ btnCancelar.addEventListener('click', ()=> {
   if(!confirm('¿Cancelar venta actual? Se borrará el carrito.')) return;
   carrito = []; saveCart(); renderCart();
   pagoInput.value = '';
+  if(metodoPagoInput) metodoPagoInput.value = 'Efectivo';
+  updatePaymentChange();
   cambioLabel.textContent = formatMXN(0);
   cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
 });
@@ -1594,7 +1623,7 @@ function renderHistorial(){
   historial.forEach(v=>{
     const d = document.createElement('div'); d.className = 'history-item';
     d.innerHTML = `<div><div style="font-weight:700">Venta #${v.id}</div><div class="small">${v.fecha}</div></div>
-                   <div style="text-align:right"><div style="font-weight:800;color:var(--rojo)">${formatMXN(v.total)}</div>
+                   <div style="text-align:right"><div style="font-weight:800;color:var(--rojo)">${formatMXN(v.total)}</div><div class="small">Pago: ${v.metodoPago === 'Tarjeta' ? 'Tarjeta' : 'Efectivo'}</div>
                    ${((v.warnings && v.warnings.length) ? ('<div class="notice-inv">' + v.warnings.map(w=>escapeHtml(w)).join('<br>') + '</div>') : '')}
                    <details style="margin-top:8px"><summary class="small">Ver detalles</summary>
                      <table style="width:100%;margin-top:8px;border-collapse:collapse"><thead><tr><th>Código</th><th>Nombre</th><th>Cant</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>
@@ -1736,6 +1765,7 @@ function armarTextoTicket(v){
 
   // TOTALES
   lineas.push(right('TOTAL: ', formatMXN(v.total)));
+  lineas.push('METODO: ' + (v.metodoPago === 'Tarjeta' ? 'TARJETA' : 'EFECTIVO'));
   if(typeof v.pago !== 'undefined'){
     lineas.push(right('PAGO: ', formatMXN(v.pago)));
   }
