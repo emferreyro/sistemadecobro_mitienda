@@ -258,6 +258,16 @@ body.neon .table-wrap th, body.neon .table-wrap td{
 .kiosco-volver:focus-visible{outline:3px solid #2678ff;outline-offset:3px}
 @media(max-width:600px){.kiosco-volver{min-height:52px;padding:10px 12px;font-size:14px}}
 </style>
+<style id="report-export-chart-styles">
+.ventas-chart{display:flex;align-items:flex-end;gap:12px;min-height:235px;overflow-x:auto;padding:18px 8px 8px;border:1px solid var(--border);border-radius:12px}
+.ventas-chart .bar-column{flex:1 0 72px;min-width:72px;max-width:145px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:205px}
+.ventas-chart .bar-track{width:74%;height:145px;display:flex;flex-direction:column;justify-content:flex-end;border-bottom:1px solid #999}
+.ventas-chart .bar-fill{width:100%;background:#e53935;border-radius:7px 7px 0 0;min-height:2px}
+.ventas-chart .bar-value{font-size:11px;font-weight:800;text-align:center;white-space:nowrap}
+.ventas-chart .bar-label{font-size:11px;text-align:center;font-weight:700}
+body.dark .ventas-chart,body.neon .ventas-chart{border-color:#555}
+body.neon .ventas-chart .bar-fill{background:#34ff6a}
+</style>
 </head>
 <body>
 <header class="mitienda-header">
@@ -322,6 +332,7 @@ body.neon .table-wrap th, body.neon .table-wrap td{
     <div class="row" style="margin-top:12px">
       <button id="run" class="btn btn-rojo" disabled>Actualizar reporte</button>
       <button id="export" class="btn btn-outline" disabled>Exportar artículos con código</button>
+      <button id="exportComplete" class="btn btn-amarillo" disabled>⬇ Exportar CSV completo</button>
       <span id="status" class="small"></span>
     </div>
   </section>
@@ -413,6 +424,16 @@ body.neon .table-wrap th, body.neon .table-wrap td{
       </div>
     </div>
 
+    <section style="margin-top:22px" aria-label="Gráfica de ventas">
+      <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
+      <div class="row" style="justify-content:space-between">
+        <div><strong>Gráfica del total de ventas por mes</strong><div class="hint">Incluye todas las ventas registradas, también los artículos M-. Se aplican los filtros de fechas.</div></div>
+        <button id="exportChart" class="btn btn-outline btn-small" disabled>⬇ CSV de la gráfica</button>
+      </div>
+      <div id="ventasChart" class="ventas-chart" role="img" aria-label="Ventas totales mensuales, incluidos productos M-">
+        <div class="small">Carga el historial para ver la gráfica.</div>
+      </div>
+    </section>
   </section>
 </main>
 
@@ -529,6 +550,9 @@ body.neon .table-wrap th, body.neon .table-wrap td{
   let M_GROUPS = [];
   let PROFIT = [];
   let PROFIT_TOTAL = 0;
+  let FILTERED_REPORT = [];
+  let MONTHLY_SALES = [];
+  let REPORT_SALES_TOTAL = 0;
   const KEY_HISTORY = 'sistemacobro_history_v2'; // ajusta si tu app usa otra llave
   const KEY_PRODUCTS = 'sistemacobro_products_v2';
 
@@ -642,6 +666,78 @@ body.neon .table-wrap th, body.neon .table-wrap td{
     }
   }
 
+  // CSV completo: cada renglón vendido se conserva individualmente, incluidos M-.
+  // Los movimientos M- no reciben costo ni utilidad: se dejan vacíos, no se consideran cero.
+  function csvCell(value){
+    let v = String(value ?? "");
+    // Evitar interpretación de fórmulas en programas de hoja de cálculo.
+    if (/^[\s]*[=+@\-]/.test(v) && !/^-?\d+(\.\d+)?$/.test(v.trim())) v = "'" + v;
+    return '"' + v.replaceAll('"','""') + '"';
+  }
+  function downloadCsv(filename, lines){
+    const blob = new Blob(["\uFEFF" + lines.map(row=>row.map(csvCell).join(",")).join("\r\n")],{type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  }
+  function exportCompleteReport(){
+    if(!FILTERED_REPORT.length) return;
+    let catalog = [];
+    try { catalog = JSON.parse(localStorage.getItem(KEY_PRODUCTS) || "[]"); } catch(e) {}
+    const costs = new Map((Array.isArray(catalog)?catalog:[]).map(p=>[String(p.codigo??"").trim(),safeNum(p.costo)]));
+    const lines = [["Tipo","Venta ID","Fecha","Código","Artículo","Piezas","Precio unitario","Importe vendido","Costo unitario","Costo total","Utilidad estimada"]];
+    let revenue=0,knownCosts=0,knownProfit=0,mRevenue=0,withoutCost=0;
+    for(const r of FILTERED_REPORT){
+      const code=String(r.codigo??"").trim();
+      const isM=code.startsWith("M-");
+      const hasCost=!isM && code && costs.has(code) && costs.get(code)>0;
+      const c=hasCost ? costs.get(code) : null;
+      const totalCost=hasCost ? c*r.cant : null;
+      const profit=hasCost ? r.subtotal-totalCost : null;
+      revenue+=r.subtotal;
+      if(isM) mRevenue+=r.subtotal;
+      else if(hasCost){knownCosts+=totalCost;knownProfit+=profit;}
+      else withoutCost++;
+      lines.push([isM?"Movimiento M-":"Producto",r.ventaId,r.dt.toLocaleString("es-MX"),code,r.nombre,r.cant,r.precio,r.subtotal,c,totalCost,profit]);
+    }
+    lines.push([]);
+    lines.push(["RESUMEN","Importe total de renglones", "", "", "", "", "",revenue]);
+    lines.push(["RESUMEN","Importe de movimientos M-", "", "", "", "", "",mRevenue]);
+    lines.push(["RESUMEN","Costos conocidos de productos (sin M-)", "", "", "", "", "", "", "",knownCosts]);
+    lines.push(["RESUMEN","Utilidad estimada de productos con costo conocido", "", "", "", "", "", "", "", "", "",knownProfit]);
+    lines.push(["NOTA","M- y productos sin costo capturado NO tienen utilidad calculada."]);
+    lines.push(["NOTA",withoutCost+" renglones regulares no tienen costo conocido. El costo usado es el actual del catálogo, no necesariamente el histórico."]);
+    downloadCsv("mitienda_movimientos_completos.csv",lines);
+  }
+  function renderSalesChart(filtered){
+    // Una transacción aparece una sola vez por mes, aunque contenga productos normales y M-.
+    const byTransaction = new Map();
+    for(const r of filtered){
+      const key = String(r.ventaId) + "|" + isoDate(r.dt);
+      if(!byTransaction.has(key)) byTransaction.set(key,{dt:r.dt,total:r.total});
+    }
+    const monthly = new Map();
+    for(const tx of byTransaction.values()){
+      const key=monthKey(tx.dt);
+      monthly.set(key,(monthly.get(key)||0)+tx.total);
+    }
+    MONTHLY_SALES = Array.from(monthly,([period,total])=>({period,total})).sort((a,b)=>a.period.localeCompare(b.period));
+    const root=$("ventasChart"); root.innerHTML="";
+    if(!MONTHLY_SALES.length){root.textContent="Sin ventas para este periodo.";return;}
+    const max=Math.max(...MONTHLY_SALES.map(x=>x.total),1);
+    for(const {period,total} of MONTHLY_SALES){
+      const col=document.createElement("div");col.className="bar-column";
+      const value=document.createElement("div");value.className="bar-value";value.textContent=money(total);
+      const track=document.createElement("div");track.className="bar-track";
+      const fill=document.createElement("div");fill.className="bar-fill";fill.style.height=Math.max(2,Math.round(145*total/max))+"px";
+      track.appendChild(fill);
+      const label=document.createElement("div");label.className="bar-label";label.textContent=period;
+      col.append(value,track,label);root.appendChild(col);
+    }
+    root.setAttribute("aria-label","Ventas por mes incluyendo M-: "+MONTHLY_SALES.map(x=>x.period+" "+money(x.total)).join("; "));
+  }
+
   function generateReports(){
     if(!RAW.length){ setStatus("No hay datos cargados."); return; }
 
@@ -688,6 +784,7 @@ body.neon .table-wrap th, body.neon .table-wrap td{
       filtered.push({...r, dt:d, label:r.nombre, key});
     }
 
+    FILTERED_REPORT = filtered;
     const map = new Map();
     for(const r of filtered){
       if(r.key === "M-") continue;
@@ -775,6 +872,7 @@ body.neon .table-wrap th, body.neon .table-wrap td{
 
 
     const totalSales = TX.reduce((s,t)=> s + (t.total||0), 0);
+    REPORT_SALES_TOTAL = totalSales;
     $("kSales").textContent = money(totalSales);
     $("kProfit").textContent = money(PROFIT_TOTAL);
     $("kTx").textContent = TX.length.toLocaleString("es-MX");
@@ -791,7 +889,9 @@ body.neon .table-wrap th, body.neon .table-wrap td{
     const missingCost = PROFIT.filter(x=> (x.costUnit||0) <= 0.000001).length;
     $("profitScope").textContent = `Productos con código: ${PROFIT.length.toLocaleString("es-MX")} • Utilidad total: ${money(PROFIT_TOTAL)}${missingCost? " • Sin costo: "+missingCost.toLocaleString("es-MX"):""}`;
 
-    renderItems(); renderMItems(); renderProfit();
+    renderItems(); renderMItems(); renderProfit(); renderSalesChart(filtered);
+    $("exportComplete").disabled = !filtered.length;
+    $("exportChart").disabled = !MONTHLY_SALES.length;
 
     ITEMS_EXPORT = buildItemsCSV(ITEMS);
     $("export").disabled = !ITEMS.length;
@@ -802,6 +902,7 @@ body.neon .table-wrap th, body.neon .table-wrap td{
   function loadFromLocalHistory(){
     clearOutputs();
     RAW = []; ITEMS = []; TX = []; M_GROUPS = []; ITEMS_EXPORT = "";
+    FILTERED_REPORT=[]; MONTHLY_SALES=[]; $("exportComplete").disabled=true; $("exportChart").disabled=true; $("ventasChart").textContent="Carga el historial para ver la gráfica.";
 
     let hist = null;
     try{
@@ -897,6 +998,11 @@ body.neon .table-wrap th, body.neon .table-wrap td{
     setTimeout(()=>URL.revokeObjectURL(url), 1000);
   });
 
+  document.getElementById("exportComplete").addEventListener("click",exportCompleteReport);
+  document.getElementById("exportChart").addEventListener("click",()=>{
+    if(!MONTHLY_SALES.length)return;
+    downloadCsv("mitienda_ventas_mensuales.csv",[["Mes","Ventas totales (incluye M-)"],...MONTHLY_SALES.map(x=>[x.period,x.total])]);
+  });
   document.getElementById("search").addEventListener("input", renderItems);
   document.getElementById("searchProfit").addEventListener("input", renderProfit);
 
@@ -925,11 +1031,11 @@ function volverMiTiendaKiosco(){
       window.opener.focus();
       window.close();
       // Si el navegador impide cerrar la ventana, ofrece ruta de regreso.
-      setTimeout(function(){ window.location.assign('index.html'); }, 250);
+      setTimeout(function(){ window.location.replace('fullv.html'); }, 250);
       return;
     }
   } catch (e) { /* Continuar a la ruta segura */ }
-  window.location.assign('index.html');
+  window.location.replace('fullv.html');
 }
 </script>
 </body>

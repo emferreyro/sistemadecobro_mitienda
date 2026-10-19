@@ -506,7 +506,7 @@ document.getElementById('modalAceptar').onclick = () => {
 <button id="nav-historial">Historial</button>
 </div>
 <div id="adminArea" style="display:flex;align-items:center;gap:8px">
-<button class="btn btn-outline" id="btnAdminLogout" style="display:none;padding:8px 10px;font-size:13px;white-space:nowrap">🚪 Salir Admin</button>
+<button class="btn btn-outline" id="btnAdminLogout" style="display:inline-block;padding:8px 10px;font-size:13px;white-space:nowrap">🚪 Salir Admin</button>
 <button class="btn btn-outline" id="btnCambiarLogo" title="Cambiar logo">🖼️ Logo</button>
 <!-- 🆕 Botón de tema -->
 <button class="btn btn-outline" id="btnToggleTheme" title="Cambiar tema">🌓 Tema</button>
@@ -1231,7 +1231,7 @@ prodCodigo.value=''; prodNombre.value=''; if(typeof prodCosto!=='undefined' && p
   isAdmin = true;
   if(adminControls) adminControls.style.display = 'block';
   if(adminHistControls) adminHistControls.style.display = 'block';
-  if(btnAdminLogout) btnAdminLogout.style.display = 'none';
+  if(btnAdminLogout) btnAdminLogout.style.display = 'inline-block';
   renderProducts();
 });
 
