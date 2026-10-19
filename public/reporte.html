@@ -188,28 +188,23 @@ body.neon th, body.neon td{ border-bottom-color: rgba(45,212,255,0.14); }
 body.neon th{ color: rgba(232,244,255,0.80); }
 
 
-.summary-table{display:grid;grid-template-columns: minmax(220px,1.2fr) minmax(220px,1.4fr) minmax(120px,.8fr);border:1px solid #e8eaee;border-radius:14px;overflow:hidden;background:#fff}
-.summary-row{display:contents}
-.summary-cell{padding:12px 14px;border-bottom:1px solid #eef0f3}
-.summary-row:last-child .summary-cell{border-bottom:none}
-.summary-head .summary-cell{background:#f8fafc;font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
-.summary-label{font-weight:900}
-.summary-desc{color:var(--muted);font-size:13px;line-height:1.3}
-.summary-value{font-weight:900;font-size:20px;color:var(--rojo-dark);text-align:right;align-self:center;overflow-wrap:anywhere}
-body.dark .summary-table, body.neon .summary-table{background:transparent;border-color:#2c2c2c}
-body.dark .summary-head .summary-cell, body.neon .summary-head .summary-cell{background:rgba(255,255,255,0.04);color:#cbd5e1}
-body.dark .summary-cell, body.neon .summary-cell{border-bottom-color:#2c2c2c}
-body.dark .summary-desc{color:#c0c7d1}
-body.neon .summary-desc{color:rgba(232,244,255,0.80)}
-body.dark .summary-value{color:#f5e131}
-body.neon .summary-value{color:#34ff6a}
-@media (max-width:760px){
-  .summary-table{grid-template-columns: 1fr}
-  .summary-head{display:none}
-  .summary-row{display:grid;grid-template-columns:1fr;gap:4px;padding:12px 14px;border-bottom:1px solid #eef0f3}
-  .summary-cell{padding:0;border:none}
-  .summary-value{text-align:left;font-size:22px;margin-top:4px}
-  body.dark .summary-row, body.neon .summary-row{border-bottom-color:#2c2c2c}
+.summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 10px;margin-top:4px}
+.summary-mini{padding:6px 5px 7px;border-top:1px solid #e8eaee;border-bottom:1px solid #e8eaee;background:transparent;min-height:56px}
+.summary-mini.wide{grid-column:auto}
+.summary-mini-label{font-size:12px;font-weight:900;line-height:1.1;color:var(--text)}
+.summary-mini-value{margin-top:4px;font-size:18px;font-weight:900;line-height:1.02;color:var(--rojo-dark);overflow-wrap:anywhere}
+body.dark .summary-mini, body.neon .summary-mini{border-top-color:#2c2c2c;border-bottom-color:#2c2c2c}
+body.dark .summary-mini-label{color:#eef2f7}
+body.neon .summary-mini-label{color:#e8f4ff}
+body.dark .summary-mini-value{color:#f5e131}
+body.neon .summary-mini-value{color:#34ff6a}
+@media (max-width:900px){
+  .summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .summary-mini.wide{grid-column:auto}
+}
+@media (max-width:560px){
+  .summary-grid{grid-template-columns:1fr}
+  .summary-mini.wide{grid-column:auto}
 }
 
 </style>
@@ -366,56 +361,42 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
   </section>
 
   <section class="card">
-    <div class="summary-table" aria-label="Resumen general del reporte">
-      <div class="summary-row summary-head">
-        <div class="summary-cell">Indicador</div>
-        <div class="summary-cell">Descripción</div>
-        <div class="summary-cell" style="text-align:right">Valor</div>
+    <div class="summary-grid" aria-label="Resumen general del reporte">
+      <div class="summary-mini">
+        <div class="summary-mini-label">Ventas acumuladas</div>
+        <div class="summary-mini-value" id="kSales">—</div>
       </div>
-      <div class="summary-row">
-        <div class="summary-cell summary-label">Ventas acumuladas</div>
-        <div class="summary-cell summary-desc">Total en pesos de los archivos de cierre seleccionados.</div>
-        <div class="summary-cell summary-value" id="kSales">—</div>
+      <div class="summary-mini">
+        <div class="summary-mini-label">Operaciones acumuladas</div>
+        <div class="summary-mini-value" id="kTx">—</div>
       </div>
-      <div class="summary-row">
-        <div class="summary-cell summary-label">Cobros en efectivo</div>
-        <div class="summary-cell summary-desc">Total de operaciones cobradas en efectivo.</div>
-        <div class="summary-cell summary-value" id="kCash">—</div>
+      <div class="summary-mini">
+        <div class="summary-mini-label">Cobros en efectivo</div>
+        <div class="summary-mini-value" id="kCash">—</div>
       </div>
-      <div class="summary-row">
-        <div class="summary-cell summary-label">Cobros con tarjeta</div>
-        <div class="summary-cell summary-desc">Total de operaciones cobradas con tarjeta.</div>
-        <div class="summary-cell summary-value" id="kCard">—</div>
+      <div class="summary-mini">
+        <div class="summary-mini-label">Cobros con tarjeta</div>
+        <div class="summary-mini-value" id="kCard">—</div>
       </div>
-      <div class="summary-row">
-        <div class="summary-cell summary-label">Utilidad estimada</div>
-        <div class="summary-cell summary-desc">Calculada solo para productos con código y con costo capturado.</div>
-        <div class="summary-cell summary-value" id="kProfit">—</div>
+      <div class="summary-mini">
+        <div class="summary-mini-label">Utilidad estimada</div>
+        <div class="summary-mini-value" id="kProfit">—</div>
       </div>
-      <div class="summary-row">
-        <div class="summary-cell summary-label">Operaciones acumuladas</div>
-        <div class="summary-cell summary-desc">Número de transacciones incluidas en los archivos cargados.</div>
-        <div class="summary-cell summary-value" id="kTx">—</div>
+      <div class="summary-mini">
+        <div class="summary-mini-label">Registros sin código o a granel</div>
+        <div class="summary-mini-value" id="kMPieces">—</div>
       </div>
-      <div class="summary-row">
-        <div class="summary-cell summary-label">Artículo más vendido</div>
-        <div class="summary-cell summary-desc">Producto con código con mayor número de piezas vendidas.</div>
-        <div class="summary-cell summary-value" id="kTop">—</div>
+      <div class="summary-mini">
+        <div class="summary-mini-label">Ventas sin código o a granel</div>
+        <div class="summary-mini-value" id="kMAmount">—</div>
       </div>
-      <div class="summary-row">
-        <div class="summary-cell summary-label">Artículo menos vendido</div>
-        <div class="summary-cell summary-desc">Producto con código con menor número de piezas vendidas.</div>
-        <div class="summary-cell summary-value" id="kLow">—</div>
+      <div class="summary-mini">
+        <div class="summary-mini-label">Artículo más vendido</div>
+        <div class="summary-mini-value" id="kTop">—</div>
       </div>
-      <div class="summary-row">
-        <div class="summary-cell summary-label">Registros sin código o a granel</div>
-        <div class="summary-cell summary-desc">Cantidad de registros con código M- dentro de los archivos cargados.</div>
-        <div class="summary-cell summary-value" id="kMPieces">—</div>
-      </div>
-      <div class="summary-row">
-        <div class="summary-cell summary-label">Ventas sin código o a granel</div>
-        <div class="summary-cell summary-desc">Importe total de registros con código M-.</div>
-        <div class="summary-cell summary-value" id="kMAmount">—</div>
+      <div class="summary-mini">
+        <div class="summary-mini-label">Artículo menos vendido</div>
+        <div class="summary-mini-value" id="kLow">—</div>
       </div>
     </div>
 
