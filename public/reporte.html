@@ -1020,6 +1020,19 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     });
   });
 
+  // Preferencias de agrupación M- por tienda (mismo navegador y origen).
+  const KEY_M_KEYWORDS = 'sistemacobro_reporte_m_keywords_v1';
+  const mKeywordsInput = document.getElementById('mKeywords');
+  try {
+    const savedKeywords = localStorage.getItem(KEY_M_KEYWORDS);
+    // Una cadena vacía es válida: permite eliminar todas las palabras.
+    if (savedKeywords !== null) mKeywordsInput.value = savedKeywords;
+  } catch (e) { console.warn('No se pudieron cargar las palabras M-', e); }
+  mKeywordsInput.addEventListener('input', () => {
+    try { localStorage.setItem(KEY_M_KEYWORDS, mKeywordsInput.value); }
+    catch (e) { console.warn('No se pudieron guardar las palabras M-', e); }
+  });
+
   // Auto-intento al abrir
   window.addEventListener("load", loadFromLocalHistory);
 </script>
