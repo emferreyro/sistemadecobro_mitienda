@@ -513,9 +513,16 @@ body.neon .low-stock{
                     <div id="total" class="total-amount">$0.00</div>
                   </div>
 
-                  <div class="pay-change-row" style="margin-left:12px;">
+                  <div class="pay-change-row" style="margin-left:12px;flex-wrap:wrap;">
+                    <div class="pay-field" style="min-width:145px">
+                      <label for="metodoPago">Método de pago</label>
+                      <select id="metodoPago" style="padding:10px 12px;border:1px solid #e6e7ea;border-radius:10px;font-size:15px;min-height:42px">
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="Tarjeta">Tarjeta</option>
+                      </select>
+                    </div>
                     <div class="pay-field">
-                      <label for="pago">Su pago $</label>
+                      <label for="pago" id="labelPago">Su pago $</label>
                       <input id="pago" type="number" step="0.01" min="0" placeholder="0.00" />
                     </div>
                     <div class="pay-field" style="min-width:120px">
@@ -728,6 +735,8 @@ const btnExportProd = document.getElementById('btnExportProd');
 const btnImportProd = document.getElementById('btnImportProd');
 const inputImportProd = document.getElementById('inputImportProd');
 const pagoInput = document.getElementById('pago');
+const metodoPagoInput = document.getElementById('metodoPago');
+const labelPago = document.getElementById('labelPago');
 const cambioLabel = document.getElementById('cambio');
 
 /* NUEVOS refs de la zona unificada */
@@ -804,7 +813,14 @@ function actualizarCaja(totalHoy){
 
   const inicio = getCashStartForToday();
   input.value = (Number(inicio)||0).toFixed(2).replace(/\.00$/,'');
-  const cierre = (Number(inicio)||0) + (Number(totalHoy)||0);
+  // La caja física recibe sólo ventas en efectivo; ventas antiguas sin método se consideran efectivo.
+  const efectivoHoy = historial.reduce((s,v)=>{
+    const fecha = parseVentaDate(v);
+    const ahora = new Date();
+    if(!fecha || fecha.getFullYear()!==ahora.getFullYear() || fecha.getMonth()!==ahora.getMonth() || fecha.getDate()!==ahora.getDate()) return s;
+    return s + (v.metodoPago === 'Tarjeta' ? 0 : (Number(v.total)||0));
+  },0);
+  const cierre = (Number(inicio)||0) + efectivoHoy;
   closeEl.textContent = formatMXN(cierre);
 }
 /* NAV */
@@ -1176,22 +1192,34 @@ if(inputBusqueda) inputBusqueda.value='';
 
 /* Payment & Change logic */
 function updatePaymentChange(){
+  const tarjeta = metodoPagoInput.value === 'Tarjeta';
+  pagoInput.disabled = tarjeta;
+  pagoInput.placeholder = tarjeta ? 'Cobro con tarjeta' : '0.00';
+  labelPago.textContent = tarjeta ? 'Importe en tarjeta $' : 'Su pago $';
+  if(tarjeta){
+    pagoInput.value = currentTotal.toFixed(2);
+    cambioLabel.textContent = formatMXN(0);
+    cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
+    return;
+  }
   const pago = Math.max(0, Number(pagoInput.value) || 0);
   const diff = Number((pago - currentTotal).toFixed(2));
   cambioLabel.textContent = formatMXN(Math.abs(diff));
   cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
-  if(diff >= 0){
-    cambioLabel.classList.add('change-ok','blink-green');
-  } else {
-    cambioLabel.classList.add('change-low','blink-red');
-  }
+  if(diff >= 0){ cambioLabel.classList.add('change-ok','blink-green'); }
+  else { cambioLabel.classList.add('change-low','blink-red'); }
 }
-pagoInput && pagoInput.addEventListener('input', ()=> { updatePaymentChange(); });
+metodoPagoInput.addEventListener('change',()=>{
+  pagoInput.value = '';
+  updatePaymentChange();
+});
+pagoInput.addEventListener('input',updatePaymentChange);
 
 btnFinalizar.addEventListener('click', ()=> {
-  const pago = Math.max(0, Number(pagoInput.value) || 0);
+  const metodoPago = metodoPagoInput.value;
+  const pago = metodoPago === 'Tarjeta' ? currentTotal : Math.max(0, Number(pagoInput.value) || 0);
   if(carrito.length === 0){ alert('El carrito está vacío.'); return; }
-  if(pago < currentTotal){
+  if(metodoPago === 'Efectivo' && pago < currentTotal){
     const faltante = Number((currentTotal - pago).toFixed(2));
     alert('Pago insuficiente. Faltan ' + formatMXN(faltante));
     return;
@@ -1204,26 +1232,27 @@ btnFinalizar.addEventListener('click', ()=> {
     fechaISO: now.toISOString(),
     total: Number(total.toFixed(2)),
     items: carrito.map(x=> ({...x})),
+    metodoPago: metodoPago,
     pago: pago,
-    cambio: Number((pago - total).toFixed(2))
+    cambio: metodoPago === 'Tarjeta' ? 0 : Number((pago - total).toFixed(2))
   };
   historial.unshift(venta);
   carrito = [];
   saveHistory(); saveCart();
   renderCart();
   renderHistorial();
+  metodoPagoInput.value = 'Efectivo';
   pagoInput.value = '';
-  cambioLabel.textContent = formatMXN(0);
-  cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
+  updatePaymentChange();
   showPanel(panelHistorial);
 });
 
 btnCancelar.addEventListener('click', ()=> {
   if(!confirm('¿Cancelar venta actual? Se borrará el carrito.')) return;
   carrito = []; saveCart(); renderCart();
+  metodoPagoInput.value = 'Efectivo';
   pagoInput.value = '';
-  cambioLabel.textContent = formatMXN(0);
-  cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
+  updatePaymentChange();
 });
 
 /* Manual sin código */
@@ -1290,6 +1319,7 @@ function renderHistorial(){
       d.innerHTML = `<div><div style="font-weight:700">Venta #${v.id}</div><div class="small">${v.fecha}</div></div>
                      <div style="text-align:right">
                        <div style="font-weight:800;color:var(--rojo)">${formatMXN(v.total)}</div>
+                       <div class="small">${v.metodoPago === 'Tarjeta' ? '💳 Tarjeta' : '💵 Efectivo'}</div>
                        <details style="margin-top:8px">
                          <summary class="small">Ver detalles</summary>
                          <table style="width:100%;margin-top:8px;border-collapse:collapse">
@@ -1459,6 +1489,7 @@ function armarTextoTicket(v){
 
   // TOTALES
   lineas.push(right('TOTAL: ', formatMXN(v.total)));
+  lineas.push('METODO DE PAGO: ' + (v.metodoPago === 'Tarjeta' ? 'TARJETA' : 'EFECTIVO'));
   if(typeof v.pago !== 'undefined'){
     lineas.push(right('PAGO: ', formatMXN(v.pago)));
   }
