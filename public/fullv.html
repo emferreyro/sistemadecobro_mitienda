@@ -718,7 +718,7 @@ document.getElementById('modalAceptar').onclick = () => {
 
   <div id="adminHistControls" style="display:none">
 <button class="btn btn-outline" id="btn-clear-all">Borrar historial</button>
-<button class="btn btn-outline" id="btnExportCSV">Reporte Ventas</button>
+<button class="btn btn-outline" id="btnExportCSV" type="button">Cierre de ventas</button>
 </div>
 </div>
 <div id="history-list" style="display:flex;flex-direction:column;gap:8px"></div>
@@ -2200,33 +2200,97 @@ function actualizarResumenHistorial(){
   try{ updateCashUI(); }catch(e){}
 }
 
-/* EXPORT CSV */
-async function exportHistorialCSV(){
-  if(historial.length === 0){ alert('No hay historial para exportar.'); return; }
-  let rows=[['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal']];
-  historial.forEach(v=>{ v.items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre,it.cantidad,it.precio,it.subtotal])); });
-  const csv = rows.map(r=> r.map(c=> '"' + String(c).replace(/"/g,'""') + '"').join(',') ).join('\r\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const ts = new Date(); const fname = 'Historial_'+ ts.getFullYear() + '-' + String(ts.getMonth()+1).padStart(2,'0') + '-' + String(ts.getDate()).padStart(2,'0') + '_' + String(ts.getHours()).padStart(2,'0') + '-' + String(ts.getMinutes()).padStart(2,'0') + '-' + String(ts.getSeconds()).padStart(2,'0') + '.csv';
-  try {
-    if('showDirectoryPicker' in window){
-      const dirHandle = await window.showDirectoryPicker();
-      const respaldoHandle = await dirHandle.getDirectoryHandle('Respaldo', { create: true });
-      const fileHandle = await respaldoHandle.getFileHandle(fname, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(blob);
-      await writable.close();
-      alert('💾 Respaldo guardado con éxito en la carpeta Respaldo.');
-      return;
-    }
-  } catch(err){
-    console.warn('File System API falló o fue cancelado:', err);
-  }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  alert('💾 Respaldo descargado (revisa tu carpeta de Descargas).');
+/* CIERRE DE VENTAS: exportación compatible con reporte.html y borrado verificado */
+let cierreVentasActivo = false;
+function crearArchivoCierre(ventas){
+  const columnas = ['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal','Método de pago','Pago recibido','Cambio'];
+  const rows = [columnas];
+  ventas.forEach(v => {
+    const metodo = v.metodoPago === 'Tarjeta' ? 'Tarjeta' : 'Efectivo';
+    const pago = (v.pago == null || v.pago === '') ? '' : v.pago;
+    const cambio = (v.cambio == null || v.cambio === '') ? '' : v.cambio;
+    const items = Array.isArray(v.items) ? v.items : [];
+    if(!items.length) rows.push([v.id,v.fecha,v.total,'','','','','',metodo,pago,cambio]);
+    items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre||'',it.cantidad,it.precio,it.subtotal,metodo,pago,cambio]));
+  });
+  return '\uFEFF' + rows.map(r => r.map(c => '"' + String(c ?? '').replace(/"/g,'""') + '"').join(',')).join('\r\n');
 }
-document.getElementById('btnExportCSV') && document.getElementById('btnExportCSV').addEventListener('click', exportHistorialCSV);
+function seleccionarCSVDeCierre(){
+  return new Promise(resolve => {
+    const input = document.createElement('input');
+    input.type='file'; input.accept='.csv,text/csv'; input.style.display='none';
+    document.body.appendChild(input);
+    input.addEventListener('change',()=>{
+      const file = input.files && input.files[0];
+      input.remove(); resolve(file || null);
+    },{once:true});
+    input.click();
+  });
+}
+async function exportHistorialCSV(){
+  if(cierreVentasActivo) return;
+  if(!historial.length){ alert('No hay ventas para cerrar.'); return; }
+  const cantidadVentas = historial.length;
+  if(!confirm('CIERRE DE VENTAS\n\nSe guardará una copia de las '+cantidadVentas+' ventas actuales en un archivo CSV.\n\nDESPUÉS de comprobar el respaldo, se borrará el historial de ventas activo de este equipo. Los productos, inventario y configuraciones NO se borrarán.\n\nPara consultar las ventas cerradas deberás cargar el CSV desde reporte.html.\n\n¿Continuar?')) return;
+  cierreVentasActivo = true;
+  const btn = document.getElementById('btnExportCSV');
+  if(btn) btn.disabled=true;
+  try{
+    // Una copia inmutable para comparar el historial justo antes de borrarlo.
+    const historialOriginal = JSON.stringify(historial);
+    const csv = crearArchivoCierre(JSON.parse(historialOriginal));
+    const ts = new Date();
+    const stamp = ts.getFullYear()+'-'+String(ts.getMonth()+1).padStart(2,'0')+'-'+String(ts.getDate()).padStart(2,'0')+'_'+String(ts.getHours()).padStart(2,'0')+'-'+String(ts.getMinutes()).padStart(2,'0')+'-'+String(ts.getSeconds()).padStart(2,'0');
+    const fname = 'Cierre_ventas_'+stamp+'.csv';
+    let respaldado = false;
+    if('showSaveFilePicker' in window){
+      try{
+        const handle = await window.showSaveFilePicker({ suggestedName: fname, types:[{ description:'CSV de ventas', accept:{'text/csv':['.csv']} }] });
+        const w = await handle.createWritable();
+        await w.write(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+        await w.close();
+        // Verificar los bytes escritos antes de habilitar el borrado.
+        const guardado = await (await handle.getFile()).text();
+        respaldado = guardado.replace(/^\uFEFF/, '') === csv.replace(/^\uFEFF/, '');
+        if(!respaldado) throw new Error('El archivo guardado no coincide con el respaldo.');
+      }catch(e){
+        if(e && e.name === 'AbortError'){ alert('Cierre cancelado. No se borró ninguna venta.'); return; }
+        throw e;
+      }
+    }else{
+      const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download=fname;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+      alert('Se solicitó la descarga de '+fname+'.\n\nAntes de borrar las ventas, verifica que realmente se haya guardado. En el siguiente paso selecciona ese mismo CSV para comprobarlo.');
+      if(!confirm('¿El CSV ya está descargado y disponible para seleccionarlo?\n\nSi eliges Cancelar, conservarás todas las ventas.')) return;
+      const archivo = await seleccionarCSVDeCierre();
+      if(!archivo){ alert('No se eligió un archivo. Las ventas se conservan.'); return; }
+      respaldado = (await archivo.text()).replace(/^\uFEFF/, '') === csv.replace(/^\uFEFF/, '');
+      if(!respaldado) throw new Error('El CSV elegido no coincide con las ventas actuales; no se borró nada.');
+    }
+    if(!respaldado) throw new Error('No se pudo confirmar el respaldo.');
+    if(JSON.stringify(historial) !== historialOriginal || localStorage.getItem(KEY_HISTORY) !== historialOriginal){
+      alert('El historial cambió durante el cierre. No se borró ninguna venta; vuelve a intentarlo.'); return;
+    }
+    if(!confirm('RESPALDO VERIFICADO\n\n'+cantidadVentas+' ventas respaldadas correctamente.\n\n¿Confirmas que deseas borrar estas ventas del historial activo?\n\nPodrás consultarlas después importando el CSV en Reporte.')) return;
+    // Nunca eliminar el carrito ni el catálogo de productos.
+    localStorage.setItem(KEY_HISTORY,'[]');
+    historial=[];
+    renderHistorial();
+    actualizarResumenHistorial();
+    updateCashUI();
+    alert('Cierre terminado. El historial activo quedó vacío. Conserva tu archivo '+fname+' en un lugar seguro.');
+  }catch(err){
+    console.error('Error en cierre de ventas:',err);
+    alert('No se completó el cierre: '+(err && err.message ? err.message : String(err))+ '\n\nNo se borraron las ventas.');
+  }finally{
+    cierreVentasActivo=false;
+    if(btn) btn.disabled=false;
+  }
+}
+document.getElementById('btnExportCSV')?.addEventListener('click', exportHistorialCSV);
 
 /* SCANNER modal */
 function openScannerModal(targetInput){
