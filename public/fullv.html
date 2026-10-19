@@ -444,6 +444,69 @@ body.neon .low-stock{
 }
 </style>
 
+
+<!-- Corrección POS táctil v2: caja estable según el ancho real del panel -->
+<style id="mitienda-zkt-payment-layout-v2">
+/* El ancho real del panel, no el del monitor, determina el reparto del cobro. */
+#mainLeft { container-type: inline-size; }
+@container (max-width: 1100px) {
+  #panel-venta .total-wrap {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    justify-items: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    gap: 12px !important;
+  }
+  #panel-venta .total-wrap > div:first-child {
+    width: 100% !important;
+    text-align: left !important;
+  }
+  #panel-venta .total-wrap > div:first-child > div {text-align:left !important;}
+  #panel-venta .pay-change-row {
+    display: grid !important;
+    grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+    width:100% !important;
+    margin-left: 0 !important;
+    gap: 10px !important;
+    align-items: end !important;
+    justify-content: stretch !important;
+  }
+  #panel-venta .pay-field {
+    flex: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+  }
+  #panel-venta .pay-field input,
+  #panel-venta .pay-field select {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 46px !important;
+  }
+  #panel-venta .pay-field label { display:block; min-height: 17px; }
+  #panel-venta #cambio { min-height:46px; display:flex; align-items:center; }
+  #panel-venta #total { white-space: nowrap !important; }
+}
+@container (max-width: 540px) {
+  #panel-venta .pay-change-row { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+  #panel-venta .pay-field:last-child { grid-column: 1 / -1; }
+}
+/* En el ZKT de 1024 px, la columna lateral baja y deja toda la anchura al cobro. */
+@media screen and (max-width: 1400px) {
+  .container { display:grid !important; grid-template-columns:minmax(0,1fr) !important; width:100% !important; max-width:100% !important; gap:12px !important; }
+  #mainLeft, .panel-right { min-width:0 !important; max-width:100% !important; }
+  .panel-right { order: 2 !important; }
+  .bandera-mx { margin-right:0 !important; }
+  main { padding:12px 10px 20px !important; }
+  #panel-venta .table { display:block; width:100%; max-width:100%; overflow-x:auto; }
+  #panel-venta .venta-top { flex-wrap:wrap; gap:9px; }
+}
+</style>
+
 </head>
 <body>
 <!-- ==============================
