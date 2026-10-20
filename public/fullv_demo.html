@@ -526,8 +526,7 @@ body.neon .low-stock{
   const remainingDays = Math.max(0, Math.ceil(remainingMs / MS));
 
   if (now >= end) {
-    // Bloqueo de la DEMO vencida. Abrir Acerca de solo por acción directa del usuario,
-    // para que Chrome permita la ventana emergente cuando sea posible.
+    // Aviso de vencimiento: al aceptar, volver a index y abrir Acerca de.
     const mostrarVencimiento = () => {
       if (document.getElementById("demoTrialExpiredOverlay")) return;
       const overlay = document.createElement("div");
@@ -538,17 +537,18 @@ body.neon .low-stock{
           <h2 id="demoExpiredTitle" style="font-size:21px;margin:0 0 14px">Periodo de prueba finalizado</h2>
           <p style="line-height:1.5;margin:0 0 22px">Tus 30 días de prueba han terminado. Consulta Acerca de para conocer cómo continuar usando Mi Tienda.</p>
           <button id="demoExpiredAccept" type="button" style="border:0;background:#e53935;color:white;padding:12px 30px;border-radius:9px;font-size:16px;font-weight:bold;cursor:pointer">Aceptar</button>
-          <p id="demoPopupHint" style="display:none;font-size:13px;color:#8b1c1c;margin:14px 0 0">El navegador bloqueó la ventana. Permite ventanas emergentes para este sitio e inténtalo de nuevo.</p>
         </div>`;
       document.body.appendChild(overlay);
       document.getElementById("demoExpiredAccept").addEventListener("click", () => {
+        // La apertura nace del clic para reducir el bloqueo de ventanas emergentes.
         const popup = window.open("./acercade.html", "MiTiendaAcercaDe", "popup=yes,width=850,height=650,resizable=yes,scrollbars=yes");
         if (popup) {
           try { popup.focus(); } catch(e) {}
-          document.getElementById("demoPopupHint").style.display = "none";
-        } else {
-          document.getElementById("demoPopupHint").style.display = "block";
         }
+        // Quitar inmediatamente la capa y regresar al inicio, incluso si Chrome
+        // impide la ventana emergente. No dejar la pantalla de la demo bloqueada.
+        overlay.remove();
+        window.location.replace("./index.html");
       });
     };
     if (document.readyState === "loading") {
