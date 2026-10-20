@@ -541,7 +541,13 @@ body.neon .low-stock{
       document.body.appendChild(overlay);
       document.getElementById("demoExpiredAccept").addEventListener("click", () => {
         // La apertura nace del clic para reducir el bloqueo de ventanas emergentes.
-        const popup = window.open("./acercade.html", "MiTiendaAcercaDe", "popup=yes,width=850,height=650,resizable=yes,scrollbars=yes");
+        // Abrir suficientemente amplia para que Acerca de conserve sus dos columnas.
+        const popupWidth = Math.min(1050, screen.availWidth || 1050);
+        const popupHeight = Math.min(820, screen.availHeight || 820);
+        const popupLeft = Math.max(0, Math.round(((screen.availWidth || popupWidth) - popupWidth) / 2));
+        const popupTop = Math.max(0, Math.round(((screen.availHeight || popupHeight) - popupHeight) / 2));
+        const features = `popup=yes,width=${popupWidth},height=${popupHeight},left=${popupLeft},top=${popupTop},resizable=yes,scrollbars=yes`;
+        const popup = window.open("./acercade.html", "MiTiendaAcercaDe", features);
         if (popup) {
           try { popup.focus(); } catch(e) {}
         }
