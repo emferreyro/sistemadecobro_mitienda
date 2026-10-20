@@ -526,7 +526,9 @@ body.neon .low-stock{
   const remainingDays = Math.max(0, Math.ceil(remainingMs / MS));
 
   if (now >= end) {
-    window.location.href = "./?trial=expired#trial_expired";
+    // Al aceptar el aviso de vencimiento, enviar a la página Acerca de.
+    alert("Tu período de prueba de 30 días ha finalizado.\n\nPara continuar usando Mi Tienda, consulta las opciones de contratación en Acerca de.");
+    window.location.replace("./acerca_de.html");
     return;
   }
 
@@ -545,7 +547,7 @@ body.neon .low-stock{
     alert("DEMO activo (prueba individual).\n\nInicio: " + new Date(start).toLocaleString() +
           "\nFin: " + new Date(end).toLocaleString() +
           "\nDías restantes: " + remainingDays +
-          "\n\nAl expirar te regresa a MiTienda para solicitar acceso.");
+          "\n\nAl expirar se abrirá Acerca de para consultar las opciones de contratación.");
   });
 
   console.log("FULLV_DEMO OK. Días restantes:", remainingDays, "Fin:", new Date(end).toISOString());
