@@ -818,19 +818,6 @@ function saveLogo(dataUrl){ localStorage.setItem(KEY_LOGO, dataUrl); }
 function loadState(){
   const p = localStorage.getItem(KEY_PRODUCTS);
   productos = p ? JSON.parse(p) : (localStorage.setItem(KEY_PRODUCTS, JSON.stringify(DEFAULT_PRODUCTS.slice())), DEFAULT_PRODUCTS.slice());
-  // Versión gratuita: mantener únicamente los 50 primeros productos.
-  // Antes del recorte, crear un respaldo de toda la lista (solo una vez por lista).
-  if(Array.isArray(productos) && productos.length > MAX_PRODUCTS){
-    try {
-      const backupKey = 'sistemacobro_products_pre_recorte_50_v1';
-      const previous = localStorage.getItem(backupKey);
-      if(!previous || (JSON.parse(previous)||[]).length < productos.length){
-        localStorage.setItem(backupKey, JSON.stringify(productos));
-      }
-    } catch(err){ console.warn('No se pudo crear respaldo previo al límite gratuito:', err); }
-    productos = productos.slice(0, MAX_PRODUCTS);
-    saveProducts();
-  }
   carrito = JSON.parse(localStorage.getItem(KEY_CART) || '[]');
   historial = JSON.parse(localStorage.getItem(KEY_HISTORY) || '[]');
   const logo = localStorage.getItem(KEY_LOGO);

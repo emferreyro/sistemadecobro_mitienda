@@ -608,8 +608,7 @@ body.neon .low-stock{
 <button id="nav-historial">Historial</button>
 </div>
 <div id="adminArea" style="display:flex;align-items:center;gap:8px">
-<button class="btn btn-outline" id="btnChangeAdminPass" type="button" title="Cambiar contraseña de administrador">🔑 Clave</button>
- <button class="btn btn-outline" id="btnAdminLogout" style="display:inline-block;padding:8px 10px;font-size:13px;white-space:nowrap">🚪 Salir Admin</button>
+<button class="btn btn-outline" id="btnAdminLogout" style="display:inline-block;padding:8px 10px;font-size:13px;white-space:nowrap">🚪 Salir Admin</button>
 <button class="btn btn-outline" id="btnCambiarLogo" title="Cambiar logo">🖼️ Logo</button>
 <!-- 🆕 Botón de tema -->
 <button class="btn btn-outline" id="btnToggleTheme" title="Cambiar tema">🌓 Tema</button>
@@ -860,9 +859,6 @@ function getAdminPassword(){
   }
   return ADMIN_PASSWORD_DEFAULT;
 }
-function setAdminPassword(newPass){
-  localStorage.setItem(KEY_ADMIN_PASSWORD, newPass);
-}
 const KEY_PRODUCTS = 'sistemacobro_products_v2';
 const KEY_CART = 'sistemacobro_cart_v2';
 const KEY_HISTORY = 'sistemacobro_history_v2';
@@ -1068,7 +1064,7 @@ function initCashBox(){
   const btn = document.getElementById('cashEditBtn');
   if(!inp || !btn) return;
 
-  // La edición de caja requiere la misma contraseña de administrador de Mi Tienda.
+  // FULLV: se asume modo admin; editable sin permisos.
   // Modo seguro: se edita con botón (Editar/Guardar) para evitar cambios accidentales.
   // Evitar reiniciar el estado del campo en cada renderizado.
   if(btn.__cashBound) { updateCashUI(); return; }
@@ -1098,12 +1094,6 @@ function initCashBox(){
 
   btn.addEventListener('click', ()=>{
     if(!editing){
-      const pass = prompt('Contraseña de administrador para editar el inicio de caja:');
-      if(pass === null) return;
-      if(pass !== getAdminPassword()){
-        alert('Contraseña incorrecta.');
-        return;
-      }
       // cargar valor actual y permitir edición
       const actual = getCashStartToday();
       inp.value = (Number(actual)||0).toFixed(2).replace(/\.00$/,'');
@@ -2078,23 +2068,6 @@ body.dark #lowStockModal .low-stock{
 </head>
 <body>
   <pre class="ticket">${safe}</pre>
-
-<script id="miTiendaCambiarClave">
-// Configuración local compartida entre Index, FULLV y DEMO del mismo origen/perfil.
-document.getElementById('btnChangeAdminPass')?.addEventListener('click', function(){
-  const actual = prompt('Contraseña actual de administrador:');
-  if(actual === null) return;
-  if(actual !== getAdminPassword()) { alert('Contraseña incorrecta.'); return; }
-  const nueva = prompt('Nueva contraseña de administrador (mínimo 4 caracteres):');
-  if(nueva === null) return;
-  if(nueva.length < 4) { alert('La contraseña debe tener al menos 4 caracteres.'); return; }
-  const confirmacion = prompt('Confirma la nueva contraseña:');
-  if(confirmacion === null) return;
-  if(confirmacion !== nueva) { alert('Las contraseñas no coinciden.'); return; }
-  setAdminPassword(nueva);
-  alert('Contraseña actualizada en este navegador.');
-});
-</script>
 </body>
 </html>`;
   })();
