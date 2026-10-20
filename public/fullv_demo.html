@@ -526,9 +526,36 @@ body.neon .low-stock{
   const remainingDays = Math.max(0, Math.ceil(remainingMs / MS));
 
   if (now >= end) {
-    // Al aceptar el aviso de vencimiento, enviar a la página Acerca de.
-    alert("Tu período de prueba de 30 días ha finalizado.\n\nPara continuar usando Mi Tienda, consulta las opciones de contratación en Acerca de.");
-    window.location.replace("./acercade.html");
+    // Bloqueo de la DEMO vencida. Abrir Acerca de solo por acción directa del usuario,
+    // para que Chrome permita la ventana emergente cuando sea posible.
+    const mostrarVencimiento = () => {
+      if (document.getElementById("demoTrialExpiredOverlay")) return;
+      const overlay = document.createElement("div");
+      overlay.id = "demoTrialExpiredOverlay";
+      overlay.style.cssText = "position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;font-family:Arial,sans-serif";
+      overlay.innerHTML = `
+        <div role="alertdialog" aria-modal="true" aria-labelledby="demoExpiredTitle" style="max-width:420px;width:100%;background:white;color:#1f2937;padding:26px;border-radius:14px;text-align:center;box-shadow:0 14px 44px rgba(0,0,0,.4)">
+          <h2 id="demoExpiredTitle" style="font-size:21px;margin:0 0 14px">Periodo de prueba finalizado</h2>
+          <p style="line-height:1.5;margin:0 0 22px">Tus 30 días de prueba han terminado. Consulta Acerca de para conocer cómo continuar usando Mi Tienda.</p>
+          <button id="demoExpiredAccept" type="button" style="border:0;background:#e53935;color:white;padding:12px 30px;border-radius:9px;font-size:16px;font-weight:bold;cursor:pointer">Aceptar</button>
+          <p id="demoPopupHint" style="display:none;font-size:13px;color:#8b1c1c;margin:14px 0 0">El navegador bloqueó la ventana. Permite ventanas emergentes para este sitio e inténtalo de nuevo.</p>
+        </div>`;
+      document.body.appendChild(overlay);
+      document.getElementById("demoExpiredAccept").addEventListener("click", () => {
+        const popup = window.open("./acercade.html", "MiTiendaAcercaDe", "popup=yes,width=850,height=650,resizable=yes,scrollbars=yes");
+        if (popup) {
+          try { popup.focus(); } catch(e) {}
+          document.getElementById("demoPopupHint").style.display = "none";
+        } else {
+          document.getElementById("demoPopupHint").style.display = "block";
+        }
+      });
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", mostrarVencimiento, {once:true});
+    } else {
+      mostrarVencimiento();
+    }
     return;
   }
 
