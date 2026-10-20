@@ -6,7 +6,10 @@
 // Inventario progresivo: solo FULLV registra (descuenta) stock; MiTienda solo refleja
 window.INVENTARIO_ACTIVO = true;
 
-</script><script src="js/guardFullv.js"></script>
+</script><script>
+// DEMO: conservar acceso de prueba independiente de la licencia pagada.
+window.DEMO_SKIP_AUTH = true;
+</script>
 <script>
 // ✅ Configuración global
 // Nota: si un <script> tiene atributo src, el navegador IGNORA el código inline dentro de esa etiqueta.
@@ -455,102 +458,100 @@ body.neon .low-stock{
 </style>
 </head>
 <body>
-<!-- ==============================
-     BLOQUE DE SEGURIDAD
-     ============================== -->
-<script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4/dist/fp.min.js"></script>
-<script>
-(async () => {
-  const fp = await FingerprintJS.load();
-  const result = await fp.get();
-  const fingerprint = result.visitorId;
+<!-- ===== DEMO: prueba individual 30 días (por dispositivo/navegador) ===== -->
+<style id="demo-trial-style">
+  /* DEMO: aviso discreto y NO bloqueante */
+  .demo-trial-banner{
+    position: fixed;
+    bottom: 12px; left: 12px; right: auto; top: auto;
+    z-index: 9999;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(45,212,255,0.22);
+    color: #eaf6ff;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    backdrop-filter: blur(10px);
+    display:flex; align-items:center; gap:10px;
+    max-width: 360px;
+    box-shadow: 0 10px 26px rgba(0,0,0,0.25);
+    font-size: 12px;
+    line-height: 1.15;
 
-  try {
-    const res = await fetch('autorizados.json?_=' + Date.now());
-    if (!res.ok) throw new Error('NO_JSON');
-    const data = await res.json();
-    const lista = (data && Array.isArray(data.autorizados)) ? data.autorizados : [];
-    if (!lista.includes(fingerprint)) {
-      mostrarModalBloqueo();
-    }
-  } catch (err) {
-    // Si no existe autorizados.json, autoriza el primer equipo
-    if (String(err).includes('NO_JSON')) {
-// Si no existe autorizados.json, crea uno nuevo en formato compacto (una línea por registro)
-if (String(err).includes('NO_JSON')) {
-  const nuevo = {
-    autorizados: [
-      { id: fingerprint, user: "admin", vencimiento: "2026-12-31" }
-    ]
-  };
-  
-  // Generar JSON: una línea por objeto
-  const json = `{"autorizados":[\n${nuevo.autorizados.map(a => JSON.stringify(a)).join(",\n")}\n]}`;
-  
-  const blob = new Blob([json], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'autorizados.json';
-  a.click();
-  
-  alert('✅ Este equipo ha sido autorizado como principal.\nGuarda el archivo "autorizados.json" junto a la app.');
-}
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'autorizados.json';
-      a.click();
-      alert('✅ Este equipo ha sido autorizado como principal. Guarda el archivo "autorizados.json" junto a la app.');
-    } else {
-      console.error(err);
-      alert('Error al verificar autorización del dispositivo.');
-    }
+    /* clave: no intercepta clicks (solo el botón) */
+    pointer-events: none;
+  }
+  .demo-trial-banner b{ font-weight: 800; }
+  .demo-trial-banner small{ opacity: 0.92; }
+
+  .demo-trial-btn{
+    pointer-events: auto; /* permitir click */
+    border: 1px solid rgba(45,212,255,0.25);
+    background: rgba(15,25,50,0.55);
+    color: #eaf6ff;
+    padding: 4px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-weight: 800;
+    font-size: 12px;
   }
 
-  // --- Modal centrado ---
-  function mostrarModalBloqueo() {
-    const overlay = document.createElement('div');
-    overlay.id = 'modal-blocker';
-    overlay.style.cssText = `
-      position:fixed;
-      top:0;left:0;
-      width:100%;height:100%;
-      background:rgba(0,0,0,0.6);
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      z-index:9999;`;
-overlay.innerHTML = `
-  <div style="
-    background:white;
-    padding:30px 40px;
-    border-radius:16px;
-    text-align:center;
-    max-width:400px;
-    font-family:Arial, sans-serif;
-    box-shadow:0 0 25px rgba(0,0,0,0.4);
-    color:#525;
-  ">
-    <div style="font-size:1.3em;font-weight:bold;margin-bottom:10px;">⚠️</div>
-    <div style="margin-bottom:20px;">
-      Estas utilizando la versión FULL en otro equipo.<br>
-      Si requieres un acceso adicional, contáctanos.
+  @media (max-width: 600px){
+    .demo-trial-banner{
+      left: 8px; right: 8px;
+      max-width: none;
+      border-radius: 14px;
+      justify-content: space-between;
+    }
+  }
+</style>
+<script id="demo-trial-script">
+(function(){
+  // Habilita DEMO y salta autenticación de FULL
+  window.DEMO_SKIP_AUTH = true;
+
+  const TRIAL_KEY = "mitienda_fullv_trial_start_v1";
+  const DAYS = 30;
+  const MS = 24*60*60*1000;
+  const now = Date.now();
+
+  let start = parseInt(localStorage.getItem(TRIAL_KEY) || "", 10);
+  if (!Number.isFinite(start) || start <= 0) {
+    start = now;
+    localStorage.setItem(TRIAL_KEY, String(start));
+  }
+
+  const end = start + (DAYS * MS);
+  const remainingMs = end - now;
+  const remainingDays = Math.max(0, Math.ceil(remainingMs / MS));
+
+  if (now >= end) {
+    window.location.href = "./?trial=expired#trial_expired";
+    return;
+  }
+
+  const banner = document.createElement("div");
+  banner.className = "demo-trial-banner";
+  banner.innerHTML = `
+    <div>
+      <b>🧪 DEMO FULL</b>
+      <small>Te quedan <b>${remainingDays}</b> día(s) de prueba</small>
     </div>
-    <button id="modalAceptar" class="btn btn-amarillo" style="padding:8px 18px;">Aceptar</button>
-  </div>
-`;
+    <button class="demo-trial-btn" type="button" id="demoTrialInfoBtn">Info</button>
+  `;
+  document.body.appendChild(banner);
 
-document.body.appendChild(overlay);
+  document.getElementById("demoTrialInfoBtn").addEventListener("click", function(){
+    alert("DEMO activo (prueba individual).\n\nInicio: " + new Date(start).toLocaleString() +
+          "\nFin: " + new Date(end).toLocaleString() +
+          "\nDías restantes: " + remainingDays +
+          "\n\nAl expirar te regresa a MiTienda para solicitar acceso.");
+  });
 
-// Al presionar "Aceptar", redirigir
-document.getElementById('modalAceptar').onclick = () => {
-  window.location.href = 'sistemadecobro_mitienda.html';
-};
+  console.log("FULLV_DEMO OK. Días restantes:", remainingDays, "Fin:", new Date(end).toISOString());
 })();
 </script>
-
-<!-- ==============================
-     FIN BLOQUE DE SEGURIDAD
-     ============================== -->
+<!-- ===== /DEMO ===== -->
 
 <div class="app">
 <header>
