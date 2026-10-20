@@ -674,18 +674,15 @@ body.neon .low-stock{
         </div>
 
         <div class="panel">
-          <strong>Contacto</strong>
-          <div style="margin-top:6px">
-            <div class="small-muted">Soporte por WhatsApp</div>
-            <div style="margin-top:8px; display:flex; gap:10px; flex-wrap:wrap;">
-              <button id="btnContacto" class="btn btn-amarillo">💬 WhatsApp</button>
-              <button id="btnSoporte" class="btn btn-outline" title="Click: abrir soporte • Mantén presionado 3s: reset admin">🛠 Soporte</button>
-            </div>
-            <div class="small-muted" style="margin-top:6px;">Contactanos, con gusto te atenderemos</div>
-          </div>
-        </div>
-
-        <div class="panel">
+  <strong>Contacto y soporte</strong>
+  <div class="small-muted" style="margin-top:8px;line-height:1.45">Para soporte de la aplicación, por favor contáctanos a:</div>
+  <div style="margin-top:7px;font-weight:700;overflow-wrap:anywhere">5548669275</div>
+  <div style="margin-top:5px;overflow-wrap:anywhere"><a href="mailto:emf_soporte@outlook.com" style="color:inherit;text-decoration:underline">emf_soporte@outlook.com</a></div>
+  <div style="margin-top:10px">
+    <button id="btnSoporte" type="button" class="btn btn-outline" title="Abrir Acerca de">🛠 Soporte</button>
+  </div>
+</div>
+<div class="panel">
           <strong>Ayúdanos a mejorar</strong>
           <div class="small" style="margin-top:8px; color: inherit; font-weight:600;">
             Esta APP ayuda a pequeños comercios. Los primeros 50 registros no tienen costo.
@@ -783,7 +780,7 @@ const adminHistControls = document.getElementById('adminHistControls');
 const shortcutVenta = document.getElementById('shortcut-venta');
 const shortcutProd = document.getElementById('shortcut-productos');
 const shortcutHist = document.getElementById('shortcut-hist');
-const btnContacto = document.getElementById('btnContacto');
+
 const btnSoporte = document.getElementById('btnSoporte');
 const productsWarningArea = document.getElementById('products-warning-area');
 const btnExportProd = document.getElementById('btnExportProd');
@@ -1928,14 +1925,6 @@ btnChangeAdminPass && btnChangeAdminPass.addEventListener('click', ()=>{
   alert('Clave actualizada.');
 });
 
-/* CONTACT (WhatsApp) */
-if(btnContacto){
-  btnContacto.addEventListener('click', ()=> {
-    const phone = '5215548669275';
-    const text = encodeURIComponent('Hola, necesito ayuda con Mi Tienda');
-    window.open(`https://wa.me/52${phone}?text=${text}`, '_blank');
-  });
-}
 
 function soporteResetAdmin(){
   const code = prompt('Soporte: ingresa el CÓDIGO MAESTRO para resetear la clave de admin:');
@@ -1978,13 +1967,13 @@ function setupSoporteButton(){
   const endPress = (e)=>{
     if(timer){ clearTimeout(timer); timer = null; }
     if(!longPressed){
-      // Click normal: abre soporte.html
+      // Click normal: abre acercade.html; mantener presionado conserva recuperación admin
       (function(){
-        const w = 480, h = 640;
+        const w = 980, h = 720;
         const left = Math.max(0, Math.floor((screen.width - w) / 2));
         const top  = Math.max(0, Math.floor((screen.height - h) / 2));
         const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`;
-        window.open('soporte.html', 'SoporteMiTienda', features);
+        window.open('acercade.html', 'mitiendaAcerca', features);
       })();
     }
   };

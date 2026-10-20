@@ -776,11 +776,13 @@ body.neon .low-stock{
 <div class="products-list" id="right-products" style="margin-top:8px"></div>
 </div>
 <div class="panel">
-<strong>Contacto</strong>
-<div style="margin-top:6px">
-<div class="small-muted">Soporte por WhatsApp</div>
-<button class="btn btn-amarillo" id="btnContacto" style="margin-top:8px">💬 WhatsApp</button>
-</div>
+  <strong>Contacto y soporte</strong>
+  <div class="small-muted" style="margin-top:8px;line-height:1.45">Para soporte de la aplicación, por favor contáctanos a:</div>
+  <div style="margin-top:7px;font-weight:700;overflow-wrap:anywhere">5548669275</div>
+  <div style="margin-top:5px;overflow-wrap:anywhere"><a href="mailto:emf_soporte@outlook.com" style="color:inherit;text-decoration:underline">emf_soporte@outlook.com</a></div>
+  <div style="margin-top:10px">
+    <button id="btnSoporte" type="button" class="btn btn-outline" title="Abrir Acerca de">🛠 Soporte</button>
+  </div>
 </div>
 <div class="panel">
 </div>
@@ -922,7 +924,7 @@ const adminHistControls = document.getElementById('adminHistControls');
 const shortcutVenta = document.getElementById('shortcut-venta');
 const shortcutProd = document.getElementById('shortcut-productos');
 const shortcutHist = document.getElementById('shortcut-hist');
-const btnContacto = document.getElementById('btnContacto');
+
 const productsWarningArea = document.getElementById('products-warning-area');
 const prodExportFormat = document.getElementById('prodExportFormat');
 const btnExportProdMulti = document.getElementById('btnExportProdMulti');
@@ -2648,12 +2650,16 @@ function adminSignedOut(){
 /* Mantener pulsado el logo 3s para admin */
 
 
-/* CONTACT (WhatsApp) */
-if(btnContacto){
-  btnContacto.addEventListener('click', ()=> {
-    const phone = '5548669275';
-    const text = encodeURIComponent('Hola, necesito ayuda con Mi Tienda');
-    window.open(`https://wa.me/52${phone}?text=${text}`, '_blank');
+
+/* Botón de soporte: acceso a Acerca de (sin WhatsApp) */
+const btnSoporte = document.getElementById('btnSoporte');
+if(btnSoporte){
+  btnSoporte.addEventListener('click', ()=> {
+    const w = 980, h = 720;
+    const left = Math.max(0, Math.floor((screen.width - w) / 2));
+    const top = Math.max(0, Math.floor((screen.height - h) / 2));
+    const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+    window.open('acercade.html', 'mitiendaAcerca', features);
   });
 }
 
