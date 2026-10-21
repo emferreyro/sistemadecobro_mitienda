@@ -2088,16 +2088,43 @@ function crearArchivoCierre(ventas){
   });
   return '\uFEFF' + rows.map(r => r.map(c => '"' + String(c ?? '').replace(/"/g,'""') + '"').join(',')).join('\r\n');
 }
-function seleccionarCSVDeCierre(){
+function seleccionarCSVDeCierre(nombreEsperado){
+  // En Android, abrir el selector automáticamente después de alert/confirm
+  // puede fallar por falta de activación del usuario. Usamos un control visible.
   return new Promise(resolve => {
-    const input = document.createElement('input');
-    input.type='file'; input.accept='.csv,text/csv'; input.style.display='none';
-    document.body.appendChild(input);
-    input.addEventListener('change',()=>{
-      const file = input.files && input.files[0];
-      input.remove(); resolve(file || null);
-    },{once:true});
-    input.click();
+    const overlay = document.createElement('div');
+    overlay.className = 'modal';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10020;background:rgba(0,0,0,.7);display:flex;justify-content:center;align-items:center;padding:16px;box-sizing:border-box';
+    const panel = document.createElement('div');
+    panel.className = 'modal-box';
+    panel.style.cssText = 'max-width:470px;width:100%;box-sizing:border-box;color:#1f2937;background:#fff;padding:22px;border-radius:14px';
+    const titulo = document.createElement('h3');
+    titulo.textContent = 'Verificar respaldo del cierre';
+    titulo.style.marginTop = '0';
+    const instrucciones = document.createElement('p');
+    instrucciones.textContent = 'Abre Descargas y selecciona el archivo ' + nombreEsperado + '. Compararemos su contenido antes de borrar las ventas.';
+    instrucciones.style.cssText = 'font-size:14px;line-height:1.5;overflow-wrap:anywhere';
+    const selector = document.createElement('input');
+    selector.type = 'file';
+    selector.accept = '.csv,text/csv';
+    selector.setAttribute('aria-label', 'Seleccionar CSV descargado');
+    selector.style.cssText = 'display:block;width:100%;max-width:100%;box-sizing:border-box;font-size:15px;margin:16px 0';
+    const cancelar = document.createElement('button');
+    cancelar.className = 'btn btn-outline';
+    cancelar.textContent = 'Cancelar cierre (conservar ventas)';
+    cancelar.style.cssText = 'width:100%;min-height:44px';
+    let terminado = false;
+    const finalizar = archivo => {
+      if(terminado) return;
+      terminado = true;
+      overlay.remove();
+      resolve(archivo);
+    };
+    selector.addEventListener('change', () => finalizar(selector.files && selector.files[0] || null), {once:true});
+    cancelar.addEventListener('click', () => finalizar(null), {once:true});
+    panel.append(titulo,instrucciones,selector,cancelar);
+    overlay.append(panel);
+    document.body.append(overlay);
   });
 }
 async function exportHistorialCSV(){
@@ -2137,8 +2164,7 @@ async function exportHistorialCSV(){
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=>URL.revokeObjectURL(url),60000);
       alert('Se solicitó la descarga de '+fname+'.\n\nAntes de borrar las ventas, verifica que realmente se haya guardado. En el siguiente paso selecciona ese mismo CSV para comprobarlo.');
-      if(!confirm('¿El CSV ya está descargado y disponible para seleccionarlo?\n\nSi eliges Cancelar, conservarás todas las ventas.')) return;
-      const archivo = await seleccionarCSVDeCierre();
+      const archivo = await seleccionarCSVDeCierre(fname);
       if(!archivo){ alert('No se eligió un archivo. Las ventas se conservan.'); return; }
       respaldado = (await archivo.text()).replace(/^\uFEFF/, '') === csv.replace(/^\uFEFF/, '');
       if(!respaldado) throw new Error('El CSV elegido no coincide con las ventas actuales; no se borró nada.');
