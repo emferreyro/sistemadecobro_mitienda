@@ -506,45 +506,51 @@ if (String(err).includes('NO_JSON')) {
     }
   }
 
-  // --- Modal centrado ---
+  // Aviso de equipo no autorizado y consulta del fingerprint, sin alterar licencias.
   function mostrarModalBloqueo() {
+    if (document.getElementById('modal-blocker')) return;
     const overlay = document.createElement('div');
     overlay.id = 'modal-blocker';
-    overlay.style.cssText = `
-      position:fixed;
-      top:0;left:0;
-      width:100%;height:100%;
-      background:rgba(0,0,0,0.6);
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      z-index:9999;`;
-overlay.innerHTML = `
-  <div style="
-    background:white;
-    padding:30px 40px;
-    border-radius:16px;
-    text-align:center;
-    max-width:400px;
-    font-family:Arial, sans-serif;
-    box-shadow:0 0 25px rgba(0,0,0,0.4);
-    color:#525;
-  ">
-    <div style="font-size:1.3em;font-weight:bold;margin-bottom:10px;">⚠️</div>
-    <div style="margin-bottom:20px;">
-      Estas utilizando la versión FULL en otro equipo.<br>
-      Si requieres un acceso adicional, contáctanos.
-    </div>
-    <button id="modalAceptar" class="btn btn-amarillo" style="padding:8px 18px;">Aceptar</button>
-  </div>
-`;
-
-document.body.appendChild(overlay);
-
-// Al presionar "Aceptar", redirigir
-document.getElementById('modalAceptar').onclick = () => {
-  window.location.href = 'sistemadecobro_mitienda.html';
-};
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;justify-content:center;align-items:center;z-index:99999;padding:12px;box-sizing:border-box';
+    overlay.innerHTML = `
+      <div role="dialog" aria-modal="true" aria-label="Dispositivo no autorizado" style="background:white;color:#292929;padding:24px;border-radius:16px;text-align:center;width:100%;max-width:440px;box-sizing:border-box;font-family:Arial,sans-serif;box-shadow:0 0 25px rgba(0,0,0,.4)">
+        <div style="font-size:28px;margin-bottom:10px">⚠️</div>
+        <strong style="display:block;font-size:19px;margin-bottom:12px">Dispositivo no autorizado</strong>
+        <p style="line-height:1.5">Estás utilizando la versión FULL en un dispositivo que no está autorizado. Para solicitar acceso adicional, obtén el fingerprint y contáctanos.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:16px">
+          <button id="modalVerFinger" type="button" style="background:#f5e131;color:#222;border:0;border-radius:9px;padding:12px 15px;font-weight:bold;cursor:pointer">🔐 Obtener fingerprint</button>
+          <button id="modalAceptar" type="button" style="background:#eee;color:#222;border:0;border-radius:9px;padding:12px 15px;cursor:pointer">Aceptar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    document.getElementById('modalAceptar').onclick = () => {
+      window.location.href = 'sistemadecobro_mitienda.html';
+    };
+    document.getElementById('modalVerFinger').onclick = () => {
+      const fingerOverlay = document.createElement('div');
+      fingerOverlay.id = 'modal-fingerprint';
+      fingerOverlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100000;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box';
+      const panel = document.createElement('div');
+      panel.style.cssText = 'width:100%;max-width:650px;height:min(620px,90dvh);background:#fff;border-radius:14px;overflow:hidden;display:flex;flex-direction:column';
+      const top = document.createElement('div');
+      top.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f5e131;color:#222;font:700 16px Arial';
+      const title = document.createElement('span');
+      title.textContent = 'Identificador del dispositivo';
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.textContent = '✕ Cerrar';
+      close.style.cssText = 'border:0;border-radius:8px;background:white;padding:10px;cursor:pointer;font-weight:bold';
+      close.onclick = () => fingerOverlay.remove();
+      top.append(title, close);
+      const frame = document.createElement('iframe');
+      frame.src = 'finger.html';
+      frame.title = 'Obtener fingerprint';
+      frame.style.cssText = 'width:100%;flex:1;border:0;background:#fff';
+      panel.append(top, frame);
+      fingerOverlay.appendChild(panel);
+      document.body.appendChild(fingerOverlay);
+    };
+  }
 })();
 </script>
 
@@ -592,7 +598,7 @@ document.getElementById('modalAceptar').onclick = () => {
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
 <div>
 <strong>Nueva venta</strong>
-<div class="small">Busca o escanea el producto con un solo campo.</div>
+<div class="small">Busca el producto por nombre o código.</div>
 </div>
 <div class="small">Moneda: MXN</div>
 </div>
@@ -604,10 +610,10 @@ document.getElementById('modalAceptar').onclick = () => {
 <input autocomplete="off" id="inputBusqueda" placeholder="Escribe el código o parte del nombre" type="text" aria-autocomplete="list" aria-controls="sugerenciasProductos" aria-expanded="false"/>
 <div id="sugerenciasProductos" role="listbox" hidden></div>
 </div>
-<button class="btn btn-outline" id="btnEscanear" type="button">📷 Cámara</button>
+
 </div>
 <div class="small" style="margin-top:4px;color:#6b7280">
-                Puedes escribir, escanear con lector o usar la cámara.
+                Puedes escribir el código o utilizar un lector físico.
               </div>
 </div>
 <div style="width:120px">
@@ -673,7 +679,7 @@ document.getElementById('modalAceptar').onclick = () => {
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
 <div style="display:flex;gap:8px;align-items:center">
 <input id="prod-codigo" placeholder="Código numérico"/>
-<button class="btn btn-outline" id="btnScanProd">📷 Escanear código</button>
+
 </div>
 <input id="prod-nombre" placeholder="Nombre del producto" style="flex:1"/>
 <div style="display:flex; gap:10px; align-items:center"><div class="field-float"><span class="field-label">Costo</span><input id="prod-costo" type="number" step="0.01" placeholder="0.00"/></div><div class="field-float"><span class="field-label">Precio</span><input id="prod-precio" type="number" step="0.01" placeholder="0.00"/></div></div>
@@ -754,15 +760,6 @@ document.getElementById('modalAceptar').onclick = () => {
 </div></main>
 <div class="footer-note">Sistema de cobro Mi-Tienda — by Erick M. Ferreyro</div>
 </div>
-<!-- Librería de escaneo por cámara -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<script>
-if (typeof Html5Qrcode === "undefined") {
-  alert("⚠️ Error: no se pudo cargar la librería de escaneo. Verifica tu conexión a internet.");
-} else {
-  console.log("✅ Librería html5-qrcode cargada correctamente desde Cloudflare.");
-}
-</script>
 
 <!-- Modal de configuración de ticket -->
 <div class="modal" id="ticket-config-modal" style="display:none;">
@@ -1450,17 +1447,6 @@ function agregarDesdeBusqueda(desdeLector=false){
   inputBusqueda.value='';
   cantidadInput.value=1;
   ocultarSugerencias();
-}
-if(btnEscanear){
-  btnEscanear.addEventListener('click',()=>{
-    if(confirm('¿Usar cámara para escanear el código?')){
-      if(typeof openScannerModal==='function') openScannerModal(inputBusqueda);
-      else alert('No se pudo iniciar el escáner de cámara.');
-    }else{
-      inputBusqueda && inputBusqueda.focus();
-      alert('Listo para escanear con lector físico o escribir manualmente.');
-    }
-  });
 }
 if(inputBusqueda){
   inputBusqueda.addEventListener('input',mostrarSugerencias);
@@ -2338,10 +2324,6 @@ function closeScannerModal(){
   }
   if(scannerModal){ scannerModal.remove(); scannerModal = null; scanTargetInput = null; }
 }
-if(btnScanProd) btnScanProd.addEventListener('click', ()=> {
-  if(confirm('¿Usar cámara para escanear? Acepta = cámara, Cancelar = lector físico (enfocar campo).')) openScannerModal(prodCodigo);
-  else { prodCodigo.focus(); alert('Listo para escanear con lector físico o escribir el código.'); }
-});
 
 /* BACKUP: Export / Import productos */
 
