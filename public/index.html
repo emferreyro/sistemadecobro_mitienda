@@ -643,7 +643,7 @@ body.neon .low-stock{
                 <input id="cashStartInput" class="cashInput" type="text" value="0" readonly />
                 <button id="btnCashEdit" class="btn btn-outline btnCashEdit">Editar</button>
               </div>
-              <div class="cashFooter">Cierre esperado: <strong id="cashExpectedClose">$0.00</strong></div>
+              <div class="cashFooter">Efectivo esperado en caja: <strong id="cashExpectedClose">$0.00</strong></div>
             </div>
             <div id="adminHistControls" style="display:none">
               <button id="btn-clear-all" class="btn btn-outline">Borrar historial</button>
@@ -955,7 +955,9 @@ function renderProducts(){
   rightProducts.innerHTML = '';
   productos.forEach((p, idx) => {
     const div = document.createElement('div'); div.className='product-item';
-    const adminBtns = `<button data-idx="${idx}" class="btn btn-outline btn-small btn-edit" title="Editar producto">✏️</button>`;
+    const adminBtns = idx < MAX_PRODUCTS
+      ? `<button data-idx="${idx}" class="btn btn-outline btn-small btn-edit" title="Editar producto">✏️</button>`
+      : `<span class="small" title="Producto de consulta y venta; edición exclusiva en versión completa">Solo consulta</span>`;
     div.innerHTML = `<div><div style="font-weight:700">${p.codigo} — ${escapeHtml(p.nombre)}</div><div class="small">Precio: ${formatMXN(p.precio)}</div></div>
                      <div style="display:flex;gap:8px;align-items:center">
                        ${adminBtns}
@@ -989,6 +991,10 @@ function renderProducts(){
 
   document.querySelectorAll('.btn-edit').forEach(b=> b.addEventListener('click', e=> {
     const i = Number(e.currentTarget.getAttribute('data-idx'));
+    if(!Number.isInteger(i) || i < 0 || i >= MAX_PRODUCTS || !productos[i]){
+      alert('Desde esta versión solo se pueden editar los primeros 50 artículos.');
+      return;
+    }
     const p = productos[i];
     prodCodigo.value = p.codigo; prodNombre.value = p.nombre; prodPrecio.value = p.precio;
     prodCodigo.dataset.editIndex = i;
@@ -997,11 +1003,13 @@ function renderProducts(){
   }));
 }
 
-const LIMIT_MESSAGE = "Esta versión de sistema de cobro es gratuita pero solo te permite el registro de 50 productos.\n\nSi te gustó y quieres hacer más registros contáctanos para obtener una mejor versión.";
+const LIMIT_MESSAGE = "Puedes consultar y vender todos los productos existentes. Desde esta versión solo se pueden registrar hasta 50 artículos y editar los primeros 50. Para administrar el resto utiliza la versión completa.";
 
 function checkProductLimitOnOpen(){
   productsWarningArea.innerHTML = '';
-  const editandoProducto = typeof prodCodigo.dataset.editIndex !== 'undefined';
+  const indiceEdicion = Number(prodCodigo.dataset.editIndex);
+  const editandoProducto = typeof prodCodigo.dataset.editIndex !== 'undefined' &&
+    Number.isInteger(indiceEdicion) && indiceEdicion >= 0 && indiceEdicion < MAX_PRODUCTS && !!productos[indiceEdicion];
   if(productos.length >= MAX_PRODUCTS && !editandoProducto){
     const div = document.createElement('div');
     div.className = 'notice-limit';
@@ -1031,7 +1039,14 @@ btnAddProd.addEventListener('click', ()=>{
   }
   const editIndex = prodCodigo.dataset.editIndex;
   if(typeof editIndex !== 'undefined'){
-    productos[Number(editIndex)] = { codigo, nombre, precio };
+    const indice = Number(editIndex);
+    if(!Number.isInteger(indice) || indice < 0 || indice >= MAX_PRODUCTS || !productos[indice]){
+      alert('Solo puedes editar los primeros 50 artículos.');
+      delete prodCodigo.dataset.editIndex;
+      checkProductLimitOnOpen();
+      return;
+    }
+    productos[indice] = { codigo, nombre, precio };
     delete prodCodigo.dataset.editIndex;
   } else {
     if(productos.find(p=> p.codigo === codigo)){ if(!confirm('Código ya existe. ¿Deseas agregar duplicado?')) return; }
@@ -1423,15 +1438,28 @@ function renderHistorial(){
 }
 
 function parseVentaDate(v){
-  if (v.fechaISO){
+  // Los registros nuevos incluyen fechaISO, que es la referencia preferente.
+  if(v.fechaISO){
     const d = new Date(v.fechaISO);
-    if (!isNaN(d)) return d;
+    if(!Number.isNaN(d.getTime())) return d;
   }
-  if (v.fecha){
-    const d = new Date(v.fecha);
-    if (!isNaN(d)) return d;
+  if(!v.fecha) return null;
+  const texto = String(v.fecha).trim();
+  // Compatibilidad con el historial anterior que guardaba fechas DD/MM/AAAA
+  // y con las variantes de hora local en español de Windows/Edge/Chrome.
+  const mex = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(.*))?$/);
+  if(mex && Number(mex[2]) <= 12 && Number(mex[1]) <= 31){
+    let [, dd, mm, yyyy, hh='0', min='0', ss='0', sufijo=''] = mex;
+    let hora = Number(hh);
+    const marcador = sufijo.toLowerCase().replace(/[.\s]/g,'');
+    if(marcador === 'pm' && hora < 12) hora += 12;
+    if(marcador === 'am' && hora === 12) hora = 0;
+    const fecha = new Date(Number(yyyy), Number(mm)-1, Number(dd), hora, Number(min), Number(ss));
+    if(fecha.getFullYear() === Number(yyyy) && fecha.getMonth() === Number(mm)-1 && fecha.getDate() === Number(dd)) return fecha;
+    return null;
   }
-  return null;
+  const d = new Date(texto);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 function actualizarResumenHistorial(){
@@ -1825,13 +1853,17 @@ function handleImportFile(file){
         alert('No se encontraron productos válidos en el archivo.');
         return;
       }
-      if(!confirm(`Esto reemplazará los ${productos.length} productos actuales por ${cleaned.length} productos del archivo. ¿Continuar?`)) return;
-      if(cleaned.length > MAX_PRODUCTS){
-        if(!confirm(`El archivo contiene ${cleaned.length} productos pero la versión gratuita limita a ${MAX_PRODUCTS}. Se importarán los primeros ${MAX_PRODUCTS}. ¿Continuar?`)) return;
-        productos = cleaned.slice(0, MAX_PRODUCTS);
-      } else {
-        productos = cleaned;
+      // Nunca sustituir ni recortar el catálogo completo compartido con fullv/fullv_demo.
+      if(productos.length > MAX_PRODUCTS){
+        alert('Esta lista contiene más de 50 artículos. Para evitar perder artículos del dueño, la carga de listas se realiza desde la versión completa. Puedes consultar y vender todos los productos desde aquí.');
+        return;
       }
+      if(cleaned.length > MAX_PRODUCTS){
+        alert(`La versión gratuita solo permite cargar listas de hasta ${MAX_PRODUCTS} artículos. No se modificó el catálogo.`);
+        return;
+      }
+      if(!confirm(`Esto reemplazará los ${productos.length} productos actuales por ${cleaned.length} productos del archivo. ¿Continuar?`)) return;
+      productos = cleaned;
       saveProducts();
       renderProducts();
       checkProductLimitOnOpen();

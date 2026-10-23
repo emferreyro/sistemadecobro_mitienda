@@ -82,6 +82,11 @@ th{color:#6b7280;font-size:13px;font-weight:600;}
 body.dark .notice-inv{background:#2a1215;border-color:#7f1d1d;color:#fecaca;}
 .right-controls{display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:8px;}
 
+/* Botón de acumulado debajo de Caja, alineado a la derecha y separado del historial */
+.historial-header{margin-bottom:18px;}
+.historial-header .hist-center{display:flex; flex-direction:column; align-items:flex-end; gap:12px;}
+.historial-header .hist-center #adminHistControls{width:100%; justify-content:flex-end; align-items:center;}
+@media (max-width:900px){.historial-header .hist-center{align-items:flex-end;}}
 /* === 🧾 Caja (Historial) === */
 .historial-header{
   display:flex;
@@ -338,6 +343,12 @@ body.neon .btn-rojo{ background: linear-gradient(180deg,#ff3b4d 0%, #b51224 100%
 body.neon th, body.neon td{ border-bottom-color: rgba(45,212,255,0.14); }
 body.neon th{ color: rgba(232,244,255,0.80); }
 
+
+/* Botón de respaldo y borrado: visible y legible en todos los temas */
+#btnExportCSV.btn-acumulado{background:#f5e131!important;color:#1f2937!important;border:2px solid #e53935!important;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;min-height:unset;box-shadow:none;cursor:pointer;white-space:normal;line-height:1.25;text-align:center;}
+#btnExportCSV.btn-acumulado:hover{background:#ffe95b!important;}
+#btnExportCSV.btn-acumulado:focus-visible{outline:3px solid #2563eb;outline-offset:3px;}
+#btnExportCSV.btn-acumulado:disabled{opacity:.55;cursor:wait;}
 </style>
 
 <style id="ticket-thermal-override">
@@ -619,11 +630,10 @@ body.neon .low-stock{
         Cierre esperado: <strong id="cashCierre">$0.00</strong>
       </div>
     </div>
+    <div id="adminHistControls" style="display:none">
+      <button class="btn btn-acumulado" id="btnExportCSV" type="button" title="Respaldar en CSV y borrar las ventas acumuladas tras comprobar el archivo">💾 Guardar y borrar acumulado</button>
+    </div>
   </div>
-
-  <div id="adminHistControls" style="display:none">
-<button class="btn btn-outline" id="btnExportCSV" type="button">Cierre de ventas</button>
-</div>
 </div>
 <div id="history-list" style="display:flex;flex-direction:column;gap:8px"></div>
 </div>
@@ -2099,7 +2109,7 @@ function seleccionarCSVDeCierre(nombreEsperado){
     panel.className = 'modal-box';
     panel.style.cssText = 'max-width:470px;width:100%;box-sizing:border-box;color:#1f2937;background:#fff;padding:22px;border-radius:14px';
     const titulo = document.createElement('h3');
-    titulo.textContent = 'Verificar respaldo del cierre';
+    titulo.textContent = 'Verificar respaldo del acumulado';
     titulo.style.marginTop = '0';
     const instrucciones = document.createElement('p');
     instrucciones.textContent = 'Abre Descargas y selecciona el archivo ' + nombreEsperado + '. Compararemos su contenido antes de borrar las ventas.';
@@ -2111,7 +2121,7 @@ function seleccionarCSVDeCierre(nombreEsperado){
     selector.style.cssText = 'display:block;width:100%;max-width:100%;box-sizing:border-box;font-size:15px;margin:16px 0';
     const cancelar = document.createElement('button');
     cancelar.className = 'btn btn-outline';
-    cancelar.textContent = 'Cancelar cierre (conservar ventas)';
+    cancelar.textContent = 'Cancelar (conservar ventas)';
     cancelar.style.cssText = 'width:100%;min-height:44px';
     let terminado = false;
     const finalizar = archivo => {
@@ -2129,9 +2139,9 @@ function seleccionarCSVDeCierre(nombreEsperado){
 }
 async function exportHistorialCSV(){
   if(cierreVentasActivo) return;
-  if(!historial.length){ alert('No hay ventas para cerrar.'); return; }
+  if(!historial.length){ alert('No hay ventas acumuladas para respaldar.'); return; }
   const cantidadVentas = historial.length;
-  if(!confirm('CIERRE DE VENTAS\n\nSe guardará una copia de las '+cantidadVentas+' ventas actuales en un archivo CSV.\n\nDESPUÉS de comprobar el respaldo, se borrará el historial de ventas activo de este equipo. Los productos, inventario y configuraciones NO se borrarán.\n\nPara consultar las ventas cerradas deberás cargar el CSV desde reporte.html.\n\n¿Continuar?')) return;
+  if(!confirm('GUARDAR Y BORRAR ACUMULADO\n\nSe descargará una copia de las '+cantidadVentas+' ventas acumuladas en un archivo CSV.\n\nDESPUÉS de comprobar el respaldo, se borrará el historial de ventas activo de este equipo. Los productos, inventario y configuraciones NO se borrarán.\n\nPara consultar las ventas cerradas deberás cargar el CSV desde reporte.html.\n\n¿Continuar?')) return;
   cierreVentasActivo = true;
   const btn = document.getElementById('btnExportCSV');
   if(btn) btn.disabled=true;
@@ -2154,7 +2164,7 @@ async function exportHistorialCSV(){
         respaldado = guardado.replace(/^\uFEFF/, '') === csv.replace(/^\uFEFF/, '');
         if(!respaldado) throw new Error('El archivo guardado no coincide con el respaldo.');
       }catch(e){
-        if(e && e.name === 'AbortError'){ alert('Cierre cancelado. No se borró ninguna venta.'); return; }
+        if(e && e.name === 'AbortError'){ alert('Operación cancelada. No se borró ninguna venta.'); return; }
         throw e;
       }
     }else{
@@ -2180,10 +2190,10 @@ async function exportHistorialCSV(){
     renderHistorial();
     actualizarResumenHistorial();
     updateCashUI();
-    alert('Cierre terminado. El historial activo quedó vacío. Conserva tu archivo '+fname+' en un lugar seguro.');
+    alert('Acumulado respaldado y borrado. El historial activo quedó vacío. Conserva tu archivo '+fname+' en un lugar seguro.');
   }catch(err){
-    console.error('Error en cierre de ventas:',err);
-    alert('No se completó el cierre: '+(err && err.message ? err.message : String(err))+ '\n\nNo se borraron las ventas.');
+    console.error('Error al guardar y borrar acumulado:',err);
+    alert('No se completó la operación: '+(err && err.message ? err.message : String(err))+ '\n\nNo se borraron las ventas.');
   }finally{
     cierreVentasActivo=false;
     if(btn) btn.disabled=false;
