@@ -1933,51 +1933,49 @@ body.dark #lowStockModal .low-stock{
 </html>`;
   })();
 
-  // 1) Intento normal: ventana nueva
-  const w = window.open('', '_blank');
-  if(w){
-    try{
-      w.document.open();
-      w.document.write(html);
-      w.document.close();
-      w.focus();
-      // Esperar un momento a que el layout esté listo en algunos navegadores
-      setTimeout(()=>{ try{ w.print(); }catch(e){} }, 150);
-      return;
-    } catch(e){
-      try{ w.close(); }catch(_){}
-    }
-  }
+  // Vista interna del ticket: no abre ventanas nuevas en modo kiosco.
+  const anterior = document.getElementById('mitienda-ticket-preview');
+  if(anterior) anterior.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'mitienda-ticket-preview';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', 'Vista previa del ticket');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;';
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:#fff;color:#111;border-radius:12px;width:min(420px,100%);max-height:95vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 45px #0006;';
+  const barra = document.createElement('div');
+  barra.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px;background:#f5e131;flex-wrap:wrap;';
+  const titulo = document.createElement('strong');
+  titulo.textContent = 'Vista previa del ticket';
+  const acciones = document.createElement('div');
+  acciones.style.cssText = 'display:flex;gap:8px;';
+  const imprimir = document.createElement('button');
+  imprimir.type = 'button';
+  imprimir.textContent = '🖨 Imprimir';
+  imprimir.style.cssText = 'background:#1f2937;color:white;border:0;border-radius:8px;padding:11px 12px;font-weight:700;cursor:pointer;min-height:44px;';
+  const cerrar = document.createElement('button');
+  cerrar.type = 'button';
+  cerrar.textContent = '✕ Cerrar';
+  cerrar.style.cssText = 'background:#fff;color:#111;border:2px solid #b91c1c;border-radius:8px;padding:9px 12px;font-weight:700;cursor:pointer;min-height:44px;';
+  const vista = document.createElement('iframe');
+  vista.title = 'Contenido del ticket';
+  vista.style.cssText = 'width:100%;height:min(65vh,550px);border:0;background:#fff;';
+  vista.srcdoc = html;
+  const cerrarVista = () => { overlay.remove(); };
+  cerrar.addEventListener('click', cerrarVista);
+  imprimir.addEventListener('click', () => {
+    try { vista.contentWindow.focus(); vista.contentWindow.print(); }
+    catch(e) { alert('No fue posible abrir el diálogo de impresión. Revisa los permisos del navegador.'); }
+  });
+  acciones.append(imprimir, cerrar);
+  barra.append(titulo, acciones);
+  panel.append(barra, vista);
+  overlay.append(panel);
+  document.body.appendChild(overlay);
+  cerrar.focus();
+  // El usuario puede imprimir otra vez o cerrar aun si está en pantalla completa.
 
-  // 2) Fallback: iframe oculto (muy compatible en tablets cuando bloquean popups)
-  try{
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    iframe.style.opacity = '0';
-    iframe.setAttribute('aria-hidden', 'true');
-    iframe.srcdoc = html;
-    document.body.appendChild(iframe);
-
-    const cleanup = () => { try{ iframe.remove(); }catch(e){} };
-    iframe.onload = () => {
-      try{
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        // Limpieza tras imprimir (algunos navegadores no disparan afterprint)
-        setTimeout(cleanup, 1500);
-      } catch(e){
-        cleanup();
-        alert('No se pudo imprimir en este dispositivo. Revisa permisos del navegador o intenta desde Chrome.');
-      }
-    };
-  } catch(e){
-    alert('No se pudo iniciar la impresión. Revisa permisos del navegador.');
-  }
 }
 
 function enviarTicketCorreo(venta){
