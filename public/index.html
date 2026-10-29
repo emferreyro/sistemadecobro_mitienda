@@ -1507,7 +1507,7 @@ function actualizarResumenHistorial(){
 function armarTextoTicket(v){
   if(!v) return '';
 
-  const WIDTH = 32; // ancho de ticket en caracteres
+  const WIDTH = 44; // ancho de ticket para papel de 80 mm
 
   function center(text){
     text = String(text || '').trim();
@@ -1593,90 +1593,39 @@ function armarTextoTicket(v){
 
 function imprimirTicket(venta){
   const ticketTexto = armarTextoTicket(venta);
-  if(!ticketTexto){
-    alert('No se pudo generar el ticket.');
-    return;
-  }
-
-  const w = window.open('', '_blank', 'width=480,height=600');
-  if(!w){
-    alert('No se pudo abrir la ventana de impresión. Revisa el bloqueador de ventanas emergentes.');
-    return;
-  }
-
-  // Escapar HTML pero conservar saltos de línea (se renderizan dentro de <pre>)
-  const safeText = String(ticketTexto)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;');
-
-  w.document.write(`<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Ticket</title>
+  if(!ticketTexto){ alert('No se pudo generar el ticket.'); return; }
+  // Vista interna, compatible con equipos táctiles en modo kiosco.
+  const safe = String(ticketTexto).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ticket</title>
 <style>
-  @page{ size: 58mm auto; margin: 0; }
-  html, body{
-    margin:0;
-    padding:0;
-    background:#ffffff !important;
-    color:#000000 !important;
-  }
-  body{
-    font-family: monospace;
-    font-size: 13px;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  .ticket-wrapper{
-    margin:0;
-    padding:0;
-    display:flex;
-    justify-content:flex-start;
-  }
-  pre.ticket{
-    width:58mm;
-    margin:0;
-    padding:10px 12px;
-    white-space:pre; /* crucial para respetar espacios y columnas */
-    text-align:left;
-    font-family: monospace;
-    font-size: 13px;
-    line-height: 1.25;
-  }
-  /* Controles táctiles: únicamente visibles en pantalla */
-  .ticket-touch-controls{
-    position:sticky;top:0;z-index:9999;display:flex;gap:10px;
-    padding:12px;background:#f4f4f4;border-bottom:1px solid #ccc;
-    font-family:Arial,sans-serif;
-  }
-  .ticket-touch-controls button{
-    flex:1;min-height:54px;padding:12px 8px;border:0;border-radius:10px;
-    font-size:17px;font-weight:bold;cursor:pointer;touch-action:manipulation;
-  }
-  .ticket-touch-print{background:#f5e131;color:#111;}
-  .ticket-touch-close{background:#d32f2f;color:white;}
-  @media print{
-    .ticket-touch-controls{display:none !important;}
-    html,body{width:58mm;}
-  }
-</style>
-</head>
-<body>
-  <div class="ticket-touch-controls">
-    <button type="button" class="ticket-touch-print" onclick="window.print()">🖨 Imprimir de nuevo</button>
-    <button type="button" class="ticket-touch-close" onclick="window.close(); if(!window.closed && window.opener){window.opener.focus();}">✕ Cerrar ticket</button>
-  </div>
-  <div class="ticket-wrapper">
-    <pre class="ticket">${safeText}</pre>
-  </div>
-</body>
-</html>`);
-
-  w.document.close();
-  w.focus();
-  w.print();
+@page{size:80mm auto;margin:0}
+html,body{margin:0;padding:0;background:#fff;color:#111}
+.ticket{box-sizing:border-box;width:80mm;margin:0;padding:2mm;white-space:pre-wrap;word-break:break-word;font:11px/1.25 monospace;text-align:left}
+@media print{html,body{margin:0;padding:0}.ticket{width:80mm}}
+</style></head><body><pre class="ticket">${safe}</pre></body></html>`;
+  document.getElementById('mitienda-ticket-preview')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'mitienda-ticket-preview';
+  overlay.setAttribute('role','dialog');
+  overlay.setAttribute('aria-modal','true');
+  overlay.setAttribute('aria-label','Vista previa del ticket');
+  overlay.style.cssText='position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box';
+  const panel=document.createElement('div');
+  panel.style.cssText='background:#fff;color:#111;border-radius:12px;width:min(420px,100%);max-height:95vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 45px #0006';
+  const barra=document.createElement('div');
+  barra.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px;background:#f5e131;flex-wrap:wrap';
+  const titulo=document.createElement('strong');titulo.textContent='Vista previa del ticket';
+  const acciones=document.createElement('div');acciones.style.cssText='display:flex;gap:8px';
+  const imprimir=document.createElement('button');imprimir.type='button';imprimir.textContent='🖨 Imprimir';
+  imprimir.style.cssText='background:#1f2937;color:white;border:0;border-radius:8px;padding:11px 12px;font-weight:700;cursor:pointer;min-height:44px';
+  const cerrar=document.createElement('button');cerrar.type='button';cerrar.textContent='✕ Cerrar';
+  cerrar.style.cssText='background:#fff;color:#111;border:2px solid #b91c1c;border-radius:8px;padding:9px 12px;font-weight:700;cursor:pointer;min-height:44px';
+  const vista=document.createElement('iframe');vista.title='Contenido del ticket';
+  vista.style.cssText='width:100%;height:min(65vh,550px);border:0;background:#fff';vista.srcdoc=html;
+  cerrar.addEventListener('click',()=>overlay.remove());
+  imprimir.addEventListener('click',()=>{try{vista.contentWindow.focus();vista.contentWindow.print()}catch(e){alert('No se pudo abrir la impresión. Revisa los permisos del navegador.')}});
+  acciones.append(imprimir,cerrar);barra.append(titulo,acciones);panel.append(barra,vista);overlay.append(panel);
+  document.body.appendChild(overlay);cerrar.focus();
 }
 
 

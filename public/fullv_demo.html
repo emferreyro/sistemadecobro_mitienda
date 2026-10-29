@@ -356,10 +356,10 @@ body.neon th{ color: rgba(232,244,255,0.80); }
 
 <style id="ticket-thermal-override">
 @media print{
-  @page{ size: 58mm auto; margin: 0; }
+  @page{ size: 80mm auto; margin: 0; }
   html,body{ margin:0; padding:0; }
   .ticket, .ticket *{ box-sizing:border-box; }
-  .ticket{ width:58mm; margin:0; text-align:left; font-family: monospace; }
+  .ticket{ width:80mm; margin:0; text-align:left; font-family: monospace; }
 }
 
 .low-stock{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;background:#fee2e2;color:#b91c1c;font-weight:800;font-size:12px;}
@@ -1783,6 +1783,7 @@ function getTicketConfig(){
   cfg.tel      = cfg.tel      || '';
   cfg.leyenda1 = cfg.leyenda1 || '¡GRACIAS POR SU COMPRA!';
   cfg.leyenda2 = cfg.leyenda2 || 'Vuelva pronto';
+  cfg.papel = '80'; // Formato fijo para todos los clientes
   return cfg;
 }
 
@@ -1798,8 +1799,8 @@ function saveTicketConfig(cfg){
 function armarTextoTicket(v){
   if(!v) return '';
 
-  const WIDTH = 32; // ancho de ticket en caracteres
   const cfg = getTicketConfig();
+  const WIDTH = 44; // 80 mm fijo
 
   function center(text){
     text = String(text || '').trim();
@@ -1900,7 +1901,6 @@ function initTicketConfigForm(){
   const ticketTelInput      = document.getElementById('ticket-tel');
   const ticketLeyenda1Input = document.getElementById('ticket-leyenda1');
   const ticketLeyenda2Input = document.getElementById('ticket-leyenda2');
-
   if(ticketNombreInput)   ticketNombreInput.value   = cfg.nombre || '';
   if(ticketDirInput)      ticketDirInput.value      = cfg.direccion || '';
   if(ticketRfcInput)      ticketRfcInput.value      = cfg.rfc || '';
@@ -1924,7 +1924,8 @@ if(btnGuardarTicketCfg){
       rfc:      ticketRfcInput      ? ticketRfcInput.value.trim()      : '',
       tel:      ticketTelInput      ? ticketTelInput.value.trim()      : '',
       leyenda1: ticketLeyenda1Input ? ticketLeyenda1Input.value.trim() : '¡GRACIAS POR SU COMPRA!',
-      leyenda2: ticketLeyenda2Input ? ticketLeyenda2Input.value.trim() : 'Vuelva pronto'
+      leyenda2: ticketLeyenda2Input ? ticketLeyenda2Input.value.trim() : 'Vuelva pronto',
+      papel: '80'
     };
     saveTicketConfig(cfg);
     alert('Configuración de ticket guardada correctamente.');
@@ -1956,7 +1957,7 @@ function imprimirTicket(venta){
   if(!ticketTexto){ alert('No se pudo generar el ticket.'); return; }
 
   // Ticket térmico (tablet / móvil): evita márgenes, fija ancho en mm y usa fallback con iframe
-  const PAPER_MM = 58; // 58mm típico. (Si tu impresora es 80mm, cambia a 80)
+  const PAPER_MM = 80; // estándar para todos los equipos
   const html = (() => {
     const safe = (ticketTexto || '')
       .replace(/&/g,'&amp;')
@@ -1976,8 +1977,9 @@ function imprimirTicket(venta){
       width: ${PAPER_MM}mm;
       box-sizing: border-box;
       padding: 2mm;
-      font-size: 12px;
-      line-height: 1.2;
+      font-size: ${PAPER_MM === 80 ? 11 : 10}px;
+      line-height: 1.25;
+      margin: 0;
       white-space: pre-wrap;
       word-break: break-word;
     }
@@ -1987,10 +1989,10 @@ function imprimirTicket(venta){
 
 <style id="ticket-thermal-override">
 @media print{
-  @page{ size: 58mm auto; margin: 0; }
+  @page{ size: ${PAPER_MM}mm auto; margin: 0; }
   html,body{ margin:0; padding:0; }
   .ticket, .ticket *{ box-sizing:border-box; }
-  .ticket{ width:58mm; margin:0; text-align:left; font-family: monospace; }
+  .ticket{ width:${PAPER_MM}mm; margin:0; text-align:left; font-family: monospace; }
 }
 
 .low-stock{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;background:#fee2e2;color:#b91c1c;font-weight:800;font-size:12px;}
