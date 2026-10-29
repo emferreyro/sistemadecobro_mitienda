@@ -1649,7 +1649,7 @@ function armarTextoTicket(v){
   if(!v) return '';
 
   const cfg = getTicketConfig();
-  const WIDTH = 44; // 80 mm fijo
+  const WIDTH = 38; // ancho útil seguro para papel de 80 mm (evita recortes)
 
   function center(text){
     text = String(text || '').trim();
@@ -1695,8 +1695,8 @@ function armarTextoTicket(v){
   lineas.push(line('-'));
 
   // ENCABEZADO DETALLE
-  lineas.push('CANT  DESCRIPCIÓN');
-  lineas.push('P.U.            IMPORTE');
+  lineas.push('CANT  DESCRIPCION');
+  lineas.push('             P.UNIT.       IMPORTE');
   lineas.push(line('-'));
 
   // DETALLE DE PRODUCTOS
@@ -1707,8 +1707,23 @@ function armarTextoTicket(v){
       const precio = it && it.precio != null ? it.precio : 0;
       const subtotal = it && it.subtotal != null ? it.subtotal : cant * precio;
 
-      const desc = (cant + ' x ' + nombre).slice(0, WIDTH);
-      lineas.push(desc);
+      // Cantidad en columna propia: nunca depende de la 'x' ni se pierde al recortar.
+      const cantidadTexto = String(cant).padStart(3, ' ');
+      const prefijo = cantidadTexto + '   ';
+      const maxNombre = WIDTH - prefijo.length;
+      const palabras = nombre.trim().split(/\s+/).filter(Boolean);
+      const partes = [];
+      let renglon = '';
+      for (const palabra of palabras) {
+        if (!renglon) renglon = palabra;
+        else if ((renglon + ' ' + palabra).length <= maxNombre) renglon += ' ' + palabra;
+        else { partes.push(renglon); renglon = palabra; }
+      }
+      if (renglon) partes.push(renglon);
+      if (!partes.length) partes.push('PRODUCTO');
+      partes.forEach((parte, i) => {
+        lineas.push((i === 0 ? prefijo : ' '.repeat(prefijo.length)) + parte.slice(0, maxNombre));
+      });
 
       const lineaPrecio = right(
         formatMXN(precio) + '  ',
@@ -1825,12 +1840,11 @@ function imprimirTicket(venta){
     .ticket {
       width: ${PAPER_MM}mm;
       box-sizing: border-box;
-      padding: 2mm;
-      font-size: ${PAPER_MM === 80 ? 11 : 10}px;
+      padding: 3mm;
+      font-size: 10px;
       line-height: 1.25;
       margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
+      white-space: pre;
     }
   
 .low-stock{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;background:#fee2e2;color:#b91c1c;font-weight:800;font-size:12px;}
