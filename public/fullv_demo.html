@@ -651,7 +651,6 @@ body.neon .low-stock{
 <input autocomplete="off" id="inputBusqueda" placeholder="Escribe el código o parte del nombre" type="text" aria-autocomplete="list" aria-controls="sugerenciasProductos" aria-expanded="false"/>
 <div id="sugerenciasProductos" role="listbox" hidden></div>
 </div>
-<button class="btn btn-outline" id="btnEscanear" type="button">📷 Cámara</button>
 </div>
 <div class="small" style="margin-top:4px;color:#6b7280">
                 Puedes escribir, escanear con lector o usar la cámara.
@@ -720,7 +719,6 @@ body.neon .low-stock{
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
 <div style="display:flex;gap:8px;align-items:center">
 <input id="prod-codigo" placeholder="Código numérico"/>
-<button class="btn btn-outline" id="btnScanProd">📷 Escanear código</button>
 </div>
 <input id="prod-nombre" placeholder="Nombre del producto" style="flex:1"/>
 <div style="display:flex; gap:10px; align-items:center"><div class="field-float"><span class="field-label">Costo</span><input id="prod-costo" type="number" step="0.01" placeholder="0.00"/></div><div class="field-float"><span class="field-label">Precio</span><input id="prod-precio" type="number" step="0.01" placeholder="0.00"/></div></div>
@@ -773,7 +771,7 @@ body.neon .low-stock{
 <div class="panel-right">
 <div class="panel">
 <strong>Atajos</strong>
-<div class="small" style="margin-top:6px">Presiona <em>Enter</em> en el buscador para agregar. Puedes usar cámara o lector físico.</div>
+<div class="small" style="margin-top:6px">Presiona <em>Enter</em> en el buscador para agregar. Puedes usar un lector físico.</div>
 <!-- ⬇️ Atajos centrados -->
 <div id="atajos-botones">
 <button class="btn btn-rojo" id="shortcut-venta">Ventas</button>
@@ -782,7 +780,7 @@ body.neon .low-stock{
 </div>
 </div>
 <div class="panel">
-<strong>Productos de ejemplo</strong>
+<strong>Búsqueda rápida</strong>
 <div class="products-list" id="right-products" style="margin-top:8px"></div>
 </div>
 <div class="panel">
@@ -800,15 +798,7 @@ body.neon .low-stock{
 </div></main>
 <div class="footer-note">Sistema de cobro Mi-Tienda — by Erick M. Ferreyro</div>
 </div>
-<!-- Librería de escaneo por cámara -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<script>
-if (typeof Html5Qrcode === "undefined") {
-  alert("⚠️ Error: no se pudo cargar la librería de escaneo. Verifica tu conexión a internet.");
-} else {
-  console.log("✅ Librería html5-qrcode cargada correctamente desde Cloudflare.");
-}
-</script>
+
 
 <!-- Modal de configuración de ticket -->
 <div class="modal" id="ticket-config-modal" style="display:none;">
@@ -894,10 +884,7 @@ let historial = [];
 let isAdmin = false;
 let currentTotal = 0;
 
-/* SCANNER state */
-let scannerModal = null;
-let html5QrcodeScanner = null;
-let scanTargetInput = null;
+
 
 /* UI refs */
 const logoImg = document.getElementById('logoImg');
@@ -927,7 +914,7 @@ const prodStock = document.getElementById('prod-stock');
 const prodInventariado = document.getElementById('prod-inventariado');
 const btnAddProd = document.getElementById('btn-add-prod');
 const btnExportCSV = document.getElementById('btnExportCSV');
-const btnScanProd = document.getElementById('btnScanProd');
+
 const btnAdminLogout = document.getElementById('btnAdminLogout');
 const adminControls = document.getElementById('adminControls');
 const adminHistControls = document.getElementById('adminHistControls');
@@ -962,7 +949,7 @@ const cambioLabel = document.getElementById('cambio');
 
 /* NUEVOS refs de la zona unificada */
 const inputBusqueda = document.getElementById('inputBusqueda');
-const btnEscanear = document.getElementById('btnEscanear');
+
 
 /* UTIL */
 function formatMXN(n){ return '$' + Number(n).toFixed(2); }
@@ -1220,6 +1207,45 @@ function renderCart(){
   }));
 }
 
+
+/* Normalización de nombres: mayúsculas y símbolos de medida correctos. */
+function normalizarNombreProducto(valor){
+  return String(valor ?? '').trim().toLocaleUpperCase('es-MX')
+    .replace(/(\d+(?:[.,]\d+)?)\s*(MM|CM|ML|KG|GR|G|M|L|W)(?![A-ZÁÉÍÓÚÑ])/g,
+      (coincidencia, numero, unidad) => numero + ({MM:'mm',CM:'cm',ML:'ml',KG:'kg',GR:'g',G:'g',M:'m',L:'L',W:'W'}[unidad] || unidad));
+}
+/* Orden de accesos rápidos por unidades vendidas en el historial local. */
+function totalUnidadesVendidasPorCodigo(){
+  const conteos = new Map();
+  (Array.isArray(historial) ? historial : []).forEach(venta => {
+    const items = Array.isArray(venta.items) ? venta.items : [];
+    items.forEach(item => {
+      const codigo = String(item.codigo ?? '');
+      if(!codigo || codigo.startsWith('M-')) return;
+      const cantidad = Number(item.cantidad) || 0;
+      if(cantidad > 0) conteos.set(codigo, (conteos.get(codigo) || 0) + cantidad);
+    });
+  });
+  return conteos;
+}
+function actualizarBusquedaRapida(){
+  if(!rightProducts) return;
+  rightProducts.innerHTML = '';
+  const conteos = totalUnidadesVendidasPorCodigo();
+  const ordenados = productos.map((p, posicion) => ({p, posicion}))
+    .sort((a,b) => (conteos.get(String(b.p.codigo)) || 0) - (conteos.get(String(a.p.codigo)) || 0) || a.posicion-b.posicion);
+  ordenados.forEach(({p}) => {
+    const small = document.createElement('div');
+    small.className = 'product-item';
+    small.innerHTML = `<div><strong>${escapeHtml(String(p.codigo))}</strong> ${escapeHtml(String(p.nombre))}<div class="small">${formatMXN(p.precio)}</div></div><button class="btn btn-rojo btn-small" type="button">Agregar</button>`;
+    small.querySelector('button').addEventListener('click', () => {
+      agregarAlCarrito(p.codigo, 1);
+      showPanel(panelVenta);
+    });
+    rightProducts.appendChild(small);
+  });
+}
+
 /* PRODUCTS UI */
 function renderProducts(){
   productsList.innerHTML = '';
@@ -1235,32 +1261,14 @@ function renderProducts(){
                        <button data-codigo="${p.codigo}" class="btn btn-rojo btn-add-to-cart">Agregar</button>
                      </div>`;
     productsList.appendChild(div);
-
-    /* ⬇️ Productos de ejemplo con botón Agregar */
-    const small = document.createElement('div');
-    small.className = 'product-item';
-    small.innerHTML = `
-      <div>
-        <strong>${p.codigo}</strong> ${escapeHtml(p.nombre)}
-        <div class="small">${formatMXN(p.precio)}</div>
-      </div>
-      <button data-codigo="${p.codigo}" class="btn btn-rojo btn-small">Agregar</button>
-    `;
-    rightProducts.appendChild(small);
   });
+  actualizarBusquedaRapida();
 
   /* Eventos */
   document.querySelectorAll('.btn-add-to-cart').forEach(b=> b.addEventListener('click', e=> { 
     const c = e.currentTarget.getAttribute('data-codigo'); 
     agregarAlCarrito(c,1); showPanel(panelVenta); 
   }));
-  rightProducts.querySelectorAll('button[data-codigo]').forEach(btn => {
-    btn.addEventListener('click', e => {
-      const code = e.currentTarget.getAttribute('data-codigo');
-      agregarAlCarrito(code, 1);
-      showPanel(panelVenta);
-    });
-  });
 
   if(isAdmin){
     document.querySelectorAll('.btn-edit').forEach(b=> b.addEventListener('click', e=> {
@@ -1310,7 +1318,7 @@ function checkProductLimitOnOpen(){
 
 btnAddProd.addEventListener('click', ()=>{
   const codigo = (prodCodigo.value || '').toString().trim();
-  const nombre = (prodNombre.value || '').toString().trim();
+  const nombre = normalizarNombreProducto(prodNombre.value);
   const costo = (typeof prodCosto !== 'undefined' && prodCosto) ? (Number(prodCosto.value) || 0) : 0;
   const precio = Number(prodPrecio.value) || 0;
   const inventariado = !!(prodInventariado && prodInventariado.checked);
@@ -1497,17 +1505,7 @@ function agregarDesdeBusqueda(desdeLector=false){
   cantidadInput.value=1;
   ocultarSugerencias();
 }
-if(btnEscanear){
-  btnEscanear.addEventListener('click',()=>{
-    if(confirm('¿Usar cámara para escanear el código?')){
-      if(typeof openScannerModal==='function') openScannerModal(inputBusqueda);
-      else alert('No se pudo iniciar el escáner de cámara.');
-    }else{
-      inputBusqueda && inputBusqueda.focus();
-      alert('Listo para escanear con lector físico o escribir manualmente.');
-    }
-  });
-}
+
 if(inputBusqueda){
   inputBusqueda.addEventListener('input',mostrarSugerencias);
   inputBusqueda.addEventListener('keydown',e=>{
@@ -1654,6 +1652,7 @@ const ahora = new Date();
   historial.unshift(venta);
   carrito = [];
   saveHistory(); saveCart();
+  actualizarBusquedaRapida();
   renderCart();
   renderHistorial();
   
@@ -1700,7 +1699,7 @@ function openManualModal(){
   modal.appendChild(box); document.body.appendChild(modal);
   document.getElementById('manual-close').addEventListener('click', ()=> modal.remove());
   document.getElementById('manual-add').addEventListener('click', ()=>{
-    const nombre = document.getElementById('manual-nombre').value.trim();
+    const nombre = normalizarNombreProducto(document.getElementById('manual-nombre').value);
     const cantidad = Math.max(1, Number(document.getElementById('manual-cantidad').value) || 1);
     const precio = Number(document.getElementById('manual-precio').value) || 0;
     if(!nombre || precio <= 0){ alert('Ingresa nombre y precio válidos.'); return; }
@@ -1717,6 +1716,7 @@ document.getElementById('btnSinCodigo') && document.getElementById('btnSinCodigo
 
 /* HISTORIAL */
 function renderHistorial(){
+  actualizarBusquedaRapida();
   historyList.innerHTML = '';
   if(historial.length === 0){
     const p = document.createElement('div');
@@ -2365,69 +2365,6 @@ async function exportHistorialCSV(){
   }
 }
 document.getElementById('btnExportCSV')?.addEventListener('click', exportHistorialCSV);
-
-/* SCANNER modal */
-function openScannerModal(targetInput){
-  closeScannerModal();
-  scanTargetInput = targetInput;
-  scannerModal = document.createElement('div'); scannerModal.className='modal';
-  const box = document.createElement('div'); box.className='modal-box';
-  box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>Escanear código</strong><button id="closeScannerBtn" class="btn btn-outline btn-small">Cerrar</button></div>
-                   <div id="scanner" class="scanner-area">Cargando cámara...</div>
-                   <div style="display:flex;justify-content:flex-end;margin-top:8px"><button id="btnUseKeyboard" class="btn btn-outline btn-small">Usar lector físico / teclado</button></div>`;
-  scannerModal.appendChild(box); document.body.appendChild(scannerModal);
-  document.getElementById('closeScannerBtn').addEventListener('click', closeScannerModal);
-  document.getElementById('btnUseKeyboard').addEventListener('click', ()=>{ closeScannerModal(); targetInput.focus(); alert('Enfoque el campo y escanee con su lector físico o escriba el código.'); });
-  if(typeof Html5Qrcode === 'undefined'){ document.getElementById('scanner').textContent = 'Necesita conexión para cargar librería de escaneo.'; return; }
-  html5QrcodeScanner = new Html5Qrcode("scanner");
-  const config = { fps: 10, qrbox: {width: 300, height: 200},
-    formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.ITF ] };
-  Html5Qrcode.getCameras().then(cameras => {
-    if(cameras && cameras.length){
-      const cameraId = cameras[0].id;
-      html5QrcodeScanner.start(cameraId, config, qrCodeMessage => {
-        if(scanTargetInput){
-          scanTargetInput.value = qrCodeMessage.trim();
-          scanTargetInput.dispatchEvent(new Event('input', { bubbles: true }));
-          scanTargetInput.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
-        }
-        
-  // 🔊 Beep de confirmación (escaneo exitoso)
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1000, ctx.currentTime);
-    gain.gain.setValueAtTime(0.2, ctx.currentTime);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.15);
-  } catch (e) {
-    console.warn('Audio no disponible:', e);
-  }
-closeScannerModal();
-      }).catch(err => {
-        alert('No se pudo iniciar la cámara: ' + err);
-        closeScannerModal();
-      });
-    } else { alert('No se encontró cámara disponible.'); closeScannerModal(); }
-  }).catch(err => { alert('Error al acceder a cámaras: ' + err); closeScannerModal(); });
-}
-function closeScannerModal(){
-  if(html5QrcodeScanner){
-    try{ html5QrcodeScanner.stop().then(()=> html5QrcodeScanner.clear()).catch(()=>{}); }catch(e){}
-    html5QrcodeScanner = null;
-  }
-  if(scannerModal){ scannerModal.remove(); scannerModal = null; scanTargetInput = null; }
-}
-if(btnScanProd) btnScanProd.addEventListener('click', ()=> {
-  if(confirm('¿Usar cámara para escanear? Acepta = cámara, Cancelar = lector físico (enfocar campo).')) openScannerModal(prodCodigo);
-  else { prodCodigo.focus(); alert('Listo para escanear con lector físico o escribir el código.'); }
-});
 
 /* BACKUP: Export / Import productos */
 
