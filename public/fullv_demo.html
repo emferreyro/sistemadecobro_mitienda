@@ -467,7 +467,13 @@ body.neon .low-stock{
   .historial-header .hist-left { min-width: 0; }
 }
 </style>
-</head>
+<style id="granel-full-css">
+.granel-campos{display:none;flex-wrap:wrap;gap:10px;margin:8px 0;padding:10px;border:1px solid #ddd;border-radius:10px}
+.granel-campos.activo{display:flex}.granel-campos input{width:112px;box-sizing:border-box}
+.granel-modal{max-width:440px;max-height:90vh;overflow:auto;box-sizing:border-box}
+.granel-modal input,.granel-modal select{width:100%;box-sizing:border-box;padding:10px;margin:6px 0}
+.granel-resumen{padding:10px;border-radius:9px;background:rgba(140,140,140,.14);line-height:1.8}
+</style></head>
 <body>
 <!-- ===== DEMO: prueba individual 30 días (por dispositivo/navegador) ===== -->
 <style id="demo-trial-style">
@@ -726,6 +732,14 @@ body.neon .low-stock{
 <input id="prod-stock" placeholder="Existencias" type="number" step="1" min="0" style="width:120px" />
 <button class="btn btn-rojo" id="btn-add-prod">Agregar</button>
 </div>
+<div style="margin:8px 0"><label for="prod-tipo">Tipo de venta</label><select id="prod-tipo"><option value="pieza">Por pieza</option><option value="granel">A granel</option></select></div>
+<div id="granel-campos" class="granel-campos">
+<div><label>Existencia (kg)</label><input id="prod-stock-kg" type="number" min="0" step="0.001" placeholder="Ej. 25"/></div>
+<div><label>Costo por kg $</label><input id="prod-costo-kg" type="number" min="0" step="0.0001" placeholder="Ej. 24"/></div>
+<div><label>Peso del costal (kg)</label><input id="prod-peso-costal" type="number" min="0" step="0.001" placeholder="Opcional"/></div>
+<div><label>Costo del costal $</label><input id="prod-costo-costal" type="number" min="0" step="0.01" placeholder="Opcional"/></div>
+<div class="small" style="width:100%">Precio = precio de venta por kg; costo y utilidad de granel se calculan por kg.</div>
+</div>
 <div class="right-controls" style="margin-bottom:8px">
 <button class="btn btn-amarillo btn-small" id="btn-low-stock" title="Ver artículos con inventario y menos de 5 piezas">⚠ Poco stock</button>
 
@@ -910,6 +924,18 @@ const prodCodigo = document.getElementById('prod-codigo');
 const prodNombre = document.getElementById('prod-nombre');
 const prodCosto = document.getElementById('prod-costo');
 const prodPrecio = document.getElementById('prod-precio');
+const prodTipo=document.getElementById('prod-tipo');
+const granelCampos=document.getElementById('granel-campos');
+const prodStockKg=document.getElementById('prod-stock-kg');
+const prodCostoKg=document.getElementById('prod-costo-kg');
+const prodPesoCostal=document.getElementById('prod-peso-costal');
+const prodCostoCostal=document.getElementById('prod-costo-costal');
+const esGranel=p=>!!p && p.tipoVenta==='granel';
+const gramosInventario=p=>{if(!p||p.stockGramos==null||p.stockGramos==='')return null;const n=Number(p.stockGramos);return Number.isFinite(n)?Math.max(0,Math.round(n)):null;};
+function actualizarTipoGranel(){const gr=prodTipo.value==='granel';granelCampos.classList.toggle('activo',gr);prodStock.disabled=gr;prodInventariado.disabled=gr;prodCosto.disabled=gr;prodPrecio.placeholder=gr?'Precio por kg':'Precio';}
+prodTipo.addEventListener('change',actualizarTipoGranel);
+for(const e of [prodCostoCostal,prodPesoCostal]) e.addEventListener('input',()=>{const peso=Number(prodPesoCostal.value),costo=Number(prodCostoCostal.value);if(peso>0&&costo>0)prodCostoKg.value=(costo/peso).toFixed(4)});
+
 const prodStock = document.getElementById('prod-stock');
 const prodInventariado = document.getElementById('prod-inventariado');
 const btnAddProd = document.getElementById('btn-add-prod');
@@ -1133,7 +1159,7 @@ function loadState(){
   const p = localStorage.getItem(KEY_PRODUCTS);
   productos = p ? JSON.parse(p) : (localStorage.setItem(KEY_PRODUCTS, JSON.stringify(DEFAULT_PRODUCTS.slice())), DEFAULT_PRODUCTS.slice());
 // 🆕 Backward compatible: si no hay costo, poner 0
-productos = (productos||[]).map(pp=> ({...pp, costo: (pp && pp.costo!=null) ? Number(pp.costo)||0 : 0}));
+productos = (productos||[]).map(pp=> ({...pp, tipoVenta: pp.tipoVenta==='granel'?'granel':'pieza', costo: (pp && pp.costo!=null) ? Number(pp.costo)||0 : 0}));
 // 🆕 Inventario progresivo (fase 1): normalizar inventariado/stock (compatibilidad)
 productos = (productos || []).map(pr => {
   const inventariado = !!pr.inventariado;
@@ -1147,6 +1173,7 @@ productos = (productos || []).map(pr => {
       stock = Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
     }
   }
+  if(esGranel(pr)) return {...pr, inventariado:false,stock:null,stockGramos:pr.stockGramos??null,costoKg:Number(pr.costoKg)||0};
   return { ...pr, inventariado, stock };
 });
   carrito = JSON.parse(localStorage.getItem(KEY_CART) || '[]');
@@ -1176,15 +1203,15 @@ function renderCart(){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${item.codigo || ''}</td>
-      <td>${escapeHtml(item.nombre)}</td>
-      <td><input type="number" min="1" value="${item.cantidad}" data-codigo="${item.codigo}" style="width:64px;padding:6px;border-radius:6px;border:1px solid #e6e7ea" class="inp-cant" /></td>
+      <td>${escapeHtml(item.nombre)}${esGranel(item)?'<div class="small">A granel · kg</div>':''}</td>
+      <td><input type="number" min="${esGranel(item)?0.001:1}" step="${esGranel(item)?0.001:1}" value="${item.cantidad}" data-codigo="${item.codigo}" style="width:64px;padding:6px;border-radius:6px;border:1px solid #e6e7ea" class="inp-cant" /></td>
       <td>${formatMXN(item.precio)}</td>
       <td>${formatMXN(item.subtotal)}</td>
       <td><button data-codigo="${item.codigo}" class="btn btn-outline btn-small btn-remove">Quitar</button></td>
     `;
     cartBody.appendChild(tr);
   });
-  const totalArticulos = carrito.reduce((acc, it) => acc + (Number(it.cantidad) || 0), 0);
+  const totalArticulos = carrito.reduce((acc,it)=>acc+(esGranel(it)?1:(Number(it.cantidad)||0)),0);
   cartCount.textContent = totalArticulos;
   currentTotal = carrito.reduce((s,it)=> s + it.subtotal, 0);
   totalLabel.textContent = formatMXN(currentTotal);
@@ -1197,10 +1224,14 @@ function renderCart(){
     saveCart(); renderCart();
   }));
   document.querySelectorAll('.inp-cant').forEach(inp=> inp.addEventListener('change', e=>{
-    const v = Math.max(1, Number(e.target.value) || 1);
+    const linea=carrito.find(it=>it.codigo===e.target.getAttribute('data-codigo'));
+    const v=esGranel(linea)?Math.round(Number(e.target.value)*1000)/1000:Math.max(1,Math.floor(Number(e.target.value)||1));
+    if(!Number.isFinite(v)||v<(esGranel(linea)?0.001:1)){alert('Cantidad inválida');renderCart();return;}
+    const p=productos.find(x=>x.codigo===linea.codigo);
+    if(esGranel(linea)&&esGranel(p)&&gramosInventario(p)!==null&&Math.round(v*1000)>gramosInventario(p)){alert('Existencias insuficientes');renderCart();return;}
     const c = e.target.getAttribute('data-codigo');
     carrito = carrito.map(it => {
-      if(it.codigo === c){ it.cantidad = v; it.subtotal = Number((it.precio * it.cantidad).toFixed(2)); }
+      if(it.codigo === c){ it.cantidad = v; it.subtotal = esGranel(it)?redondearGranel50(Number(it.precio)*v):Number((it.precio * v).toFixed(2)); }
       return it;
     });
     saveCart(); renderCart();
@@ -1254,8 +1285,9 @@ function renderProducts(){
     const div = document.createElement('div'); div.className='product-item';
     const adminBtns = isAdmin ? `<button data-idx="${idx}" class="btn btn-outline btn-small btn-edit">✏️</button>
       <button data-idx="${idx}" class="btn btn-outline btn-small btn-del">🗑️</button>` : '';
-    div.innerHTML = `<div><div style="font-weight:700">${p.codigo} — ${escapeHtml(p.nombre)}</div><div class="small product-meta"><span><span class="label">Precio:</span> <span class="val">${formatMXN(p.precio)}</span></span><span class="spacer"></span><span class="meta-right"><span><span class="label">Costo:</span> <span class="val">${formatMXN((Number(p.costo)||0))}</span></span><span><span class="label">Utilidad:</span> <span class="val">${formatMXN((Number(p.precio)||0)-(Number(p.costo)||0))}</span></span></span></div></div>
-                     ${p.inventariado ? (()=>{ const s = (p.stock===null||p.stock===undefined) ? null : Number(p.stock); const warn = (s!==null && !isNaN(s) && s>=0 && s<5) ? ' <span class="low-stock">⚠ Poco stock</span>' : ''; return '<div class="small">📦 Inventario · Stock: ' + (s===null||isNaN(s) ? '—' : s) + warn + '</div>'; })() : ''}
+    div.innerHTML = `<div><div style="font-weight:700">${p.codigo} — ${escapeHtml(p.nombre)}</div><div class="small product-meta"><span><span class="label">${esGranel(p)?"Precio/kg":"Precio"}:</span> <span class="val">${formatMXN(p.precio)}</span></span><span class="spacer"></span><span class="meta-right"><span><span class="label">${esGranel(p)?"Costo/kg":"Costo"}:</span> <span class="val">${formatMXN(esGranel(p)?(Number(p.costoKg)||0):(Number(p.costo)||0))}</span></span><span><span class="label">${esGranel(p)?"Utilidad/kg":"Utilidad"}:</span> <span class="val">${formatMXN((Number(p.precio)||0)-(esGranel(p)?(Number(p.costoKg)||0):(Number(p.costo)||0)))}</span></span></span></div></div>
+                     ${esGranel(p)?`<div class="small">⚖️ A granel · ${gramosInventario(p)===null?'Sin inventario registrado':(gramosInventario(p)/1000).toFixed(3)+' kg disponibles'}</div>`:''}
+                     ${!esGranel(p)&&p.inventariado ? (()=>{ const s = (p.stock===null||p.stock===undefined) ? null : Number(p.stock); const warn = (s!==null && !isNaN(s) && s>=0 && s<5) ? ' <span class="low-stock">⚠ Poco stock</span>' : ''; return '<div class="small">📦 Inventario · Stock: ' + (s===null||isNaN(s) ? '—' : s) + warn + '</div>'; })() : ''}
                      <div style="display:flex;gap:8px;align-items:center">
                        ${adminBtns}
                        <button data-codigo="${p.codigo}" class="btn btn-rojo btn-add-to-cart">Agregar</button>
@@ -1274,6 +1306,8 @@ function renderProducts(){
     document.querySelectorAll('.btn-edit').forEach(b=> b.addEventListener('click', e=> {
       const i = Number(e.currentTarget.getAttribute('data-idx'));
       const p = productos[i];
+      prodTipo.value=esGranel(p)?'granel':'pieza';prodStockKg.value=esGranel(p)&&gramosInventario(p)!==null?gramosInventario(p)/1000:'';
+      prodCostoKg.value=p.costoKg??'';prodPesoCostal.value=p.pesoCostal??'';prodCostoCostal.value=p.costoCostal??'';actualizarTipoGranel();
       prodCodigo.value = p.codigo; prodNombre.value = p.nombre; if(typeof prodCosto !== 'undefined' && prodCosto) prodCosto.value = (p.costo ?? 0); prodPrecio.value = p.precio;
       if(prodStock) prodStock.value = (p.inventariado ? (p.stock ?? '') : '');
       if(prodInventariado) prodInventariado.checked = !!p.inventariado;
@@ -1321,7 +1355,8 @@ btnAddProd.addEventListener('click', ()=>{
   const nombre = normalizarNombreProducto(prodNombre.value);
   const costo = (typeof prodCosto !== 'undefined' && prodCosto) ? (Number(prodCosto.value) || 0) : 0;
   const precio = Number(prodPrecio.value) || 0;
-  const inventariado = !!(prodInventariado && prodInventariado.checked);
+  const tipoVenta=prodTipo.value==='granel'?'granel':'pieza';
+  const inventariado = tipoVenta==='pieza' && !!(prodInventariado && prodInventariado.checked);
   let stock = null;
   if(inventariado){
     const raw = prodStock ? prodStock.value : '';
@@ -1330,6 +1365,11 @@ btnAddProd.addEventListener('click', ()=>{
       stock = Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
     }
   }
+  if(tipoVenta==='granel' && (prodStockKg.value && (!Number.isFinite(Number(prodStockKg.value))||Number(prodStockKg.value)<0))){alert('Existencia en kg inválida');return;}
+  const costoKg=Number(prodCostoKg.value)||0;
+  if(tipoVenta==='granel' && (!Number.isFinite(costoKg)||costoKg<0)){alert('Costo por kg inválido');return;}
+  const nuevo={codigo,nombre,precio,costo:tipoVenta==='granel'?costoKg:costo,inventariado,stock,tipoVenta};
+  if(tipoVenta==='granel')Object.assign(nuevo,{costoKg,stockGramos:prodStockKg.value.trim()?Math.round(Number(prodStockKg.value)*1000):null,pesoCostal:Number(prodPesoCostal.value)||0,costoCostal:Number(prodCostoCostal.value)||0});
   if(!codigo || !nombre || precio <= 0){ alert('Completa código, nombre, costo y precio válidos'); return; }
   if(costo < 0){ alert('Costo no puede ser negativo'); return; }
   if(typeof prodCodigo.dataset.editIndex === 'undefined' && productos.length >= MAX_PRODUCTS){
@@ -1339,11 +1379,14 @@ btnAddProd.addEventListener('click', ()=>{
   }
   const editIndex = prodCodigo.dataset.editIndex;
   if(typeof editIndex !== 'undefined'){
-    productos[Number(editIndex)] = { codigo, nombre, precio, costo: (Number(costo)||0), inventariado, stock };
+    const idx=Number(editIndex);
+    if(!Number.isInteger(idx)||idx<0||!productos[idx]){alert('Producto inválido para edición');return;}
+    if(productos.some((p,i)=>i!==idx&&String(p.codigo)===codigo)){alert('Este código pertenece a otro producto');return;}
+    productos[idx] = nuevo;
     delete prodCodigo.dataset.editIndex;
   } else {
-    if(productos.find(p=> p.codigo === codigo)){ if(!confirm('Código ya existe. ¿Deseas agregar duplicado?')) return; }
-    productos.push({ codigo, nombre, precio, costo: (Number(costo)||0), inventariado, stock });
+    if(productos.find(p=> p.codigo === codigo)){ alert('El código ya existe. Usa un código diferente para mantener consistente el inventario.'); return; }
+    productos.push(nuevo);
   }
   saveProducts(); renderProducts();
   
@@ -1362,7 +1405,7 @@ btnAddProd.addEventListener('click', ()=>{
   } catch (e) {
     console.warn('Audio no disponible:', e);
   }
-prodCodigo.value=''; prodNombre.value=''; if(typeof prodCosto!=='undefined' && prodCosto) prodCosto.value=''; prodPrecio.value=''; prodCodigo.focus();
+prodTipo.value='pieza';[prodStockKg,prodCostoKg,prodPesoCostal,prodCostoCostal].forEach(e=>e.value='');actualizarTipoGranel();prodCodigo.value=''; prodNombre.value=''; if(typeof prodCosto!=='undefined' && prodCosto) prodCosto.value=''; prodPrecio.value=''; prodCodigo.focus();
   checkProductLimitOnOpen();
   // FULLV: modo admin siempre activo (silencioso)
   isAdmin = true;
@@ -1372,6 +1415,25 @@ prodCodigo.value=''; prodNombre.value=''; if(typeof prodCosto!=='undefined' && p
   renderProducts();
 });
 
+/* Granel por peso: cobrar hacia arriba en incrementos de $0.50 MXN. */
+function redondearGranel50(importe){
+  const centavos=Math.round((Number(importe)+Number.EPSILON)*1000000)/10000;
+  return Math.ceil((centavos-1e-9)/50)*0.50;
+}
+function abrirModalGranel(prod){
+ if(document.getElementById('granel-modal'))return;
+ const overlay=document.createElement('div');overlay.id='granel-modal';overlay.className='modal';
+ overlay.innerHTML=`<div class="modal-box granel-modal"><div style="display:flex;justify-content:space-between;align-items:center"><strong>⚖️ Venta a granel</strong><button class="btn btn-outline" id="gm-cerrar">Cerrar</button></div><p><b>${escapeHtml(prod.nombre)}</b> · ${formatMXN(prod.precio)}/kg</p><label>Modalidad</label><select id="gm-modo"><option value="peso">Por peso</option><option value="importe">Por importe</option></select><div id="gm-etiqueta">Peso</div><input id="gm-cantidad" type="number" min="0.001" step="0.001" value="350"><select id="gm-unidad"><option value="g">Gramos</option><option value="kg">Kilogramos</option></select><div id="gm-resumen" class="granel-resumen"></div><button class="btn btn-rojo" id="gm-agregar">Agregar a venta</button></div>`;
+ document.body.appendChild(overlay);
+ const $=id=>overlay.querySelector('#'+id);const modo=$('gm-modo'),campo=$('gm-cantidad'),unidad=$('gm-unidad'),res=$('gm-resumen');
+ const cerrar=()=>overlay.remove();$('gm-cerrar').onclick=cerrar;
+ modo.onchange=()=>{campo.value=modo.value==='peso'?'350':'20';$('gm-etiqueta').textContent=modo.value==='peso'?'Peso':'Importe en pesos';unidad.style.display=modo.value==='peso'?'':'none';actualizar()};
+ let datos=null;
+ function actualizar(){let gramos=modo.value==='peso'?(Number(campo.value)||0)*(unidad.value==='kg'?1000:1):((Number(campo.value)||0)/Number(prod.precio))*1000;gramos=modo.value==='importe'?Math.floor(gramos+1e-9):Math.round(gramos);const kg=gramos/1000;const importe=modo.value==='importe'?Number(Number(campo.value).toFixed(2)):redondearGranel50(kg*Number(prod.precio));const inv=gramosInventario(prod);const reservado=carrito.filter(x=>x.codigo===prod.codigo&&esGranel(x)).reduce((s,x)=>s+Math.round(Number(x.cantidad)*1000),0);datos=gramos>0&&Number.isFinite(kg)&&Number.isFinite(importe)&&importe>0&&(inv===null||gramos+reservado<=inv)?{kg,importe}:null;res.textContent=`Peso: ${gramos} g · Total: ${formatMXN(importe)}${inv!==null?' · Existencia: '+(inv/1000).toFixed(3)+' kg':''}`;$('gm-agregar').disabled=!datos;}
+ campo.oninput=actualizar;unidad.onchange=actualizar;
+ $('gm-agregar').onclick=()=>{if(!datos)return;const existente=carrito.find(x=>x.codigo===prod.codigo);if(existente){existente.cantidad=Math.round((existente.cantidad+datos.kg)*1000)/1000;existente.subtotal=Number((Number(existente.subtotal)+datos.importe).toFixed(2));}else carrito.push({codigo:prod.codigo,nombre:prod.nombre,precio:prod.precio,cantidad:datos.kg,subtotal:datos.importe,tipoVenta:'granel',costoKg:Number(prod.costoKg)||0,manual:false});saveCart();renderCart();cerrar();};
+ actualizar();
+}
 function agregarAlCarrito(termino, cantidad, desdeLector){
   const prod = encontrarProducto(termino);
   if(!prod){
@@ -1398,7 +1460,8 @@ function agregarAlCarrito(termino, cantidad, desdeLector){
       return;
     }
   }
-  const qty = Math.max(1, Number(cantidad) || 1);
+  if(esGranel(prod)){abrirModalGranel(prod);return;}
+  const qty = Math.max(1, Math.floor(Number(cantidad) || 1));
   const existente = carrito.find(x=> x.codigo === prod.codigo);
   if(existente){ existente.cantidad += qty; existente.subtotal = Number((existente.cantidad * existente.precio).toFixed(2)); }
   else { carrito.push({ codigo: prod.codigo, nombre: prod.nombre, precio: prod.precio, cantidad: qty, subtotal: Number((qty * prod.precio).toFixed(2)) }); }
@@ -1593,7 +1656,7 @@ btnFinalizar.addEventListener('click', ()=> {
     return;
   }
   const total = currentTotal;
-
+  for(const it of carrito){const p=productos.find(x=>x.codigo===it.codigo);if(esGranel(it)&&esGranel(p)&&gramosInventario(p)!==null&&Math.round(Number(it.cantidad)*1000)>gramosInventario(p)){alert('No hay existencia suficiente para '+p.nombre);return;}}
   // === Inventario progresivo (fase 1): permitir venta pero generar alertas en historial ===
   const warnings = [];
   const prodIndexByCode = new Map(productos.map((p, i)=> [String(p.codigo), i]));
@@ -1609,7 +1672,11 @@ btnFinalizar.addEventListener('click', ()=> {
     let stockDespues = null;
     let invAviso = '';
 
-    if(prod && prod.inventariado){
+    if(esGranel(prod) && esGranel(it)){
+      inv=true;stockAntes=gramosInventario(prod)===null?null:gramosInventario(prod)/1000;
+      const kg=Number(it.cantidad)||0;
+      if(stockAntes!==null){stockDespues=Math.max(0,stockAntes-kg);if(window.INVENTARIO_ACTIVO)prod.stockGramos=Math.max(0,gramosInventario(prod)-Math.round(kg*1000));}
+    }else if(prod && prod.inventariado){
       inv = true;
       stockAntes = (prod.stock === null || typeof prod.stock === 'undefined') ? null : Number(prod.stock);
       if(stockAntes === null || !Number.isFinite(stockAntes)){
@@ -2491,7 +2558,7 @@ function exportProductsToCsv(){
     return ac.localeCompare(bc, 'es', {numeric:true, sensitivity:'base'});
   });
 
-  const header = ['Codigo','Nombre','Precio','Costo','Inventariado','Stock'];
+  const header = ['Codigo','Nombre','Precio','Costo','Inventariado','Stock','TipoVenta','CostoKg','StockGramos'];
   const lines = [header.join(',')];
 
   for(const p of rows){
@@ -2502,7 +2569,7 @@ function exportProductsToCsv(){
     const inv = p?.inventariado ? 1 : 0;
     const stock = (p?.inventariado ? (p?.stock==null ? '' : p.stock) : '');
     // CSV con comillas para texto (por seguridad con comas)
-    lines.push([`"${codigo}"`,`"${nombre}"`,precio,costo,inv,stock].join(','));
+    lines.push([`"${codigo}"`,`"${nombre}"`,precio,costo,inv,stock,p.tipoVenta||'pieza',p.costoKg??'',p.stockGramos??''].join(','));
   }
 
   const csv = lines.join('\r\n');
@@ -2573,8 +2640,9 @@ function handleImportFile(file){
         const nombre = (it.nombre || '').toString().trim();
         const precio = Number(it.precio) || 0;
         if(!codigo || !nombre || precio <= 0) continue;
-        cleaned.push({ codigo, nombre, precio });
+        cleaned.push({...it,codigo,nombre,precio,tipoVenta:it.tipoVenta==='granel'?'granel':'pieza',costo:Number(it.costo)||0,costoKg:Number(it.costoKg)||0});
       }
+      if(new Set(cleaned.map(x=>String(x.codigo))).size !== cleaned.length){alert('El archivo tiene códigos duplicados. No se importó para proteger el inventario.');return;}
       if(cleaned.length === 0){
         alert('No se encontraron productos válidos en el archivo.');
         return;
