@@ -470,23 +470,42 @@ body.neon .low-stock{
 <style id="granel-full-css">
 .granel-campos{display:none;flex-wrap:wrap;gap:10px;margin:8px 0;padding:10px;border:1px solid #ddd;border-radius:10px}
 .granel-campos.activo{display:flex}.granel-campos input{width:112px;box-sizing:border-box}
-/* Ventana de granel homologada con la apariencia de INDEX; estilos aislados del resto del POS */
-#granel-modal{padding:12px;box-sizing:border-box;background:rgba(0,0,0,.63)}
-#granel-modal .granel-modal{width:min(100%,425px);max-width:425px;max-height:calc(100vh - 24px);overflow-y:auto;box-sizing:border-box;padding:14px;border-radius:13px;background:#071524;color:#e6edf6;border:1px solid #123451;box-shadow:0 14px 38px rgba(0,0,0,.4)}
+/* Modal a granel: claro por defecto; oscuro y neón siguen el tema global del POS. */
+#granel-modal{
+  --gm-panel:#ffffff; --gm-text:#1f2937; --gm-secondary:#64748b;
+  --gm-border:#d9dee7; --gm-input:#ffffff; --gm-input-border:#ced6e1;
+  --gm-resumen:#f0f2f5; --gm-focus:#d12935; --gm-button-border:#d9dee7;
+  --gm-danger:#b91c1c;
+  padding:12px;box-sizing:border-box;background:rgba(0,0,0,.63)
+}
+body.dark #granel-modal{
+  --gm-panel:#202020; --gm-text:#f1f1f1; --gm-secondary:#c4c4c4;
+  --gm-border:#464646; --gm-input:#2a2a2a; --gm-input-border:#555555;
+  --gm-resumen:#303030; --gm-focus:#f36b6b; --gm-button-border:#626262;
+  --gm-danger:#ff9b9b;
+}
+body.neon #granel-modal{
+  --gm-panel:#071524; --gm-text:#e6edf6; --gm-secondary:#becada;
+  --gm-border:#123451; --gm-input:#061a2a; --gm-input-border:#174562;
+  --gm-resumen:#1b2736; --gm-focus:#2f8cad; --gm-button-border:#1b526a;
+  --gm-danger:#ff8d95;
+}
+#granel-modal .granel-modal{width:min(100%,425px);max-width:425px;max-height:calc(100vh - 24px);overflow-y:auto;box-sizing:border-box;padding:14px;border-radius:13px;background:var(--gm-panel);color:var(--gm-text);border:1px solid var(--gm-border);box-shadow:0 14px 38px rgba(0,0,0,.4)}
 #granel-modal .gm-encabezado{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 14px;font-size:16px}
 #granel-modal .gm-encabezado strong{font-weight:800}
-#granel-modal #gm-cerrar{background:transparent;color:#e6edf6;border:1px solid #1b526a;padding:10px 14px;border-radius:10px;min-height:40px}
+#granel-modal #gm-cerrar{background:transparent;color:var(--gm-text);border:1px solid var(--gm-button-border);padding:10px 14px;border-radius:10px;min-height:40px}
 #granel-modal .gm-producto{font-size:15px;font-weight:800;margin:0 0 6px}
-#granel-modal .gm-precio{font-size:13px;color:#becada;margin-bottom:14px}
-#granel-modal label{display:block;color:#c7d1df;font-size:13px;margin:8px 0 5px}
+#granel-modal .gm-precio{font-size:13px;color:var(--gm-secondary);margin-bottom:14px}
+#granel-modal label{display:block;color:var(--gm-secondary);font-size:13px;margin:8px 0 5px}
 #granel-modal .gm-fila{display:flex;gap:8px;align-items:end;margin:10px 0}
 #granel-modal .gm-fila .gm-cantidad-col{min-width:0;flex:1}
 #granel-modal .gm-fila .gm-unidad-col{width:115px;flex-shrink:0}
-#granel-modal input,#granel-modal select{display:block;width:100%;min-height:40px;box-sizing:border-box;border:1px solid #174562;border-radius:9px;background:#061a2a;color:#e6edf6;padding:9px 11px;font-size:14px;margin:0;outline:none}
-#granel-modal input:focus,#granel-modal select:focus{border-color:#2f8cad}
-#granel-modal .granel-resumen{margin:10px 0;padding:12px;border-radius:9px;background:#1b2736;color:#e6edf6;line-height:1.65;font-size:14px}
+#granel-modal input,#granel-modal select{display:block;width:100%;min-height:40px;box-sizing:border-box;border:1px solid var(--gm-input-border);border-radius:9px;background:var(--gm-input);color:var(--gm-text);padding:9px 11px;font-size:14px;margin:0;outline:none}
+#granel-modal input:focus,#granel-modal select:focus{border-color:var(--gm-focus)}
+#granel-modal .granel-resumen{margin:10px 0;padding:12px;border-radius:9px;background:var(--gm-resumen);color:var(--gm-text);line-height:1.65;font-size:14px}
 #granel-modal .granel-resumen strong{font-weight:800}
-#granel-modal .gm-existencia{font-size:12px;color:#bfcbd9}
+#granel-modal .gm-existencia{font-size:12px;color:var(--gm-secondary)}
+#granel-modal .gm-error{color:var(--gm-danger)}
 #granel-modal #gm-agregar{display:block;width:100%;min-height:43px;box-sizing:border-box;margin:0;border-radius:9px;background:linear-gradient(180deg,#ff334b,#c9102c);color:white;font-weight:800}
 #granel-modal #gm-agregar:disabled{opacity:.5;cursor:not-allowed}
 @media(max-width:420px){#granel-modal{padding:7px}#granel-modal .granel-modal{padding:12px}#granel-modal .gm-fila .gm-unidad-col{width:105px}}
@@ -1453,7 +1472,7 @@ function abrirModalGranel(prod){
  const cerrar=()=>overlay.remove();$('gm-cerrar').onclick=cerrar;
  modo.onchange=()=>{campo.value=modo.value==='peso'?'350':'20';$('gm-etiqueta').textContent=modo.value==='peso'?'Peso':'Importe en pesos';unidad.style.display=modo.value==='peso'?'':'none';actualizar()};
  let datos=null;
- function actualizar(){let gramos=modo.value==='peso'?(Number(campo.value)||0)*(unidad.value==='kg'?1000:1):((Number(campo.value)||0)/Number(prod.precio))*1000;gramos=modo.value==='importe'?Math.floor(gramos+1e-9):Math.round(gramos);const kg=gramos/1000;const importe=modo.value==='importe'?Number(Number(campo.value).toFixed(2)):redondearGranel50(kg*Number(prod.precio));const inv=gramosInventario(prod);const reservado=carrito.filter(x=>x.codigo===prod.codigo&&esGranel(x)).reduce((s,x)=>s+Math.round(Number(x.cantidad)*1000),0);datos=gramos>0&&Number.isFinite(kg)&&Number.isFinite(importe)&&importe>0&&(inv===null||gramos+reservado<=inv)?{kg,importe}:null;res.innerHTML=`<div>Peso: <strong>${(kg).toLocaleString('es-MX',{maximumFractionDigits:3})} kg</strong> (${gramos.toLocaleString('es-MX')} g)</div><div>Total: <strong>${formatMXN(importe)}</strong></div>${inv!==null?'<div class="gm-existencia">Existencia: '+(inv/1000).toFixed(3)+' kg</div>':''}${!datos?'<div style="color:#ff8d95">Cantidad inválida o inventario insuficiente</div>':''}`;$('gm-agregar').disabled=!datos;}
+ function actualizar(){let gramos=modo.value==='peso'?(Number(campo.value)||0)*(unidad.value==='kg'?1000:1):((Number(campo.value)||0)/Number(prod.precio))*1000;gramos=modo.value==='importe'?Math.floor(gramos+1e-9):Math.round(gramos);const kg=gramos/1000;const importe=modo.value==='importe'?Number(Number(campo.value).toFixed(2)):redondearGranel50(kg*Number(prod.precio));const inv=gramosInventario(prod);const reservado=carrito.filter(x=>x.codigo===prod.codigo&&esGranel(x)).reduce((s,x)=>s+Math.round(Number(x.cantidad)*1000),0);datos=gramos>0&&Number.isFinite(kg)&&Number.isFinite(importe)&&importe>0&&(inv===null||gramos+reservado<=inv)?{kg,importe}:null;res.innerHTML=`<div>Peso: <strong>${(kg).toLocaleString('es-MX',{maximumFractionDigits:3})} kg</strong> (${gramos.toLocaleString('es-MX')} g)</div><div>Total: <strong>${formatMXN(importe)}</strong></div>${inv!==null?'<div class="gm-existencia">Existencia: '+(inv/1000).toFixed(3)+' kg</div>':''}${!datos?'<div class="gm-error">Cantidad inválida o inventario insuficiente</div>':''}`;$('gm-agregar').disabled=!datos;}
  campo.oninput=actualizar;unidad.onchange=actualizar;
  $('gm-agregar').onclick=()=>{if(!datos)return;const existente=carrito.find(x=>x.codigo===prod.codigo);if(existente){existente.cantidad=Math.round((existente.cantidad+datos.kg)*1000)/1000;existente.subtotal=Number((Number(existente.subtotal)+datos.importe).toFixed(2));}else carrito.push({codigo:prod.codigo,nombre:prod.nombre,precio:prod.precio,cantidad:datos.kg,subtotal:datos.importe,tipoVenta:'granel',costoKg:Number(prod.costoKg)||0,manual:false});saveCart();renderCart();cerrar();};
  actualizar();
