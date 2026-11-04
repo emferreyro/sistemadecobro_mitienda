@@ -637,7 +637,10 @@ body.neon #granel-modal{
 <div style="display:flex; gap:10px; align-items:center"><div class="field-float"><span class="field-label">Costo</span><input id="prod-costo" type="number" step="0.01" placeholder="0.00"/></div><div class="field-float"><span class="field-label">Precio</span><input id="prod-precio" type="number" step="0.01" placeholder="0.00"/></div></div>
 <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6b7280;margin:0 0 0 0;white-space:nowrap"><input id="prod-inventariado" type="checkbox" />Inventario</label>
 <input id="prod-stock" placeholder="Existencias" type="number" step="1" min="0" style="width:120px" />
-<button class="btn btn-rojo" id="btn-add-prod">Agregar</button>
+</div>
+<div class="mg-product-fields" style="display:flex;gap:12px;flex-wrap:wrap;margin:8px 0">
+ <div style="flex:1 1 200px;min-width:0"><label for="prod-marca">Marca</label><input id="prod-marca" type="text" list="prod-marcas-lista" placeholder="Ej. BIMBO" autocomplete="off" style="width:100%;box-sizing:border-box;text-transform:uppercase"/><datalist id="prod-marcas-lista"></datalist></div>
+ <div style="flex:1 1 200px;min-width:0"><label for="prod-grupo">Grupo</label><input id="prod-grupo" type="text" list="prod-grupos-lista" placeholder="Ej. PANADERÍA" autocomplete="off" style="width:100%;box-sizing:border-box;text-transform:uppercase"/><datalist id="prod-grupos-lista"></datalist></div>
 </div>
 <div style="margin:8px 0"><label for="prod-tipo">Tipo de venta</label><select id="prod-tipo"><option value="pieza">Por pieza</option><option value="granel">A granel</option></select></div>
 <div id="granel-campos" class="granel-campos">
@@ -647,6 +650,7 @@ body.neon #granel-modal{
 <div><label>Costo del costal $</label><input id="prod-costo-costal" type="number" min="0" step="0.01" placeholder="Opcional"/></div>
 <div class="small" style="width:100%">Precio = precio de venta por kg; costo y utilidad de granel se calculan por kg.</div>
 </div>
+<div style="margin:10px 0 14px"><button class="btn btn-rojo" id="btn-add-prod">Agregar</button></div>
 <div class="right-controls" style="margin-bottom:8px">
 <button class="btn btn-amarillo btn-small" id="btn-low-stock" title="Ver artículos con inventario y menos de 5 piezas">⚠ Poco stock</button>
 
@@ -828,6 +832,8 @@ const rightProducts = document.getElementById('right-products');
 const historyList = document.getElementById('history-list');
 const prodCodigo = document.getElementById('prod-codigo');
 const prodNombre = document.getElementById('prod-nombre');
+const prodMarca = document.getElementById('prod-marca');
+const prodGrupo = document.getElementById('prod-grupo');
 const prodCosto = document.getElementById('prod-costo');
 const prodPrecio = document.getElementById('prod-precio');
 const prodTipo=document.getElementById('prod-tipo');
@@ -1183,15 +1189,32 @@ function actualizarBusquedaRapida(){
   });
 }
 
+/* Clasificación opcional de productos: solo modo admin. */
+function normalizarClasificacion(valor){ return String(valor ?? '').trim().toLocaleUpperCase('es-MX'); }
+for(const campo of [prodMarca,prodGrupo]) campo.addEventListener('input', ()=>{
+  const inicio=campo.selectionStart,fin=campo.selectionEnd;
+  const mayus=campo.value.toLocaleUpperCase('es-MX');
+  if(campo.value!==mayus){campo.value=mayus;try{campo.setSelectionRange(inicio,fin);}catch(e){}}
+});
+function actualizarSugerenciasClasificacion(){
+  for(const [campo,clave,listaId] of [[prodMarca,'marca','prod-marcas-lista'],[prodGrupo,'grupo','prod-grupos-lista']]){
+    const lista=document.getElementById(listaId);
+    if(!lista) continue;
+    lista.replaceChildren();
+    const valores=[...new Set(productos.map(p=>normalizarClasificacion(p[clave])).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+    valores.forEach(valor=>{const option=document.createElement('option');option.value=valor;lista.appendChild(option);});
+  }
+}
 /* PRODUCTS UI */
 function renderProducts(){
   productsList.innerHTML = '';
   rightProducts.innerHTML = '';
+  actualizarSugerenciasClasificacion();
   productos.forEach((p, idx) => {
     const div = document.createElement('div'); div.className='product-item';
     const adminBtns = isAdmin ? `<button data-idx="${idx}" class="btn btn-outline btn-small btn-edit">✏️</button>
       <button data-idx="${idx}" class="btn btn-outline btn-small btn-del">🗑️</button>` : '';
-    div.innerHTML = `<div><div style="font-weight:700">${p.codigo} — ${escapeHtml(p.nombre)}</div><div class="small product-meta"><span><span class="label">${esGranel(p)?"Precio/kg":"Precio"}:</span> <span class="val">${formatMXN(p.precio)}</span></span><span class="spacer"></span><span class="meta-right"><span><span class="label">${esGranel(p)?"Costo/kg":"Costo"}:</span> <span class="val">${formatMXN(esGranel(p)?(Number(p.costoKg)||0):(Number(p.costo)||0))}</span></span><span><span class="label">${esGranel(p)?"Utilidad/kg":"Utilidad"}:</span> <span class="val">${formatMXN((Number(p.precio)||0)-(esGranel(p)?(Number(p.costoKg)||0):(Number(p.costo)||0)))}</span></span></span></div></div>
+    div.innerHTML = `<div><div style="font-weight:700">${p.codigo} — ${escapeHtml(p.nombre)}</div>${p.marca||p.grupo?`<div class="small" style="margin:3px 0">${p.marca?'Marca: '+escapeHtml(String(p.marca)): ''}${p.marca&&p.grupo?' · ':''}${p.grupo?'Grupo: '+escapeHtml(String(p.grupo)):''}</div>`:''}<div class="small product-meta"><span><span class="label">${esGranel(p)?"Precio/kg":"Precio"}:</span> <span class="val">${formatMXN(p.precio)}</span></span><span class="spacer"></span><span class="meta-right"><span><span class="label">${esGranel(p)?"Costo/kg":"Costo"}:</span> <span class="val">${formatMXN(esGranel(p)?(Number(p.costoKg)||0):(Number(p.costo)||0))}</span></span><span><span class="label">${esGranel(p)?"Utilidad/kg":"Utilidad"}:</span> <span class="val">${formatMXN((Number(p.precio)||0)-(esGranel(p)?(Number(p.costoKg)||0):(Number(p.costo)||0)))}</span></span></span></div></div>
                      ${esGranel(p)?`<div class="small">⚖️ A granel · ${gramosInventario(p)===null?'Sin inventario registrado':(gramosInventario(p)/1000).toFixed(3)+' kg disponibles'}</div>`:''}
                      ${!esGranel(p)&&p.inventariado ? (()=>{ const s = (p.stock===null||p.stock===undefined) ? null : Number(p.stock); const warn = (s!==null && !isNaN(s) && s>=0 && s<5) ? ' <span class="low-stock">⚠ Poco stock</span>' : ''; return '<div class="small">📦 Inventario · Stock: ' + (s===null||isNaN(s) ? '—' : s) + warn + '</div>'; })() : ''}
                      <div style="display:flex;gap:8px;align-items:center">
@@ -1214,7 +1237,7 @@ function renderProducts(){
       const p = productos[i];
       prodTipo.value=esGranel(p)?'granel':'pieza';prodStockKg.value=esGranel(p)&&gramosInventario(p)!==null?gramosInventario(p)/1000:'';
       prodCostoKg.value=p.costoKg??'';prodPesoCostal.value=p.pesoCostal??'';prodCostoCostal.value=p.costoCostal??'';actualizarTipoGranel();
-      prodCodigo.value = p.codigo; prodNombre.value = p.nombre; if(typeof prodCosto !== 'undefined' && prodCosto) prodCosto.value = (p.costo ?? 0); prodPrecio.value = p.precio;
+      prodCodigo.value = p.codigo; prodNombre.value = p.nombre; prodMarca.value = normalizarClasificacion(p.marca); prodGrupo.value = normalizarClasificacion(p.grupo); if(typeof prodCosto !== 'undefined' && prodCosto) prodCosto.value = (p.costo ?? 0); prodPrecio.value = p.precio;
       if(prodStock) prodStock.value = (p.inventariado ? (p.stock ?? '') : '');
       if(prodInventariado) prodInventariado.checked = !!p.inventariado;
       prodCodigo.dataset.editIndex = i;
@@ -1259,6 +1282,8 @@ function checkProductLimitOnOpen(){
 btnAddProd.addEventListener('click', ()=>{
   const codigo = (prodCodigo.value || '').toString().trim();
   const nombre = normalizarNombreProducto(prodNombre.value);
+  const marca = normalizarClasificacion(prodMarca.value);
+  const grupo = normalizarClasificacion(prodGrupo.value);
   const costo = (typeof prodCosto !== 'undefined' && prodCosto) ? (Number(prodCosto.value) || 0) : 0;
   const precio = Number(prodPrecio.value) || 0;
   const tipoVenta=prodTipo.value==='granel'?'granel':'pieza';
@@ -1274,7 +1299,7 @@ btnAddProd.addEventListener('click', ()=>{
   if(tipoVenta==='granel' && (prodStockKg.value && (!Number.isFinite(Number(prodStockKg.value))||Number(prodStockKg.value)<0))){alert('Existencia en kg inválida');return;}
   const costoKg=Number(prodCostoKg.value)||0;
   if(tipoVenta==='granel' && (!Number.isFinite(costoKg)||costoKg<0)){alert('Costo por kg inválido');return;}
-  const nuevo={codigo,nombre,precio,costo:tipoVenta==='granel'?costoKg:costo,inventariado,stock,tipoVenta};
+  const nuevo={codigo,nombre,precio,costo:tipoVenta==='granel'?costoKg:costo,inventariado,stock,tipoVenta,marca,grupo};
   if(tipoVenta==='granel')Object.assign(nuevo,{costoKg,stockGramos:prodStockKg.value.trim()?Math.round(Number(prodStockKg.value)*1000):null,pesoCostal:Number(prodPesoCostal.value)||0,costoCostal:Number(prodCostoCostal.value)||0});
   if(!codigo || !nombre || precio <= 0){ alert('Completa código, nombre, costo y precio válidos'); return; }
   if(costo < 0){ alert('Costo no puede ser negativo'); return; }
@@ -1311,7 +1336,7 @@ btnAddProd.addEventListener('click', ()=>{
   } catch (e) {
     console.warn('Audio no disponible:', e);
   }
-prodTipo.value='pieza';[prodStockKg,prodCostoKg,prodPesoCostal,prodCostoCostal].forEach(e=>e.value='');actualizarTipoGranel();prodCodigo.value=''; prodNombre.value=''; if(typeof prodCosto!=='undefined' && prodCosto) prodCosto.value=''; prodPrecio.value=''; prodCodigo.focus();
+prodTipo.value='pieza';[prodStockKg,prodCostoKg,prodPesoCostal,prodCostoCostal].forEach(e=>e.value='');actualizarTipoGranel();prodCodigo.value=''; prodNombre.value=''; prodMarca.value=''; prodGrupo.value=''; if(typeof prodCosto!=='undefined' && prodCosto) prodCosto.value=''; prodPrecio.value=''; prodCodigo.focus();
   checkProductLimitOnOpen();
   // FULLV: modo admin siempre activo (silencioso)
   isAdmin = true;
