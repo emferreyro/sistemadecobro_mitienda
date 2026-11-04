@@ -639,8 +639,8 @@ body.neon #granel-modal{
 <input id="prod-stock" placeholder="Existencias" type="number" step="1" min="0" style="width:120px" />
 </div>
 <div class="mg-product-fields" style="display:flex;gap:12px;flex-wrap:wrap;margin:8px 0">
- <div style="flex:1 1 200px;min-width:0"><label for="prod-marca">Marca</label><input id="prod-marca" type="text" list="prod-marcas-lista" placeholder="Ej. BIMBO" autocomplete="off" style="width:100%;box-sizing:border-box;text-transform:uppercase"/><datalist id="prod-marcas-lista"></datalist></div>
- <div style="flex:1 1 200px;min-width:0"><label for="prod-grupo">Grupo</label><input id="prod-grupo" type="text" list="prod-grupos-lista" placeholder="Ej. PANADERÍA" autocomplete="off" style="width:100%;box-sizing:border-box;text-transform:uppercase"/><datalist id="prod-grupos-lista"></datalist></div>
+ <div style="flex:1 1 200px;min-width:0"><label for="prod-marca">Marca</label><select id="prod-marca" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px"><option value="">SIN MARCA</option><option value="__nueva__">+ CREAR NUEVA MARCA</option></select><input id="prod-marca-nueva" type="text" placeholder="NUEVA MARCA" autocomplete="off" style="display:none;width:100%;box-sizing:border-box;margin-top:6px;text-transform:uppercase"/></div>
+ <div style="flex:1 1 200px;min-width:0"><label for="prod-grupo">Grupo</label><select id="prod-grupo" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px"><option value="">SIN GRUPO</option><option value="__nueva__">+ CREAR NUEVO GRUPO</option></select><input id="prod-grupo-nuevo" type="text" placeholder="NUEVO GRUPO" autocomplete="off" style="display:none;width:100%;box-sizing:border-box;margin-top:6px;text-transform:uppercase"/></div>
 </div>
 <div style="margin:8px 0"><label for="prod-tipo">Tipo de venta</label><select id="prod-tipo"><option value="pieza">Por pieza</option><option value="granel">A granel</option></select></div>
 <div id="granel-campos" class="granel-campos">
@@ -1189,21 +1189,48 @@ function actualizarBusquedaRapida(){
   });
 }
 
-/* Clasificación opcional de productos: solo modo admin. */
-function normalizarClasificacion(valor){ return String(valor ?? '').trim().toLocaleUpperCase('es-MX'); }
-for(const campo of [prodMarca,prodGrupo]) campo.addEventListener('input', ()=>{
-  const inicio=campo.selectionStart,fin=campo.selectionEnd;
-  const mayus=campo.value.toLocaleUpperCase('es-MX');
-  if(campo.value!==mayus){campo.value=mayus;try{campo.setSelectionRange(inicio,fin);}catch(e){}}
-});
+/* Clasificación opcional: listas tomadas de los productos ya registrados. */
+function normalizarClasificacion(valor){ return String(valor ?? '').trim().replace(/\s+/g,' ').toLocaleUpperCase('es-MX'); }
+const prodMarcaNueva = document.getElementById('prod-marca-nueva');
+const prodGrupoNuevo = document.getElementById('prod-grupo-nuevo');
+function claveClasificacion(valor){return normalizarClasificacion(valor).normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+function opcionesClasificacion(clave){
+  const mapa=new Map();
+  productos.forEach(p=>{
+    const valor=normalizarClasificacion(p[clave]); const key=claveClasificacion(valor);
+    if(key && !mapa.has(key)) mapa.set(key,valor);
+  });
+  return [...mapa.values()].sort((a,b)=>a.localeCompare(b,'es'));
+}
 function actualizarSugerenciasClasificacion(){
-  for(const [campo,clave,listaId] of [[prodMarca,'marca','prod-marcas-lista'],[prodGrupo,'grupo','prod-grupos-lista']]){
-    const lista=document.getElementById(listaId);
-    if(!lista) continue;
-    lista.replaceChildren();
-    const valores=[...new Set(productos.map(p=>normalizarClasificacion(p[clave])).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
-    valores.forEach(valor=>{const option=document.createElement('option');option.value=valor;lista.appendChild(option);});
+  for(const [selector,clave,nuevo,rotulo] of [[prodMarca,'marca',prodMarcaNueva,'MARCA'],[prodGrupo,'grupo',prodGrupoNuevo,'GRUPO']]){
+    const actual=selector.value;
+    selector.replaceChildren();
+    const vacio=document.createElement('option'); vacio.value=''; vacio.textContent='SIN '+rotulo; selector.appendChild(vacio);
+    opcionesClasificacion(clave).forEach(valor=>{const opcion=document.createElement('option');opcion.value=valor;opcion.textContent=valor;selector.appendChild(opcion);});
+    const crear=document.createElement('option');crear.value='__nueva__';crear.textContent='+ CREAR NUEV'+(rotulo==='MARCA'?'A MARCA':'O GRUPO');selector.appendChild(crear);
+    if([...selector.options].some(o=>o.value===actual)) selector.value=actual;
+    else if(actual && actual!=='__nueva__'){ selector.value='__nueva__';nuevo.value=normalizarClasificacion(actual); }
+    else selector.value='';
+    nuevo.style.display=selector.value==='__nueva__'?'block':'none';
   }
+}
+function seleccionarClasificacion(selector,nuevo,valor){
+  valor=normalizarClasificacion(valor);
+  if(!valor){selector.value='';nuevo.value='';nuevo.style.display='none';return;}
+  const existente=[...selector.options].find(o=>o.value && o.value!=='__nueva__' && claveClasificacion(o.value)===claveClasificacion(valor));
+  if(existente){selector.value=existente.value;nuevo.value='';nuevo.style.display='none';}
+  else {selector.value='__nueva__';nuevo.value=valor;nuevo.style.display='block';}
+}
+function leerClasificacion(selector,nuevo,clave){
+  const valor=normalizarClasificacion(selector.value==='__nueva__'?nuevo.value:selector.value);
+  if(!valor) return '';
+  const existente=opcionesClasificacion(clave).find(item=>claveClasificacion(item)===claveClasificacion(valor));
+  return existente || valor;
+}
+for(const [selector,nuevo] of [[prodMarca,prodMarcaNueva],[prodGrupo,prodGrupoNuevo]]){
+  selector.addEventListener('change',()=>{nuevo.style.display=selector.value==='__nueva__'?'block':'none';if(selector.value==='__nueva__')nuevo.focus();else nuevo.value='';});
+  nuevo.addEventListener('input',()=>{const pos=nuevo.selectionStart; nuevo.value=nuevo.value.toLocaleUpperCase('es-MX');try{nuevo.setSelectionRange(pos,pos);}catch(e){}});
 }
 /* PRODUCTS UI */
 function renderProducts(){
@@ -1237,7 +1264,7 @@ function renderProducts(){
       const p = productos[i];
       prodTipo.value=esGranel(p)?'granel':'pieza';prodStockKg.value=esGranel(p)&&gramosInventario(p)!==null?gramosInventario(p)/1000:'';
       prodCostoKg.value=p.costoKg??'';prodPesoCostal.value=p.pesoCostal??'';prodCostoCostal.value=p.costoCostal??'';actualizarTipoGranel();
-      prodCodigo.value = p.codigo; prodNombre.value = p.nombre; prodMarca.value = normalizarClasificacion(p.marca); prodGrupo.value = normalizarClasificacion(p.grupo); if(typeof prodCosto !== 'undefined' && prodCosto) prodCosto.value = (p.costo ?? 0); prodPrecio.value = p.precio;
+      prodCodigo.value = p.codigo; prodNombre.value = p.nombre; seleccionarClasificacion(prodMarca,prodMarcaNueva,p.marca); seleccionarClasificacion(prodGrupo,prodGrupoNuevo,p.grupo); if(typeof prodCosto !== 'undefined' && prodCosto) prodCosto.value = (p.costo ?? 0); prodPrecio.value = p.precio;
       if(prodStock) prodStock.value = (p.inventariado ? (p.stock ?? '') : '');
       if(prodInventariado) prodInventariado.checked = !!p.inventariado;
       prodCodigo.dataset.editIndex = i;
@@ -1282,8 +1309,8 @@ function checkProductLimitOnOpen(){
 btnAddProd.addEventListener('click', ()=>{
   const codigo = (prodCodigo.value || '').toString().trim();
   const nombre = normalizarNombreProducto(prodNombre.value);
-  const marca = normalizarClasificacion(prodMarca.value);
-  const grupo = normalizarClasificacion(prodGrupo.value);
+  const marca = leerClasificacion(prodMarca,prodMarcaNueva,'marca');
+  const grupo = leerClasificacion(prodGrupo,prodGrupoNuevo,'grupo');
   const costo = (typeof prodCosto !== 'undefined' && prodCosto) ? (Number(prodCosto.value) || 0) : 0;
   const precio = Number(prodPrecio.value) || 0;
   const tipoVenta=prodTipo.value==='granel'?'granel':'pieza';
@@ -1336,7 +1363,7 @@ btnAddProd.addEventListener('click', ()=>{
   } catch (e) {
     console.warn('Audio no disponible:', e);
   }
-prodTipo.value='pieza';[prodStockKg,prodCostoKg,prodPesoCostal,prodCostoCostal].forEach(e=>e.value='');actualizarTipoGranel();prodCodigo.value=''; prodNombre.value=''; prodMarca.value=''; prodGrupo.value=''; if(typeof prodCosto!=='undefined' && prodCosto) prodCosto.value=''; prodPrecio.value=''; prodCodigo.focus();
+prodTipo.value='pieza';[prodStockKg,prodCostoKg,prodPesoCostal,prodCostoCostal].forEach(e=>e.value='');actualizarTipoGranel();prodCodigo.value=''; prodNombre.value=''; prodMarca.value=''; prodGrupo.value=''; prodMarcaNueva.value=''; prodGrupoNuevo.value=''; prodMarcaNueva.style.display='none'; prodGrupoNuevo.style.display='none'; if(typeof prodCosto!=='undefined' && prodCosto) prodCosto.value=''; prodPrecio.value=''; prodCodigo.focus();
   checkProductLimitOnOpen();
   // FULLV: modo admin siempre activo (silencioso)
   isAdmin = true;
