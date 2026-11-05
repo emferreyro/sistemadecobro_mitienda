@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 
 <html lang="es">
-<head><script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4/dist/fp.min.js">
+<head><script src="js/fp.min.js">
 // Inventario progresivo: solo FULLV registra (descuenta) stock; MiTienda solo refleja
 window.INVENTARIO_ACTIVO = true;
 
@@ -2258,6 +2258,15 @@ body.dark #lowStockModal .low-stock{
 </head>
 <body>
   <pre class="ticket">${safe}</pre>
+<script>
+/* Registro de caché offline: mismo origen, requiere HTTPS o localhost. */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', {scope:'./'})
+      .catch(error => console.warn('Caché offline no disponible:', error));
+  });
+}
+</script>
 </body>
 </html>`;
   })();
