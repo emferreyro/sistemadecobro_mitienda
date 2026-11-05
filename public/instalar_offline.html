@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mi Tienda — Preparar sin internet (Windows)</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#1f2937;background:#f3f4f6}
+*{box-sizing:border-box}body{max-width:790px;margin:30px auto;padding:12px}
+main{background:white;border-radius:18px;padding:26px;box-shadow:0 6px 24px #0001}
+h1{font-size:26px;margin:0 0 10px}p{line-height:1.5}button{padding:13px 18px;border:0;border-radius:9px;background:#f5e131;color:#111;font-weight:700;cursor:pointer;margin:6px 6px 6px 0}button:disabled{opacity:.5;cursor:wait}button.secondary{background:#e5e7eb}
+progress{width:100%;height:20px;accent-color:#16a34a}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f8fafc;border:1px solid #ddd;padding:13px;border-radius:8px;max-height:300px;overflow:auto}
+small{color:#555}a{color:#1858a5}.warn{background:#fff7ed;border-left:4px solid #e69e30;padding:12px;border-radius:8px}.ok{background:#ecfdf5;border-left:4px solid #16a34a;padding:12px}.bad{background:#fef2f2;border-left:4px solid #dc2626;padding:12px}
+</style></head><body><main>
+<h1>Mi Tienda · Preparar uso sin internet</h1>
+<p>Esta herramienta guarda las pantallas del POS en Chrome o Edge en <strong>este mismo sitio</strong>. No descarga un ZIP ni utiliza Python o BAT. No modifica los botones ni la lógica de ventas.</p>
+<p class="warn"><strong>Primera instalación:</strong> conéctate a internet, pulsa «Descargar y verificar» y espera el resultado. No borres «Datos del sitio» porque puedes perder ventas y licencia. Haz un respaldo antes de pruebas con datos reales.</p>
+<button id="install">Descargar y verificar</button><button id="check" class="secondary">Revisar archivos guardados</button><button id="clear" class="secondary">Desactivar solo esta instalación offline</button>
+<p id="status" role="status" aria-live="polite">Sin comprobar.</p><progress id="progress" max="100" value="0"></progress><p id="counter">0 de 0</p>
+<pre id="log">Seleccione una opción.</pre>
+<p><a href="./index.html">Abrir versión gratuita</a> · <a href="./fullv.html">Abrir Modo Admin</a> · <a href="./fullv_demo.html">Abrir demo</a></p>
+<small>La licencia se sigue comprobando contra autorizados.json cuando haya red. Sin conexión solo sirve una licencia local vigente. Esto no sustituye un respaldo de ventas ni garantiza que el navegador nunca elimine su caché.</small>
+</main><script>
+'use strict';
+const CACHE='mitienda-manual-offline-manual-v1';
+const REQUIRED=['./index.html','./fullv.html','./fullv_demo.html','./reporte.html','./gencodigo.html','./js/guardFullv.js','./js/acceso.js','./js/fp.min.js','./instalar_offline.html','./sw_manual.js'];
+const OPTIONAL=['./acercade.html','./Productos.html','./video.html','./finger.html','./imagenes/bandera-mx.png','./imagenes/logo.png'];
+const status=document.querySelector('#status'), log=document.querySelector('#log'), progress=document.querySelector('#progress'), counter=document.querySelector('#counter');
+const buttons=[...document.querySelectorAll('button')];
+const toAbs=p=>new URL(p,location.href).href;
+const info=(s,cls='')=>{status.textContent=s;status.className=cls};
+function busy(v){buttons.forEach(b=>b.disabled=v)}
+async function register(){
+ if(!('serviceWorker' in navigator)||!('caches' in window))throw new Error('Navegador sin soporte de Service Worker/Cache Storage. Usa Chrome o Edge con HTTPS.');
+ if(!window.isSecureContext)throw new Error('Esta instalación requiere HTTPS (o localhost).');
+ const reg=await navigator.serviceWorker.register('./sw_manual.js',{scope:'./',updateViaCache:'none'});
+ await navigator.serviceWorker.ready;
+ return reg;
+}
+async function getCache(){return caches.open(CACHE)}
+async function download(){
+ busy(true);log.textContent='';progress.value=0;
+ try{
+   info('Registrando almacenamiento offline...');await register();
+   const cache=await getCache();
+   const files=[...REQUIRED,...OPTIONAL];let passed=0,failedRequired=[],failedOptional=[];
+   for(let i=0;i<files.length;i++){
+     const p=files[i];counter.textContent=`${i+1} de ${files.length}`;
+     try{
+       const resp=await fetch(toAbs(p),{cache:'reload',credentials:'same-origin'});
+       if(!resp.ok||resp.type==='opaque')throw new Error('HTTP '+resp.status);
+       const ct=resp.headers.get('content-type')||'';
+       if(p.endsWith('.html')&&!ct.includes('html'))throw new Error('Tipo de contenido inesperado: '+ct);
+       if(p.endsWith('.js')&&!(ct.includes('javascript')||ct.includes('text/plain')||ct.includes('application/octet-stream')))throw new Error('Tipo de script inesperado: '+ct);
+       await cache.put(toAbs(p),resp.clone());
+       const check=await cache.match(toAbs(p));if(!check||!check.ok)throw new Error('No se pudo verificar caché');
+       passed++;log.textContent+='✓ '+p+'\n';
+     }catch(e){
+       (REQUIRED.includes(p)?failedRequired:failedOptional).push(p);
+       log.textContent+='✗ '+p+' — '+e.message+'\n';
+     }
+     progress.value=Math.round((i+1)/files.length*100);
+   }
+   if(failedRequired.length)info('Instalación incompleta: faltan archivos esenciales. NO está listo para offline.','bad');
+   else if(failedOptional.length)info('Pantallas principales guardadas. Faltan recursos auxiliares: uso offline PARCIAL.','warn');
+   else info('Archivos verificados: instalación offline completa para los recursos enumerados.','ok');
+   log.textContent+=`\nGuardados: ${passed}/${files.length}\nFaltantes esenciales: ${failedRequired.length}\nFaltantes auxiliares: ${failedOptional.length}\n`;
+   if(failedOptional.length)log.textContent+='Archivos auxiliares no incluidos en este paquete: '+failedOptional.join(', ')+'\n';
+ }catch(e){info('Error: '+e.message,'bad');log.textContent+='\nERROR: '+e.stack;}
+ finally{busy(false)}
+}
+async function check(){
+ busy(true);
+ try{
+  const names=await caches.keys();if(!names.includes(CACHE)){info('No hay instalación manual guardada.','warn');log.textContent='Sin caché manual.';return;}
+  const cache=await getCache();const files=[...REQUIRED,...OPTIONAL],missing=[];let found=0;
+  log.textContent='';for(const p of files){const v=await cache.match(toAbs(p));if(v?.ok){found++;log.textContent+='✓ '+p+'\n';}else{missing.push(p);log.textContent+='✗ '+p+'\n';}}
+  progress.value=Math.round(found/files.length*100);counter.textContent=`${found} de ${files.length}`;
+  const missingRequired=missing.filter(f=>REQUIRED.includes(f));
+  info(missingRequired.length?'Faltan archivos esenciales.':missing.length?'Pantallas principales presentes; recursos auxiliares pendientes.':'Todos los recursos enumerados están guardados.',missingRequired.length?'bad':missing.length?'warn':'ok');
+ }catch(e){info('Error: '+e.message,'bad')}finally{busy(false)}
+}
+async function clearInstall(){
+ if(!confirm('¿Desactivar esta instalación offline? No borra las ventas ni el localStorage, pero ya no podrás abrir las páginas sin internet.'))return;
+ busy(true);
+ try{
+  const regs=await navigator.serviceWorker.getRegistrations();let count=0;
+  for(const r of regs){if(new URL(r.active?.scriptURL||r.installing?.scriptURL||r.waiting?.scriptURL||location.href).pathname.endsWith('/sw_manual.js')){if(await r.unregister())count++;}}
+  const names=await caches.keys();for(const n of names)if(n.startsWith('mitienda-manual-offline-'))await caches.delete(n);
+  info('Instalación offline desactivada. Cierra pestañas para completar.','ok');log.textContent=`Registros desactivados: ${count}. localStorage intacto.`;
+ }catch(e){info('Error: '+e.message,'bad')}finally{busy(false)}
+}
+document.querySelector('#install').onclick=download;
+document.querySelector('#check').onclick=check;
+document.querySelector('#clear').onclick=clearInstall;
+</script></body></html>
