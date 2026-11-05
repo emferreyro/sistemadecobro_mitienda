@@ -4,5 +4,5 @@
 {"id":"bdc5d2ee3ad742dfd5e0c7fc4c1952bd","user":"admin","vencimiento":"2026-12-31","cliente":"chrome dell"},
 {"id":"0698debb1102dbc18effabd22172c8f8","user":"admin","vencimiento":"2026-12-31","cliente":"Probook firefox"},
 {"id":"0e409ddb2d57c98ee16abea6171a5485","user":"admin","vencimiento":"2025-12-31","cliente":"pruebas edge"},
-{"id":"df1c38caab54e410f4bab2499b2501c7","user":"admin","vencimiento":"2026-12-31","cliente":"Tableta"}
+{"id":"df1c38caab54e410f4bab2499b2501c7","user":"admin","vencimiento":"2026-12-31","cliente":"Tableta","revocado":true}
 ]}
