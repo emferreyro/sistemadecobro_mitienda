@@ -2,11 +2,11 @@
 <!DOCTYPE html>
 
 <html lang="es">
-<head>
-<style id="mitienda-licencia-bloqueo">html.mitienda-licencia-pendiente body { visibility:hidden !important; } html.mitienda-licencia-pendiente #mitienda-licencia-aviso { visibility:visible !important; }</style>
-<script>document.documentElement.classList.add('mitienda-licencia-pendiente');</script>
-<script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4/dist/fp.min.js"></script>
-<script src="js/guardFullv.js"></script>
+<head><script>document.documentElement.classList.add("licencia-pendiente");</script><style>html.licencia-pendiente body{visibility:hidden} html.licencia-rechazada body{visibility:hidden} html.licencia-rechazada #guardFullvAviso{visibility:visible}</style><script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4/dist/fp.min.js">
+// Inventario progresivo: solo FULLV registra (descuenta) stock; MiTienda solo refleja
+window.INVENTARIO_ACTIVO = true;
+
+</script><script src="js/guardFullv.js"></script>
 <script>
 // ✅ Configuración global
 // Nota: si un <script> tiene atributo src, el navegador IGNORA el código inline dentro de esa etiqueta.
