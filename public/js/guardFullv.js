@@ -1,121 +1,147 @@
-/* Mi Tienda - Licencia local por período. No elimina ni modifica datos de ventas. */
-(function () {
+/* Mi Tienda POS - Licencia temporal con revocación online.
+ * La autorización vigente se guarda localmente. Cuando hay red, el JSON manda.
+ * La revocación se aplica cuando la consulta online obtiene una respuesta válida.
+ * NOTA: el registro local no está firmado; este control no es resistente a manipulación.
+ */
+(() => {
   'use strict';
-  const KEY = 'mitienda_fullv_licencia_v1';
-  const CLOCK_KEY = 'mitienda_fullv_ultimo_reloj_v1';
-  const FREE_URL = 'index.html';
-  const DAY = 86400000;
-  let currentFingerprint = '';
-  let verified = false;
-  let ending = false;
+  const STORAGE_KEY = 'mitienda_licencia_fullv_v2';
+  const CHECK_INTERVAL_MS = 15 * 60 * 1000;
+  const FETCH_TIMEOUT_MS = 6500;
+  const MAX_CLOCK_REGRESSION_MS = 5 * 60 * 1000;
+  const HOME = 'index.html';
+  const AUTH_URL = 'autorizados.json';
+  let active = false;
+  let checking = false;
+  let lastFingerprint = '';
 
-  function dayEnd(value) {
+  function dateToEnd(value) {
     if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return NaN;
-    const [year, month, day] = value.split('-').map(Number);
-    const start = new Date(year, month - 1, day);
-    if (start.getFullYear() !== year || start.getMonth() !== month - 1 || start.getDate() !== day) return NaN;
-    return new Date(year, month - 1, day + 1).getTime(); // vigente hasta el final de la fecha indicada, hora local
+    const time = Date.parse(value + 'T23:59:59.999');
+    return Number.isFinite(time) ? time : NaN;
   }
-  function read() {
+  function readSaved() {
     try {
-      const value = JSON.parse(localStorage.getItem(KEY) || 'null');
-      return value && typeof value === 'object' ? value : null;
+      const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+      if (!value || value.version !== 2 || !value.id || !Number.isFinite(dateToEnd(value.vencimiento))) return null;
+      return value;
     } catch (_) { return null; }
   }
-  function isValid(record, fp) {
-    return !!(record && fp && record.id === fp && Number.isFinite(dayEnd(record.vencimiento)) && Date.now() < dayEnd(record.vencimiento));
+  function deleteSaved() { try { localStorage.removeItem(STORAGE_KEY); } catch (_) {} }
+  function isValid(saved) {
+    const now = Date.now();
+    return !!saved && dateToEnd(saved.vencimiento) >= now &&
+      !(typeof saved.ultimoUso === 'number' && now + MAX_CLOCK_REGRESSION_MS < saved.ultimoUso);
   }
-  function checkClock() {
+  function saveLicense(record, previous) {
+    const next = { version: 2, id: record.id, user: record.user || 'admin',
+      vencimiento: record.vencimiento, ultimoUso: Math.max(Date.now(), previous?.ultimoUso || 0),
+      ultimaRevisionOnline: Date.now() };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    return next;
+  }
+  function touchLicense(lic) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      ...lic, ultimoUso: Math.max(Date.now(), lic.ultimoUso || 0) })); } catch (_) {}
+  }
+  async function getFingerprint() {
+    if (typeof FingerprintJS === 'undefined') return '';
+    try { return (await (await FingerprintJS.load()).get()).visitorId || ''; }
+    catch (e) { console.warn('Fingerprint no disponible:', e); return ''; }
+  }
+  async function remoteList() {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
-      const old = Number(localStorage.getItem(CLOCK_KEY) || 0);
-      if (old && Date.now() < old - 5 * 60000) return false;
-      if (Date.now() > old) localStorage.setItem(CLOCK_KEY, String(Date.now()));
-    } catch (_) {}
-    return true;
+      const sep = AUTH_URL.includes('?') ? '&' : '?';
+      const res = await fetch(AUTH_URL + sep + 'v=' + Date.now(), {
+        cache: 'no-store', signal: controller.signal, credentials: 'same-origin' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      if (!json || !Array.isArray(json.autorizados)) throw new Error('JSON inválido');
+      return json.autorizados;
+    } finally { clearTimeout(timeout); }
   }
-  function allow() {
-    verified = true;
-    document.documentElement.classList.remove('mitienda-licencia-pendiente');
+  function showApp() {
+    active = true;
+    document.documentElement.classList.remove('licencia-pendiente', 'licencia-rechazada');
+    document.getElementById('guardFullvAviso')?.remove();
   }
-  function block(title, message) {
-    if (ending) return;
-    ending = true;
-    verified = false;
-    document.documentElement.classList.add('mitienda-licencia-pendiente');
-    const show = () => {
-      const old = document.getElementById('mitienda-licencia-aviso');
-      if (old) old.remove();
-      const wrap = document.createElement('div');
-      wrap.id = 'mitienda-licencia-aviso';
-      wrap.setAttribute('role', 'alertdialog');
-      wrap.setAttribute('aria-modal', 'true');
-      wrap.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#111d;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;font-family:Arial,sans-serif';
-      const section = document.createElement('section');
-      section.style.cssText = 'background:white;color:#222;max-width:470px;width:100%;border-radius:15px;padding:22px;box-sizing:border-box;text-align:center;box-shadow:0 15px 40px #0005';
-      const h = document.createElement('h2'); h.textContent = title;
-      const info = document.createElement('p'); info.textContent = message; info.style.lineHeight = '1.5';
-      const fp = document.createElement('p');
-      fp.style.cssText = 'font-size:12px;overflow-wrap:anywhere;color:#555';
-      fp.textContent = currentFingerprint ? 'Fingerprint: ' + currentFingerprint : 'Fingerprint no disponible';
-      const buttons = document.createElement('div'); buttons.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;justify-content:center';
-      const goBack = document.createElement('button'); goBack.textContent = 'Continuar en versión gratuita';
-      const retry = document.createElement('button'); retry.textContent = 'Comprobar renovación';
-      for (const b of [goBack, retry]) b.style.cssText = 'padding:12px;border:0;border-radius:8px;cursor:pointer;background:#f5e131;color:#222;font-weight:bold';
-      goBack.addEventListener('click', () => location.replace(FREE_URL));
-      retry.addEventListener('click', () => location.reload());
-      buttons.append(goBack, retry);
-      section.append(h, info, fp, buttons);
-      wrap.append(section);
-      document.body.append(wrap);
+  function showDenied(reason) {
+    active = false;
+    deleteSaved();
+    document.documentElement.classList.remove('licencia-pendiente');
+    document.documentElement.classList.add('licencia-rechazada');
+    const render = () => {
+      if (document.getElementById('guardFullvAviso')) return;
+      const overlay = document.createElement('div');
+      overlay.id = 'guardFullvAviso';
+      overlay.style.cssText = 'visibility:visible;position:fixed;inset:0;z-index:2147483646;background:rgba(0,0,0,.8);display:flex;justify-content:center;align-items:center;padding:16px;box-sizing:border-box';
+      const card = document.createElement('section');
+      card.setAttribute('role','alertdialog'); card.setAttribute('aria-modal','true');
+      card.style.cssText = 'background:white;color:#222;border-radius:14px;padding:22px;max-width:460px;width:100%;font:15px Arial,sans-serif;text-align:center';
+      const title = document.createElement('h2'); title.textContent = 'Modo Admin no disponible';
+      const msg = document.createElement('p'); msg.textContent = reason;
+      const help = document.createElement('p'); help.textContent = 'La versión gratuita de Mi Tienda sigue disponible con su límite de 50 artículos.';
+      const fp = document.createElement('p'); fp.style.cssText = 'font-size:12px;overflow-wrap:anywhere';
+      fp.textContent = lastFingerprint ? 'Fingerprint: ' + lastFingerprint : 'Fingerprint no disponible. Revisa la conexión si necesitas activar.';
+      const back = document.createElement('button'); back.type='button'; back.textContent='Continuar en versión gratuita';
+      back.style.cssText = 'padding:12px;border:0;border-radius:8px;background:#f5e131;font-weight:bold;cursor:pointer';
+      back.addEventListener('click', () => location.replace(HOME));
+      card.append(title,msg,help,fp,back); overlay.append(card); document.body.append(overlay);
     };
-    if (document.body) show();
-    else document.addEventListener('DOMContentLoaded', show, {once:true});
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render, {once:true}); else render();
   }
-  function expiredMessage() {
-    block('Licencia de Modo Admin vencida', 'La versión gratuita sigue disponible con el límite de 50 artículos. Tus ventas y artículos no se borrarán. Renueva la licencia y pulsa «Comprobar renovación».');
-  }
-  function monitor() {
-    if (!verified) return;
-    const record = read();
-    if (!checkClock()) { block('Verifica la fecha del equipo', 'Se detectó un cambio hacia atrás en el reloj. Corrige la fecha y vuelve a verificar la licencia.'); return; }
-    if (!isValid(record, currentFingerprint)) expiredMessage();
-  }
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) monitor(); });
-  window.addEventListener('focus', monitor);
-  window.setInterval(monitor, 60000);
-
-  (async function init() {
+  async function verify({startup=false}={}) {
+    if (checking) return;
+    checking = true;
     try {
-      if (typeof FingerprintJS === 'undefined') throw new Error('No se pudo cargar FingerprintJS. Comprueba conexión o recursos offline.');
-      const agent = await FingerprintJS.load();
-      currentFingerprint = String((await agent.get()).visitorId || '');
-      if (!currentFingerprint) throw new Error('No fue posible identificar el navegador.');
-      if (!checkClock()) {
-        block('Verifica la fecha del equipo', 'La fecha u hora del equipo retrocedió. Corrígela para continuar.');
+      const saved = readSaved();
+      if (startup) lastFingerprint = await getFingerprint();
+      // Si el fingerprint está disponible, debe concordar con la licencia guardada.
+      if (saved && lastFingerprint && saved.id !== lastFingerprint) {
+        deleteSaved();
+      }
+      const matchingSaved = saved && (!lastFingerprint || saved.id === lastFingerprint) ? saved : null;
+      let records = null;
+      try { records = await remoteList(); }
+      catch (e) { console.warn('Sin consulta online de licencias:', e.message); }
+
+      if (records !== null) {
+        const identity = lastFingerprint || matchingSaved?.id || '';
+        const entry = records.find(x => x && x.id === identity);
+        // La eliminación del JSON, revocado:true o vencimiento pasado cancelan la licencia.
+        if (!entry || entry.revocado === true || entry.activo === false ||
+            !Number.isFinite(dateToEnd(entry.vencimiento)) || dateToEnd(entry.vencimiento) < Date.now()) {
+          showDenied('La licencia no está autorizada, fue revocada o llegó a su vencimiento. Contacta a soporte para renovarla.');
+          return;
+        }
+        try { saveLicense(entry, matchingSaved); }
+        catch (e) { console.warn('No se pudo guardar licencia local:', e); }
+        if (!active) showApp();
         return;
       }
-      const cached = read();
-      if (isValid(cached, currentFingerprint)) {
-        allow(); // Sin alertas ni fetch: acceso silencioso con licencia local vigente.
-        return;
+      // Sin conexión: solamente aceptar un registro anterior, vigente y del mismo origen.
+      if (isValid(matchingSaved)) {
+        touchLicense(matchingSaved);
+        if (!active) showApp();
+      } else {
+        showDenied('No hay una licencia local vigente. Conéctate a internet para comprobar la autorización.');
       }
-      // La primera activación o la renovación exige consultar la lista actualizada.
-      const response = await fetch('autorizados.json?v=' + Date.now(), {cache:'no-store'});
-      if (!response.ok) throw new Error('No se pudo consultar la lista de autorizaciones.');
-      const json = await response.json();
-      if (!json || !Array.isArray(json.autorizados)) throw new Error('La lista de autorizaciones no es válida.');
-      const match = json.autorizados.find((item) => item && item.id === currentFingerprint);
-      if (!match) {
-        block('Dispositivo no autorizado', 'Solicita la autorización de este fingerprint para utilizar Modo Admin. La versión gratuita continúa disponible.');
-        return;
-      }
-      if (!isValid(match, currentFingerprint)) { expiredMessage(); return; }
-      const license = {id: currentFingerprint, vencimiento: match.vencimiento, user: String(match.user || ''), cliente: String(match.cliente || ''), activado: new Date().toISOString()};
-      localStorage.setItem(KEY, JSON.stringify(license));
-      allow();
-    } catch (error) {
-      console.warn('Mi Tienda: autorización pendiente:', error);
-      block('No se pudo verificar Modo Admin', 'Si estás activando o renovando, conecta internet para consultar autorizados.json. Si ya estabas autorizado, comprueba que FingerprintJS esté disponible. La versión gratuita continúa disponible.');
-    }
-  })();
+    } finally { checking = false; }
+  }
+  // Iniciar siempre una consulta silenciosa; no se muestra alerta de acceso exitoso.
+  verify({startup:true}).catch(e => {
+    console.error('Error en licencia:', e);
+    showDenied('No se pudo comprobar la licencia.');
+  });
+  setInterval(() => {
+    if (active) verify().catch(e => console.warn('Revisión de licencia:', e));
+  }, CHECK_INTERVAL_MS);
+  window.addEventListener('online', () => {
+    if (active) verify().catch(e => console.warn('Revisión de licencia:', e));
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && active) verify().catch(e => console.warn('Revisión de licencia:', e));
+  });
 })();
