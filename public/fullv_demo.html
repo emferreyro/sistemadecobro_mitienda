@@ -2258,15 +2258,6 @@ body.dark #lowStockModal .low-stock{
 </head>
 <body>
   <pre class="ticket">${safe}</pre>
-<script>
-/* Registro de caché offline: mismo origen, requiere HTTPS o localhost. */
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js', {scope:'./'})
-      .catch(error => console.warn('Caché offline no disponible:', error));
-  });
-}
-</script>
 </body>
 </html>`;
   })();
@@ -3109,6 +3100,15 @@ document.addEventListener('DOMContentLoaded', attach);
     attach();
   }
 })();
+</script>
+<script>
+/* Registro de caché offline: mismo origen, requiere HTTPS o localhost. */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', {scope:'./'})
+      .catch(error => console.warn('Caché offline no disponible:', error));
+  });
+}
 </script>
 </body>
 </html>
