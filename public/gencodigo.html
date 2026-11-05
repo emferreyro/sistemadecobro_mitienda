@@ -648,14 +648,5 @@ $('btnBorrarTodo').addEventListener('click', ()=>{
   th{ font-size:11px }
 }
 </style>
-<script>
-/* Registro de caché offline: mismo origen, requiere HTTPS o localhost. */
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js', {scope:'./'})
-      .catch(error => console.warn('Caché offline no disponible:', error));
-  });
-}
-</script>
 </body>
 </html>

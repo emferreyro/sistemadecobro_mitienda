@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 
 <html lang="es">
-<head><script>document.documentElement.classList.add("licencia-pendiente");</script><style>html.licencia-pendiente body{visibility:hidden} html.licencia-rechazada body{visibility:hidden} html.licencia-rechazada #guardFullvAviso{visibility:visible}</style><script src="js/fp.min.js">
+<head><script>document.documentElement.classList.add("licencia-pendiente");</script><style>html.licencia-pendiente body{visibility:hidden} html.licencia-rechazada body{visibility:hidden} html.licencia-rechazada #guardFullvAviso{visibility:visible}</style><script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4/dist/fp.min.js">
 // Inventario progresivo: solo FULLV registra (descuenta) stock; MiTienda solo refleja
 window.INVENTARIO_ACTIVO = true;
 
@@ -2969,15 +2969,6 @@ document.addEventListener('DOMContentLoaded', attach);
     attach();
   }
 })();
-</script>
-<script>
-/* Registro de caché offline: mismo origen, requiere HTTPS o localhost. */
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js', {scope:'./'})
-      .catch(error => console.warn('Caché offline no disponible:', error));
-  });
-}
 </script>
 </body>
 </html>
