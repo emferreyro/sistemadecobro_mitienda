@@ -1,0 +1,33 @@
+{
+  "id": "/index.html?app=mi-tienda",
+  "name": "Mi Tienda — Sistema de cobro",
+  "short_name": "Mi Tienda",
+  "description": "Sistema de cobro para pequeños comercios",
+  "lang": "es-MX",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#f5e131",
+  "theme_color": "#f5e131",
+  "icons": [
+    {
+      "src": "/icons/mitienda-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/mitienda-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/mitienda-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
