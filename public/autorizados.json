@@ -5,6 +5,6 @@
 {"id":"0698debb1102dbc18effabd22172c8f8","user":"admin","vencimiento":"2026-12-31","cliente":"Probook firefox"},
 {"id":"1dca452af794334c30ad6df8abbf839b","user":"admin","vencimiento":"2026-12-31","cliente":"Pruebas edge","revocado":false},
 {"id":"0e409ddb2d57c98ee16abea6171a5485","user":"admin","vencimiento":"2026-12-31","cliente":"Pruebas chrome","revocado":false},
-{"id":"06b17a24a610673165b4e119300fe45c","user":"admin","vencimiento":"2026-12-31","cliente":"Tableta chrome","revocado":false},
+{"id":"94e78e317a1450c9d239bb3d8b70ddf7","user":"admin","vencimiento":"2026-12-31","cliente":"Tableta chrome","revocado":false},
 {"id":"df1c38caab54e410f4bab2499b2501c7","user":"admin","vencimiento":"2026-12-31","cliente":"Tableta firefox","revocado":false}
 ]}
