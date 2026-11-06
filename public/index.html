@@ -479,6 +479,9 @@ body.neon .low-stock{
 .granel-campos.activo{display:flex}.granel-campos label{margin:0 0 3px}.granel-campos input{width:115px;box-sizing:border-box}
 .granel-control{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
 .granel-control select,.granel-modal select{padding:10px;border-radius:9px;border:1px solid #ccc;background:transparent;color:inherit}
+.total-productos-registrados{margin-left:auto;font-size:13px;font-weight:600;color:inherit;white-space:nowrap;text-align:right}
+.total-productos-registrados strong{font-size:17px;font-weight:800}
+@media(max-width:420px){.total-productos-registrados{width:100%;text-align:right}}
 .granel-modal{max-width:420px;box-sizing:border-box;max-height:92vh;overflow:auto}
 .granel-modal input{max-width:100%;box-sizing:border-box;width:100%}.granel-modal .btn{min-height:42px}
 .granel-modal .granel-resumen{padding:10px;border-radius:9px;background:rgba(140,140,140,.13);line-height:1.9;margin:10px 0}
@@ -676,7 +679,7 @@ body.neon .low-stock{
             <button id="btn-add-prod" class="btn btn-rojo">Agregar</button>
           </div>
 
-          <div class="granel-control"><label for="prod-tipo">Tipo de venta</label><select id="prod-tipo"><option value="pieza">Por pieza</option><option value="granel">A granel</option></select></div>
+          <div class="granel-control"><label for="prod-tipo">Tipo de venta</label><select id="prod-tipo"><option value="pieza">Por pieza</option><option value="granel">A granel</option></select><span id="total-productos-registrados" class="total-productos-registrados" aria-live="polite">Artículos registrados: <strong>0</strong></span></div>
           <div id="granel-campos" class="granel-campos">
 
 
@@ -1079,6 +1082,8 @@ function renderCart(){
 
 /* PRODUCTS UI */
 function renderProducts(){
+  const contadorProductos = document.querySelector('#total-productos-registrados strong');
+  if(contadorProductos) contadorProductos.textContent = productos.length.toLocaleString('es-MX');
   productsList.innerHTML = '';
   productos.forEach((p, idx) => {
     const div = document.createElement('div'); div.className='product-item';
