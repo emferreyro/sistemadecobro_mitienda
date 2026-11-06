@@ -484,6 +484,55 @@ body.neon .low-stock{
 .granel-modal .granel-resumen{padding:10px;border-radius:9px;background:rgba(140,140,140,.13);line-height:1.9;margin:10px 0}
 @media(max-width:1100px){.granel-campos input{width:100px}}
 </style>
+
+<style id="mitienda-android-tablet-layout">
+/* Ajustes exclusivos de tabletas táctiles: escritorio y POS Windows intactos. */
+@media screen and (pointer: coarse) and (min-width: 600px) and (max-width: 1300px) {
+  html, body { min-height: 100%; height: auto; }
+  .app { min-height: 100vh; }
+  header { flex: 0 0 auto !important; height: auto !important; min-height: 0 !important; padding: 7px 10px !important; }
+  .header-container { display: flex; flex-direction: row !important; align-items: center !important; justify-content: space-between !important; width: 100% !important; max-width: 100% !important; height: auto !important; min-height: 0 !important; gap: 8px !important; }
+  .header-left, .header-right { flex: 0 1 auto !important; min-width: 0 !important; width: auto !important; height: auto !important; min-height: 0 !important; }
+  .header-left { justify-content: flex-start !important; gap: 6px !important; }
+  .header-right { flex: 1 1 60% !important; justify-content: flex-end !important; gap: 5px !important; flex-wrap: wrap !important; }
+  .bandera-mx { margin-right: 0 !important; height: 30px !important; }
+  .logo-img { max-width: 54px !important; max-height: 34px !important; }
+  .title { font-size: 15px !important; }
+  header .small { font-size: 10px !important; }
+  .header-right .nav { flex-wrap: wrap !important; gap: 4px !important; }
+  .header-right button { font-size: 12px !important; padding: 7px 8px !important; min-height: 34px; }
+  main { display: block !important; flex: 1 0 auto !important; min-height: 0 !important; padding: 12px 8px 16px !important; }
+  .container { width: 100% !important; max-width: 100% !important; margin: 0 auto !important; gap: 10px !important; }
+  #mainLeft, .panel-right, .panel { min-width: 0 !important; }
+  .panel { padding: 10px !important; }
+  .panel-right { order: 0 !important; }
+  #atajos-botones { flex-wrap: wrap !important; }
+  #panel-venta .table { display: block; max-width: 100%; overflow-x: auto; }
+  .total-wrap, .pay-change-row { flex-wrap: wrap !important; }
+  .pay-field { min-width: 115px !important; }
+}
+@media screen and (pointer: coarse) and (min-width: 600px) and (max-width: 1300px) and (orientation: landscape) {
+  .container { grid-template-columns: minmax(0, 1fr) minmax(220px, 32%) !important; }
+  .header-left { flex: 0 0 auto !important; }
+  .header-right { flex: 1 1 55% !important; }
+}
+@media screen and (pointer: coarse) and (min-width: 600px) and (max-width: 1300px) and (orientation: portrait) {
+  .header-container { flex-direction: column !important; }
+  .header-left, .header-right { flex: 0 0 auto !important; width: 100% !important; justify-content: center !important; }
+  .container { grid-template-columns: minmax(0,1fr) !important; }
+  .panel-right { order: 2 !important; }
+}
+@media screen and (pointer: coarse) and (max-width: 599px) {
+  header { flex: 0 0 auto !important; height:auto !important; min-height:0 !important; }
+  .header-container { height:auto !important; min-height:0 !important; }
+  .header-left, .header-right { flex: 0 0 auto !important; }
+  .bandera-mx { margin-right: 0 !important; }
+  main { padding: 12px 8px !important; }
+  .container { width:100% !important; max-width:100% !important; grid-template-columns: minmax(0,1fr) !important; }
+}
+#mitienda-install-btn { display:none; align-items:center; justify-content:center; white-space:nowrap; }
+@media screen and (pointer: coarse) { #mitienda-install-btn { display:inline-flex; } }
+</style>
 </head>
 <body>
 <div class="app">
@@ -515,6 +564,7 @@ body.neon .low-stock{
       <button id="btnAcerca" class="btn btn-outline" title="Acerca de">ℹ️ Acerca de</button>
             <button id="btnVideo" class="btn btn-outline" title="Video">🎬 Video</button>
       <button id="btnCopperEasy" class="btn btn-outline" title="Ventas rápidas" type="button">🐍 cobra-easy</button>
+      <button id="mitienda-install-btn" type="button" class="btn btn-outline" title="Agregar Mi Tienda a Android">📲 Instalar Mi Tienda</button>
       <button id="btnVersionOffline" class="btn btn-outline" title="Versión sin internet">💾 V. offline</button>
     </div>
   </div>
@@ -2264,6 +2314,35 @@ btnToggleTheme.addEventListener('click', ()=>{
       return;
     }
     try { win.focus(); } catch(e){}
+  });
+})();
+</script>
+
+<script id="mitienda-android-install-help">
+/* Instalación PWA: el botón de Android no sustituye al instalador offline. */
+(() => {
+  const btn = document.getElementById('mitienda-install-btn');
+  if(!btn) return;
+  let pendingInstall = null;
+  const installed = () => window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: fullscreen)').matches;
+  const refresh = () => { if(installed()) btn.style.display = 'none'; };
+  refresh();
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    pendingInstall = event;
+    refresh();
+  });
+  window.addEventListener('appinstalled', () => { pendingInstall = null; btn.style.display='none'; });
+  btn.addEventListener('click', async () => {
+    if(installed()) { btn.style.display='none'; return; }
+    if(pendingInstall){
+      const event = pendingInstall; pendingInstall = null;
+      try { await event.prompt(); await event.userChoice; }
+      catch(error){ console.warn('Instalación PWA:', error); }
+      return;
+    }
+    alert('En Google Chrome de Android, toca el menú ⋮ (arriba a la derecha) y selecciona «Agregar a pantalla principal» o «Instalar aplicación». Si aparece «Agregar», confirma. Si no aparece, comprueba que abriste Mi Tienda en Chrome y no en una ventana privada.');
   });
 })();
 </script>
