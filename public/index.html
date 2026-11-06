@@ -721,6 +721,10 @@ body.neon .low-stock{
 const ADMIN_PASSWORD_DEFAULT = 'admin'; // solo instalaciones nuevas; se respetan las claves locales existentes
 const SUPPORT_MASTER_CODE = 'mi tienda*'; // 👈 Código maestro de soporte (cámbialo)
 const KEY_ADMIN_PASSWORD = 'sistemacobro_admin_password_v2';
+// Clave LOCAL de acceso a fullv; independiente de la clave para caja/administración en index.
+const KEY_FULLV_ACCESS_PASSWORD = 'sistemacobro_fullv_access_password_v1';
+function getFullvAccessPassword(){ return localStorage.getItem(KEY_FULLV_ACCESS_PASSWORD) || 'admin'; }
+function setFullvAccessPassword(value){ localStorage.setItem(KEY_FULLV_ACCESS_PASSWORD, value); }
 const KEY_PRODUCTS = 'sistemacobro_products_v2';
 const KEY_CART = 'sistemacobro_cart_v2';
 const KEY_HISTORY = 'sistemacobro_history_v2';
@@ -2114,54 +2118,91 @@ function openLoginModal(){
   box.innerHTML = `
     <div class="histHeaderRow">
       <strong>🔐 Acceso a versión completa</strong>
-      <button id="login-close" class="btn btn-outline btn-small">Cerrar</button>
+      <button id="login-close" class="btn btn-outline btn-small" type="button">Cerrar</button>
     </div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <input id="loginUser" type="text" placeholder="Usuario" autocomplete="off" />
-      <input id="loginPass" type="password" placeholder="Contraseña" />
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px">
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <label for="loginPass">Contraseña de Modo Admin</label>
+      <input id="loginPass" type="password" placeholder="Contraseña" autocomplete="current-password" style="width:100%;box-sizing:border-box" />
+      <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
+        <button id="btnFullvChangePassword" class="btn btn-outline btn-small" type="button">🔑 Cambiar contraseña</button>
+        <button id="btnFullvRecoverPassword" class="btn btn-outline btn-small" type="button">Olvidé mi contraseña</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap">
         <small style="opacity:.85">¿No tienes acceso? Puedes probar FULL por 30 días.</small>
-        <button id="btnTrial30" class="btn btn-outline btn-small">🧪 Probar 30 días</button>
+        <button id="btnTrial30" class="btn btn-outline btn-small" type="button">🧪 Probar 30 días</button>
       </div>
-
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
-        <button id="btnLoginCancel" class="btn btn-outline">Cancelar</button>
-        <button id="btnLoginConfirm" class="btn btn-amarillo">Entrar</button>
+        <button id="btnLoginCancel" class="btn btn-outline" type="button">Cancelar</button>
+        <button id="btnLoginConfirm" class="btn btn-amarillo" type="button">Entrar</button>
       </div>
-    </div>
-  `;
+    </div>`;
   modal.appendChild(box); document.body.appendChild(modal);
 
-  
-  // 🧪 DEMO: botón "Probar 30 días" -> abrir fullv_demo.html
-  const trialBtn = document.getElementById('btnTrial30');
-  if (trialBtn) {
-    trialBtn.addEventListener('click', (e) => {
-      try { e.preventDefault(); e.stopPropagation(); } catch(_) {}
-      try { modal.remove(); } catch(_) {}
-      const target = new URL('fullv_demo.html', window.location.href).href;
-      window.location.assign(target);
-    });
-  }
-
-const closeFn = ()=> { modal.remove(); };
+  document.getElementById('btnTrial30').addEventListener('click', ()=>{
+    modal.remove();
+    window.location.assign(new URL('fullv_demo.html', window.location.href).href);
+  });
+  const closeFn = ()=> modal.remove();
   document.getElementById('login-close').addEventListener('click', closeFn);
   document.getElementById('btnLoginCancel').addEventListener('click', closeFn);
   document.getElementById('btnLoginConfirm').addEventListener('click', handleLoginConfirm);
   document.getElementById('loginPass').addEventListener('keydown', (e)=>{ if(e.key==='Enter') handleLoginConfirm(); });
-  document.getElementById('loginUser').focus();
+  document.getElementById('btnFullvChangePassword').addEventListener('click', ()=>openFullvPasswordModal(false));
+  document.getElementById('btnFullvRecoverPassword').addEventListener('click', ()=>openFullvPasswordModal(true));
+  document.getElementById('loginPass').focus();
+}
+
+// El cambio de clave no cambia ni sustituye la autorización por fingerprint de fullv.html.
+function openFullvPasswordModal(recovery){
+  if(document.getElementById('fullv-password-modal')) return;
+  const modal = document.createElement('div');
+  modal.className='modal'; modal.id='fullv-password-modal';
+  modal.style.zIndex='10001';
+  const box=document.createElement('div'); box.className='modal-box'; box.style.maxWidth='430px';
+  const title=document.createElement('strong');
+  title.textContent=recovery?'🔑 Recuperar acceso a Modo Admin':'🔑 Cambiar contraseña de Modo Admin';
+  box.appendChild(title);
+  const note=document.createElement('p');note.className='small';
+  note.textContent=recovery?'La recuperación requiere el código de soporte. Solicítalo al responsable de Mi Tienda.':'Introduce la contraseña actual y elige una nueva. Solo cambiará en este navegador.';
+  box.appendChild(note);
+  const makeInput=(labelText,type,autocomplete)=>{
+    const label=document.createElement('label');label.textContent=labelText;
+    const input=document.createElement('input');input.type=type;input.autocomplete=autocomplete;
+    input.style.cssText='display:block;width:100%;box-sizing:border-box;margin:5px 0 12px;padding:10px 12px;border:1px solid #aaa;border-radius:9px';
+    label.appendChild(input);box.appendChild(label);return input;
+  };
+  const previous=makeInput(recovery?'Código de soporte':'Contraseña actual','password','off');
+  const next=makeInput('Nueva contraseña (mínimo 4 caracteres)','password','new-password');
+  const confirmPass=makeInput('Confirmar nueva contraseña','password','new-password');
+  const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap';
+  const cancel=document.createElement('button');cancel.type='button';cancel.className='btn btn-outline';cancel.textContent='Cancelar';
+  const save=document.createElement('button');save.type='button';save.className='btn btn-amarillo';save.textContent='Guardar contraseña';
+  actions.append(cancel,save);box.appendChild(actions);modal.appendChild(box);document.body.appendChild(modal);
+  cancel.addEventListener('click',()=>modal.remove());
+  save.addEventListener('click',()=>{
+    const valid = recovery ? previous.value.trim()===SUPPORT_MASTER_CODE : previous.value===getFullvAccessPassword();
+    if(!valid){alert(recovery?'Código de soporte incorrecto.':'Contraseña actual incorrecta.');previous.focus();return;}
+    const value=next.value.trim();
+    if(value.length<4){alert('Utiliza al menos 4 caracteres.');next.focus();return;}
+    if(value!==confirmPass.value.trim()){alert('Las contraseñas nuevas no coinciden.');confirmPass.focus();return;}
+    try{
+      setFullvAccessPassword(value);
+    }catch(e){alert('No se pudo guardar la contraseña. Comprueba que el navegador permita almacenar datos del sitio.');return;}
+    modal.remove();
+    const entry=document.getElementById('loginPass');if(entry){entry.value='';entry.focus();}
+    alert('✅ Contraseña actualizada en este navegador.');
+  });
+  previous.focus();
 }
 function handleLoginConfirm(){
-  const user = (document.getElementById('loginUser').value||'').trim();
-  const pass = (document.getElementById('loginPass').value||'').trim();
-  const VALID_USER='admin', VALID_PASS='full1026';
-  if(user===VALID_USER && pass===VALID_PASS){
-    alert('✅ Acceso concedido. Redirigiendo a versión completa...');
+  const input=document.getElementById('loginPass');
+  const pass=input ? input.value : '';
+  if(pass===getFullvAccessPassword()){
     document.getElementById('login-modal')?.remove();
     window.location.href='fullv.html';
   }else{
-    alert('❌ Usuario o contraseña incorrectos.');
-    const inp=document.getElementById('loginPass'); if(inp){ inp.value=''; inp.focus(); }
+    alert('❌ Contraseña incorrecta.');
+    if(input){input.value='';input.focus();}
   }
 }
 btnVersionFull && btnVersionFull.addEventListener('click', openLoginModal);
