@@ -895,9 +895,10 @@ body.neon #granel-modal{
   </div>
 </div>
 
+<script src="js/pos_integridad.js"></script>
 <script>
 /* CONFIG y KEYS */
-const ADMIN_PASSWORD_DEFAULT = 'admin123';
+const ADMIN_PASSWORD_DEFAULT = 'admin'; // solo instalaciones nuevas; se respetan las claves locales existentes
 const KEY_ADMIN_PASS = 'sistemacobro_admin_pass_v1'; // legacy
 // Usa la misma ruta que MiTienda
 // (se migra automáticamente si existe KEY_ADMIN_PASS)
@@ -1122,7 +1123,7 @@ function updateCashUI(){
     if(!fecha || fecha.getFullYear() !== hoy.getFullYear() || fecha.getMonth() !== hoy.getMonth() || fecha.getDate() !== hoy.getDate()) return s;
     return s + ((v.metodoPago === 'Tarjeta') ? 0 : (Number(v.total) || 0));
   }, 0);
-  const cierre = start + ventasEfectivoHoy;
+  const cierre = start + ventasEfectivoHoy + MiTiendaIntegridad.efectivoCerradoHoy(historial);
   cierreEl.textContent = formatMXN(cierre);
 }
 
@@ -1196,8 +1197,27 @@ function initCashBox(){
 function saveProducts(){ localStorage.setItem(KEY_PRODUCTS, JSON.stringify(productos)); }
 function saveCart(){ localStorage.setItem(KEY_CART, JSON.stringify(carrito)); }
 function saveHistory(){ localStorage.setItem(KEY_HISTORY, JSON.stringify(historial)); }
+/* Aviso preventivo antes de llegar a 4 MB (datos locales de este navegador). */
+function mostrarEstadoAlmacenamiento(){
+  const info=MiTiendaIntegridad.estado();
+  let aviso=document.getElementById('aviso-almacenamiento');
+  if(info.bytes < info.limite){if(aviso)aviso.remove();return;}
+  if(!aviso){
+    aviso=document.createElement('div');aviso.id='aviso-almacenamiento';
+    aviso.style.cssText='position:fixed;bottom:12px;left:12px;right:12px;z-index:2147483000;background:#fff4cf;color:#552c00;border:3px solid #d97706;border-radius:12px;padding:12px 48px 12px 14px;box-shadow:0 6px 30px #0004;font:600 14px/1.4 system-ui';
+    const cerrar=document.createElement('button');cerrar.textContent='✕';cerrar.type='button';
+    cerrar.style.cssText='position:absolute;right:10px;top:8px;padding:8px;border-radius:8px;border:0;background:#f4c45d';
+    cerrar.onclick=()=>aviso.remove();aviso.append(cerrar);document.body.append(aviso);
+  }
+  let txt=aviso.querySelector('[data-alerta]');if(!txt){txt=document.createElement('span');txt.dataset.alerta='1';aviso.prepend(txt);}
+  txt.textContent='⚠ MANTENIMIENTO OBLIGATORIO: almacenamiento local cercano a 4 MB. Antes de otra venta, desde Modo Admin utiliza «Guardar y borrar acumulado», confirma el archivo CSV y vuelve a esta pantalla.';
+}
+setInterval(mostrarEstadoAlmacenamiento,60000);
+window.addEventListener('load',mostrarEstadoAlmacenamiento);
+
 function saveLogo(dataUrl){ localStorage.setItem(KEY_LOGO, dataUrl); }
 function loadState(){
+  MiTiendaIntegridad.recuperar({historyKey:KEY_HISTORY,productsKey:KEY_PRODUCTS,cartKey:KEY_CART});
   const p = localStorage.getItem(KEY_PRODUCTS);
   productos = p ? JSON.parse(p) : (localStorage.setItem(KEY_PRODUCTS, JSON.stringify(DEFAULT_PRODUCTS.slice())), DEFAULT_PRODUCTS.slice());
 // 🆕 Backward compatible: si no hay costo, poner 0
@@ -1752,6 +1772,7 @@ btnFinalizar.addEventListener('click', ()=> {
   }
   const total = currentTotal;
   for(const it of carrito){const p=productos.find(x=>x.codigo===it.codigo);if(esGranel(it)&&esGranel(p)&&gramosInventario(p)!==null&&Math.round(Number(it.cantidad)*1000)>gramosInventario(p)){alert('No hay existencia suficiente para '+p.nombre);return;}}
+  if(MiTiendaIntegridad.estado().superado){mostrarEstadoAlmacenamiento();alert("Almacenamiento en nivel de mantenimiento. Debes respaldar y liberar el historial antes de cobrar.");return;}
   // === Inventario progresivo (fase 1): permitir venta pero generar alertas en historial ===
   const warnings = [];
   const prodIndexByCode = new Map(productos.map((p, i)=> [String(p.codigo), i]));
@@ -1797,11 +1818,11 @@ btnFinalizar.addEventListener('click', ()=> {
   });
 
   // Persistir productos solo si inventario está activo
-  if(window.INVENTARIO_ACTIVO) saveProducts();
+  // El inventario se persiste junto al historial mediante MiTiendaIntegridad.
 
 const ahora = new Date();
   const venta = {
-    id: historial.length + 1,
+    id: MiTiendaIntegridad.siguienteId(historial),
     fecha: ahora.toLocaleString(),
     fechaISO: ahora.toISOString(),
     total: Number(total.toFixed(2)),
@@ -1811,9 +1832,11 @@ const ahora = new Date();
     pago: pago,
     cambio: metodoPago === 'Tarjeta' ? 0 : Number((pago - total).toFixed(2))
   };
-  historial.unshift(venta);
-  carrito = [];
-  saveHistory(); saveCart();
+  try{
+    MiTiendaIntegridad.guardarVenta({venta,productos,historial,historyKey:KEY_HISTORY,productsKey:KEY_PRODUCTS,cartKey:KEY_CART});
+  }catch(e){alert(e.message);location.reload();return;}
+  historial.unshift(venta);carrito=[];
+  mostrarEstadoAlmacenamiento();
   actualizarBusquedaRapida();
   renderCart();
   renderHistorial();
@@ -2512,6 +2535,7 @@ async function exportHistorialCSV(){
     }
     if(!confirm('RESPALDO VERIFICADO\n\n'+cantidadVentas+' ventas respaldadas correctamente.\n\n¿Confirmas que deseas borrar estas ventas del historial activo?\n\nPodrás consultarlas después importando el CSV en Reporte.')) return;
     // Nunca eliminar el carrito ni el catálogo de productos.
+    MiTiendaIntegridad.registrarCierreCaja(historial);
     localStorage.setItem(KEY_HISTORY,'[]');
     historial=[];
     renderHistorial();

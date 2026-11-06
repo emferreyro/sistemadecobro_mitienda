@@ -1,6 +1,6 @@
 /* Mi Tienda Windows offline opt-in; no automatic installation from the POS. */
 'use strict';
-const VERSION = 'manual-v1';
+const VERSION = 'manual-v2';
 const ACTIVE = 'mitienda-manual-offline-' + VERSION;
 const PREFIX = 'mitienda-manual-offline-';
 const EXCLUDED = new Set(['/autorizados.json']);
