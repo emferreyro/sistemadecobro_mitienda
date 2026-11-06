@@ -67,7 +67,10 @@ async function download(){
    }
    if(failedRequired.length)info('No se completó la instalación. Revisa tu conexión y vuelve a intentarlo.','bad');
    else if(failedOptional.length)info('Instalación parcial. Algunas pantallas podrían no funcionar sin internet.','warn');
-   else info('Instalación completada. Ya puedes utilizar Mi Tienda sin internet.','ok');
+   else {
+     info('Instalación completada. Abriendo Mi Tienda...','ok');
+     setTimeout(() => window.location.assign('./index.html'), 1600);
+   }
    log.textContent+=`\nGuardados: ${passed}/${files.length}\nFaltantes esenciales: ${failedRequired.length}\nFaltantes auxiliares: ${failedOptional.length}\n`;
    if(failedOptional.length)log.textContent+='Archivos auxiliares no incluidos en este paquete: '+failedOptional.join(', ')+'\n';
  }catch(e){info('No se pudo instalar: '+e.message,'bad');log.textContent+='\nERROR: '+e.stack;document.querySelector('#details').open=true;}
