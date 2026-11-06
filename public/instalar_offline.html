@@ -4,19 +4,26 @@
 <style>
 :root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#1f2937;background:#f3f4f6}
 *{box-sizing:border-box}body{max-width:790px;margin:30px auto;padding:12px}
-main{background:white;border-radius:18px;padding:26px;box-shadow:0 6px 24px #0001}
-h1{font-size:26px;margin:0 0 10px}p{line-height:1.5}button{padding:13px 18px;border:0;border-radius:9px;background:#f5e131;color:#111;font-weight:700;cursor:pointer;margin:6px 6px 6px 0}button:disabled{opacity:.5;cursor:wait}button.secondary{background:#e5e7eb}
-progress{width:100%;height:20px;accent-color:#16a34a}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f8fafc;border:1px solid #ddd;padding:13px;border-radius:8px;max-height:300px;overflow:auto}
-small{color:#555}a{color:#1858a5}.warn{background:#fff7ed;border-left:4px solid #e69e30;padding:12px;border-radius:8px}.ok{background:#ecfdf5;border-left:4px solid #16a34a;padding:12px}.bad{background:#fef2f2;border-left:4px solid #dc2626;padding:12px}
+main{background:#fff;border-radius:18px;padding:30px;box-shadow:0 6px 24px #0001}
+h1{font-size:25px;margin:0 0 15px}p{line-height:1.55;margin:0 0 17px}
+button{padding:14px 22px;border:0;border-radius:9px;background:#f5e131;color:#111;font-weight:700;font-size:15px;cursor:pointer;margin:8px 0 16px;min-height:46px}
+button:disabled{opacity:.55;cursor:wait}
+progress{display:block;width:100%;height:20px;accent-color:#16a34a;margin-top:12px}
+#status{min-height:23px;margin:12px 0 6px;font-weight:600}
+#counter{margin:8px 0 0;color:#64748b;font-size:13px}
+.ok,.warn,.bad{padding:10px 12px;border-radius:8px}
+.ok{background:#ecfdf5;color:#166534}.warn{background:#fff7ed;color:#92400e}.bad{background:#fef2f2;color:#991b1b}
+.detalles{margin-top:18px;font-size:13px;color:#64748b}.detalles summary{cursor:pointer}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f8fafc;border:1px solid #ddd;padding:12px;border-radius:8px;max-height:240px;overflow:auto;font-size:12px;color:#334155}
+@media(max-width:520px){body{margin:10px auto}main{padding:20px}h1{font-size:22px}button{width:100%}}
 </style></head><body><main>
-<h1>Mi Tienda · Preparar uso sin internet</h1>
-<p>Esta herramienta guarda las pantallas del POS en Chrome o Edge en <strong>este mismo sitio</strong>. No descarga un ZIP ni utiliza Python o BAT. No modifica los botones ni la lógica de ventas.</p>
-<p class="warn"><strong>Primera instalación:</strong> conéctate a internet, pulsa «Descargar y verificar» y espera el resultado. No borres «Datos del sitio» porque puedes perder ventas y licencia. Haz un respaldo antes de pruebas con datos reales.</p>
-<button id="install">Descargar y verificar</button><button id="check" class="secondary">Revisar archivos guardados</button><button id="clear" class="secondary">Desactivar solo esta instalación offline</button>
-<p id="status" role="status" aria-live="polite">Sin comprobar.</p><progress id="progress" max="100" value="0"></progress><p id="counter">0 de 0</p>
-<pre id="log">Seleccione una opción.</pre>
-<p><a href="./index.html">Abrir versión gratuita</a> · <a href="./fullv.html">Abrir Modo Admin</a> · <a href="./fullv_demo.html">Abrir demo</a></p>
-<small>La licencia se sigue comprobando contra autorizados.json cuando haya red. Sin conexión solo sirve una licencia local vigente. Esto no sustituye un respaldo de ventas ni garantiza que el navegador nunca elimine su caché.</small>
+<h1>Mi Tienda · Uso sin internet</h1>
+<p>Ejecuta esta instalación <strong>mientras tengas conexión a internet</strong> para poder utilizar Mi Tienda cuando no haya conexión. Algunas funciones, como el envío de tickets por WhatsApp o correo, no estarán disponibles sin internet.</p>
+<button id="install" type="button">Instalar para usar sin internet</button>
+<p id="status" role="status" aria-live="polite">Listo para instalar.</p>
+<progress id="progress" max="100" value="0" aria-label="Progreso de instalación"></progress>
+<p id="counter" aria-live="polite"></p>
+<details class="detalles" id="details"><summary>Ver detalles de instalación</summary><pre id="log">Todavía no se ha iniciado la instalación.</pre></details>
 </main><script>
 'use strict';
 const CACHE='mitienda-manual-offline-manual-v2';
@@ -36,13 +43,13 @@ async function register(){
 }
 async function getCache(){return caches.open(CACHE)}
 async function download(){
- busy(true);log.textContent='';progress.value=0;
+ busy(true);log.textContent='';progress.value=0;counter.textContent='0 %';document.querySelector('#details').open=false;
  try{
    info('Registrando almacenamiento offline...');await register();
    const cache=await getCache();
    const files=[...REQUIRED,...OPTIONAL];let passed=0,failedRequired=[],failedOptional=[];
    for(let i=0;i<files.length;i++){
-     const p=files[i];counter.textContent=`${i+1} de ${files.length}`;
+     const p=files[i];counter.textContent=`${Math.round(i/files.length*100)} %`;
      try{
        const resp=await fetch(toAbs(p),{cache:'reload',credentials:'same-origin'});
        if(!resp.ok||resp.type==='opaque')throw new Error('HTTP '+resp.status);
@@ -56,14 +63,14 @@ async function download(){
        (REQUIRED.includes(p)?failedRequired:failedOptional).push(p);
        log.textContent+='✗ '+p+' — '+e.message+'\n';
      }
-     progress.value=Math.round((i+1)/files.length*100);
+     progress.value=Math.round((i+1)/files.length*100);counter.textContent=progress.value+' %';
    }
-   if(failedRequired.length)info('Instalación incompleta: faltan archivos esenciales. NO está listo para offline.','bad');
-   else if(failedOptional.length)info('Pantallas principales guardadas. Faltan recursos auxiliares: uso offline PARCIAL.','warn');
-   else info('Archivos verificados: instalación offline completa para los recursos enumerados.','ok');
+   if(failedRequired.length)info('No se completó la instalación. Revisa tu conexión y vuelve a intentarlo.','bad');
+   else if(failedOptional.length)info('Instalación parcial. Algunas pantallas podrían no funcionar sin internet.','warn');
+   else info('Instalación completada. Ya puedes utilizar Mi Tienda sin internet.','ok');
    log.textContent+=`\nGuardados: ${passed}/${files.length}\nFaltantes esenciales: ${failedRequired.length}\nFaltantes auxiliares: ${failedOptional.length}\n`;
    if(failedOptional.length)log.textContent+='Archivos auxiliares no incluidos en este paquete: '+failedOptional.join(', ')+'\n';
- }catch(e){info('Error: '+e.message,'bad');log.textContent+='\nERROR: '+e.stack;}
+ }catch(e){info('No se pudo instalar: '+e.message,'bad');log.textContent+='\nERROR: '+e.stack;document.querySelector('#details').open=true;}
  finally{busy(false)}
 }
 async function check(){
@@ -88,6 +95,5 @@ async function clearInstall(){
  }catch(e){info('Error: '+e.message,'bad')}finally{busy(false)}
 }
 document.querySelector('#install').onclick=download;
-document.querySelector('#check').onclick=check;
-document.querySelector('#clear').onclick=clearInstall;
+
 </script></body></html>
