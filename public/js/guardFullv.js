@@ -6,6 +6,8 @@
 (() => {
   'use strict';
   const STORAGE_KEY = 'mitienda_licencia_fullv_v2';
+  const GUARD_VERSION = 'revocacion-diagnostico-v3';
+  const DEBUG = new URLSearchParams(location.search).has('diagnostico');
   const CHECK_INTERVAL_MS = 15 * 60 * 1000;
   const FETCH_TIMEOUT_MS = 6500;
   const MAX_CLOCK_REGRESSION_MS = 5 * 60 * 1000;
@@ -14,6 +16,21 @@
   let active = false;
   let checking = false;
   let lastFingerprint = '';
+  let status = {version: GUARD_VERSION, fingerprint:'', fuente:'pendiente', coincidencia:'', revocado:null, vencimiento:'', resultado:'iniciando'};
+  function displayStatus(){
+    if (!DEBUG) return;
+    const render = () => {
+      let el = document.getElementById('mitiendaDiagnosticoLicencia');
+      if (!el) {
+        el=document.createElement('pre');el.id='mitiendaDiagnosticoLicencia';
+        el.style.cssText='position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#12243b;color:#fff;padding:12px;font:13px/1.45 monospace;white-space:pre-wrap;max-height:42vh;overflow:auto;margin:0;visibility:visible';
+        document.body.appendChild(el);
+      }
+      el.textContent='DIAGNÓSTICO DE LICENCIA (solo pruebas)\n'+JSON.stringify(status,null,2);
+    };
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',render,{once:true});else render();
+  }
+  function report(fields){status={...status,...fields};displayStatus();}
 
   function dateToEnd(value) {
     if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return NaN;
@@ -64,11 +81,13 @@
   }
   function showApp() {
     active = true;
+    report({resultado:'ACCESO PERMITIDO'});
     document.documentElement.classList.remove('licencia-pendiente', 'licencia-rechazada');
     document.getElementById('guardFullvAviso')?.remove();
   }
   function showDenied(reason) {
     active = false;
+    report({resultado:'BLOQUEADO: '+reason});
     deleteSaved();
     document.documentElement.classList.remove('licencia-pendiente');
     document.documentElement.classList.add('licencia-rechazada');
@@ -98,18 +117,20 @@
     try {
       const saved = readSaved();
       if (startup) lastFingerprint = await getFingerprint();
+      report({fingerprint:lastFingerprint||'(no disponible)',fuente:'comprobando...'});
       // Si el fingerprint está disponible, debe concordar con la licencia guardada.
       if (saved && lastFingerprint && saved.id !== lastFingerprint) {
         deleteSaved();
       }
       const matchingSaved = saved && (!lastFingerprint || saved.id === lastFingerprint) ? saved : null;
       let records = null;
-      try { records = await remoteList(); }
-      catch (e) { console.warn('Sin consulta online de licencias:', e.message); }
+      try { records = await remoteList(); report({fuente:'autorizados.json consultado por red'}); }
+      catch (e) { report({fuente:'NO se pudo consultar JSON: '+e.message});console.warn('Sin consulta online de licencias:', e.message); }
 
       if (records !== null) {
         const identity = lastFingerprint || matchingSaved?.id || '';
         const entry = records.find(x => x && x.id === identity);
+        report({coincidencia: entry ? (entry.cliente||entry.id) : 'NINGUNA para '+identity, revocado: entry ? entry.revocado === true : null, vencimiento: entry?.vencimiento || ''});
         // La eliminación del JSON, revocado:true o vencimiento pasado cancelan la licencia.
         if (!entry || entry.revocado === true || entry.activo === false ||
             !Number.isFinite(dateToEnd(entry.vencimiento)) || dateToEnd(entry.vencimiento) < Date.now()) {
@@ -122,6 +143,7 @@
         return;
       }
       // Sin conexión: solamente aceptar un registro anterior, vigente y del mismo origen.
+      report({coincidencia: matchingSaved ? 'licencia local para '+matchingSaved.id : 'sin licencia local',revocado:null,vencimiento:matchingSaved?.vencimiento||''});
       if (isValid(matchingSaved)) {
         touchLicense(matchingSaved);
         if (!active) showApp();
