@@ -631,11 +631,6 @@ body.neon .low-stock{
 
             <span class="small">El campo Precio es el precio de venta por kilogramo. El control de costos, utilidades e inventario corresponde a la versión completa.</span>
           </div>
-          <div class="right-controls" style="margin-bottom:8px">
-            <button id="btnExportProd" class="btn btn-outline btn-small">📤 Guardar lista</button>
-            <button id="btnImportProd" class="btn btn-outline btn-small">📥 Cargar lista</button>
-            <input type="file" id="inputImportProd" accept=".json,application/json" style="display:none" />
-          </div>
 
           <div class="products-list" id="products-list"></div>
         </div>
@@ -801,9 +796,6 @@ const shortcutHist = document.getElementById('shortcut-hist');
 
 const btnSoporte = document.getElementById('btnSoporte');
 const productsWarningArea = document.getElementById('products-warning-area');
-const btnExportProd = document.getElementById('btnExportProd');
-const btnImportProd = document.getElementById('btnImportProd');
-const inputImportProd = document.getElementById('inputImportProd');
 const pagoInput = document.getElementById('pago');
 const metodoPagoInput = document.getElementById('metodoPago');
 const labelPago = document.getElementById('labelPago');
@@ -1847,96 +1839,6 @@ document.getElementById('btnCashEdit') && document.getElementById('btnCashEdit')
   // Recalcula resumen (esto también actualiza Caja)
   actualizarResumenHistorial();
 });
-
-/* BACKUP: Export / Import productos */
-function exportProductsToJson(){
-  try {
-    const data = JSON.stringify(productos.map(p=>({codigo:p.codigo,nombre:p.nombre,precio:p.precio,tipoVenta:p.tipoVenta==='granel'?'granel':'pieza'})), null, 2);
-    // Exportación pública de Free: no es un respaldo administrativo completo.
-    // Usa Fullv para resguardar costos e inventarios.
-    const now = new Date();
-    const fname = `productos_backup_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}.json`;
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fname;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    alert('✅ Lista de productos exportada: ' + fname);
-  } catch (e) {
-    console.error(e);
-    alert('Error al exportar productos.');
-  }
-}
-function handleImportFile(file){
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(ev){
-    try {
-      const text = ev.target.result;
-      const parsed = JSON.parse(text);
-      if(!Array.isArray(parsed)){
-        alert('Archivo inválido: debe contener un array de productos.');
-        return;
-      }
-      const cleaned = [];
-      for(const it of parsed){
-        if(!it || typeof it !== 'object') continue;
-        const codigo = (it.codigo || '').toString().trim();
-        const nombre = normalizarNombreProducto(it.nombre);
-        const precio = Number(it.precio) || 0;
-        if(!codigo || !nombre || precio <= 0) continue;
-        const tipoVenta=it.tipoVenta==='granel'?'granel':'pieza';
-        const anterior=productos.find(p=>String(p.codigo)===codigo);
-        const item={...(anterior||{}),codigo,nombre,precio,tipoVenta};
-        if(tipoVenta==='granel'){
-          // Los datos administrativos se conservan solo en Fullv.
-        }
-        cleaned.push(item);
-      }
-      if(new Set(cleaned.map(x=>String(x.codigo))).size !== cleaned.length){alert('El archivo contiene códigos duplicados. No se importó.');return;}
-      if(cleaned.length === 0){
-        alert('No se encontraron productos válidos en el archivo.');
-        return;
-      }
-      // Nunca sustituir ni recortar el catálogo completo compartido con fullv/fullv_demo.
-      if(productos.length > MAX_PRODUCTS){
-        alert('Esta lista contiene más de 50 artículos. Para evitar perder artículos del dueño, la carga de listas se realiza desde la versión completa. Puedes consultar y vender todos los productos desde aquí.');
-        return;
-      }
-      if(cleaned.length > MAX_PRODUCTS){
-        alert(`La versión gratuita solo permite cargar listas de hasta ${MAX_PRODUCTS} artículos. No se modificó el catálogo.`);
-        return;
-      }
-      if(cleaned.filter(p=>p.tipoVenta==='granel').length>3){alert('La versión Free permite importar un máximo de 3 artículos a granel. No se modificó el catálogo.');return;}
-      const protegidos=productos.filter(p=>p.costo!=null || p.costoKg!=null || p.stockGramos!=null || p.inventariado || p.stock!=null || p.pesoCostal!=null || p.costoCostal!=null);
-      if(protegidos.some(p=>!cleaned.some(x=>String(x.codigo)===String(p.codigo)))){alert('La lista omite productos con información administrativa o inventario. Para evitar pérdida de datos, importa el respaldo desde Fullv.');return;}
-      if(!confirm(`Esto reemplazará los ${productos.length} productos actuales por ${cleaned.length} productos del archivo. ¿Continuar?`)) return;
-      productos = cleaned;
-      saveProducts();
-      renderProducts();
-      checkProductLimitOnOpen();
-      alert(`✅ Lista de productos cargada correctamente. Se actualizaron ${productos.length} productos.`);
-    } catch (err){
-      console.error(err);
-      alert('Error al procesar el archivo. Asegúrate de que sea un JSON válido.');
-    }
-  };
-  reader.readAsText(file, 'utf-8');
-}
-if(btnExportProd) btnExportProd.addEventListener('click', exportProductsToJson);
-if(btnImportProd && inputImportProd){
-  btnImportProd.addEventListener('click', ()=> inputImportProd.click());
-  inputImportProd.addEventListener('change', (e)=>{
-    const f = e.target.files && e.target.files[0];
-    if(!f) return;
-    handleImportFile(f);
-    inputImportProd.value = '';
-  });
-}
 
 /* SHORTCUTS & NAV */
 navVenta.addEventListener('click', ()=> showPanel(panelVenta));

@@ -656,11 +656,11 @@ body.neon #granel-modal{
 
   <select id="prodExportFormat" class="select small" title="Formato de exportación" style="max-width:170px">
     <option value="pdf">PDF (Imprimir)</option>
-    <option value="csv">CSV (Excel)</option>
-    <option value="json">JSON (Backup)</option>
+    <option value="csv">CSV (Excel, todos los campos)</option>
+    <option value="json" selected>JSON (Respaldo completo)</option>
   </select>
   <button class="btn btn-rojo btn-small" id="btnExportProdMulti">⬇️ Exportar</button>
-<button class="btn btn-outline btn-small" id="btnImportProd">📥 Cargar lista</button>
+<button class="btn btn-outline btn-small" id="btnImportProd" title="Restaurar todos los datos del inventario desde un respaldo JSON">📥 Cargar respaldo JSON</button>
 <input accept=".json,application/json" id="inputImportProd" style="display:none" type="file"/>
 </div>
 <div class="products-list" id="products-list"></div>
@@ -2535,44 +2535,29 @@ function imprimirListaProductos(){
 /* ⬇️ Exportar productos a CSV (Excel) */
 function exportProductsToCsv(){
   if(!Array.isArray(productos) || productos.length === 0){
-    alert('No hay productos para exportar.');
-    return;
+    alert('No hay productos para exportar.'); return;
   }
-  const rows = productos.slice().sort((a,b)=>{
-    const ac = (a?.codigo ?? '').toString();
-    const bc = (b?.codigo ?? '').toString();
-    const an = Number(ac), bn = Number(bc);
-    if(!Number.isNaN(an) && !Number.isNaN(bn)) return an - bn;
-    return ac.localeCompare(bc, 'es', {numeric:true, sensitivity:'base'});
-  });
-
-  const header = ['Codigo','Nombre','Precio','Costo','Inventariado','Stock','TipoVenta','CostoKg','StockGramos'];
-  const lines = [header.join(',')];
-
-  for(const p of rows){
-    const codigo = (p?.codigo ?? '').toString().replaceAll('"','""');
-    const nombre = (p?.nombre ?? '').toString().replaceAll('"','""');
-    const precio = Number(p?.precio)||0;
-    const costo  = Number(p?.costo)||0;
-    const inv = p?.inventariado ? 1 : 0;
-    const stock = (p?.inventariado ? (p?.stock==null ? '' : p.stock) : '');
-    // CSV con comillas para texto (por seguridad con comas)
-    lines.push([`"${codigo}"`,`"${nombre}"`,precio,costo,inv,stock,p.tipoVenta||'pieza',p.costoKg??'',p.stockGramos??''].join(','));
+  // Incluye TODOS los atributos guardados, incluso campos añadidos en futuras versiones.
+  // El archivo JSON es el formato recomendado para volver a cargar el catálogo sin pérdida de tipos.
+  const preferidos=['codigo','nombre','marca','grupo','tipoVenta','precio','costo','inventariado','stock','costoKg','stockGramos','pesoCostal','costoCostal'];
+  const presentes=new Set();
+  productos.forEach(p=>{if(p && typeof p==='object' && !Array.isArray(p)) Object.keys(p).forEach(k=>presentes.add(k));});
+  const headers=[...preferidos.filter(k=>presentes.has(k)), ...[...presentes].filter(k=>!preferidos.includes(k)).sort()];
+  function csvCell(valor){
+    let texto=valor==null?'':typeof valor==='object'?JSON.stringify(valor):String(valor);
+    // Evita la ejecución de fórmulas al abrir el CSV en Excel.
+    if(/^[\s]*[=+@]/.test(texto) || /^[\s]*-(?!\d)/.test(texto)) texto="'"+texto;
+    return '"'+texto.replace(/"/g,'""')+'"';
   }
-
-  const csv = lines.join('\r\n');
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const now = new Date();
-  const fname = `productos_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}.csv`;
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fname;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url), 1000);
-  alert('✅ CSV exportado: ' + fname);
+  const rows=productos.slice().sort((a,b)=>String(a.codigo??'').localeCompare(String(b.codigo??''),'es',{numeric:true}));
+  const csv='\uFEFF'+[headers.map(csvCell).join(','),...rows.map(p=>headers.map(k=>csvCell(p[k])).join(','))].join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const now=new Date();
+  const fname=`productos_completos_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}.csv`;
+  const a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  alert('CSV completo exportado. Para restaurar todos los datos utiliza el respaldo JSON.');
 }
 
 /* ⬇️ Exportación según formato seleccionado */
@@ -2603,7 +2588,7 @@ function exportProductsToJson(){
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(url);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
     alert('✅ Lista de productos exportada: ' + fname);
   } catch (e) {
     console.error(e);
@@ -2612,46 +2597,44 @@ function exportProductsToJson(){
 }
 function handleImportFile(file){
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(ev){
-    try {
-      const text = ev.target.result;
-      const parsed = JSON.parse(text);
-      if(!Array.isArray(parsed)){
-        alert('Archivo inválido: debe contener un array de productos.');
-        return;
+  if(!/\.json$/i.test(file.name)){
+    alert('Para restaurar productos selecciona el respaldo JSON. El CSV sirve para consultar en Excel.'); return;
+  }
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      const parsed=JSON.parse(ev.target.result);
+      if(!Array.isArray(parsed) || parsed.length===0){
+        alert('Respaldo inválido: se esperaba una lista de productos. No se realizó ningún cambio.'); return;
       }
-      const cleaned = [];
-      for(const it of parsed){
-        if(!it || typeof it !== 'object') continue;
-        const codigo = (it.codigo || '').toString().trim();
-        const nombre = (it.nombre || '').toString().trim();
-        const precio = Number(it.precio) || 0;
-        if(!codigo || !nombre || precio <= 0) continue;
-        cleaned.push({...it,codigo,nombre,precio,tipoVenta:it.tipoVenta==='granel'?'granel':'pieza',costo:Number(it.costo)||0,costoKg:Number(it.costoKg)||0});
+      const cleaned=[];
+      const codigos=new Set();
+      for(let i=0;i<parsed.length;i++){
+        const p=parsed[i];
+        if(!p || typeof p!=='object' || Array.isArray(p)) throw new Error('Producto '+(i+1)+' inválido.');
+        const codigo=String(p.codigo??'').trim();
+        const nombre=String(p.nombre??'').trim();
+        const precio=Number(p.precio);
+        if(!codigo || !nombre || !Number.isFinite(precio) || precio<=0) throw new Error('Datos obligatorios inválidos en producto '+(i+1)+'.');
+        if(codigos.has(codigo)) throw new Error('Código duplicado: '+codigo);
+        codigos.add(codigo);
+        if(p.tipoVenta!=null && p.tipoVenta!=='pieza' && p.tipoVenta!=='granel') throw new Error('Tipo de venta desconocido en '+codigo);
+        // No reconstruimos el objeto desde una lista limitada: se conserva cada campo del respaldo.
+        cleaned.push({...p,codigo,nombre,precio});
       }
-      if(new Set(cleaned.map(x=>String(x.codigo))).size !== cleaned.length){alert('El archivo tiene códigos duplicados. No se importó para proteger el inventario.');return;}
-      if(cleaned.length === 0){
-        alert('No se encontraron productos válidos en el archivo.');
-        return;
-      }
-      if(!confirm(`Esto reemplazará los ${productos.length} productos actuales por ${cleaned.length} productos del archivo. ¿Continuar?`)) return;
-      if(cleaned.length > MAX_PRODUCTS){
-        if(!confirm(`El archivo contiene ${cleaned.length} productos pero la versión gratuita limita a ${MAX_PRODUCTS}. Se importarán los primeros ${MAX_PRODUCTS}. ¿Continuar?`)) return;
-        productos = cleaned.slice(0, MAX_PRODUCTS);
-      } else {
-        productos = cleaned;
-      }
-      saveProducts();
-      renderProducts();
-      checkProductLimitOnOpen();
-      alert(`✅ Lista de productos cargada correctamente. Se actualizaron ${productos.length} productos.`);
-    } catch (err){
+      if(!confirm(`Se reemplazarán ${productos.length} productos actuales por ${cleaned.length} productos del respaldo, incluyendo marcas, grupos, costos e inventarios.\n\nHaz una copia del catálogo actual antes de continuar. ¿Deseas restaurarlo?`)) return;
+      // Escribe primero el respaldo importado y solo actualiza la memoria cuando el guardado tiene éxito.
+      localStorage.setItem(KEY_PRODUCTS,JSON.stringify(cleaned));
+      productos=cleaned;
+      renderProducts();checkProductLimitOnOpen();
+      alert(`Respaldo completo restaurado: ${productos.length} productos.`);
+    }catch(err){
       console.error(err);
-      alert('Error al procesar el archivo. Asegúrate de que sea un JSON válido.');
+      alert('No se importó el respaldo: '+(err?.message||'archivo inválido o sin espacio de almacenamiento'));
     }
   };
-  reader.readAsText(file, 'utf-8');
+  reader.onerror=()=>alert('No se pudo leer el archivo seleccionado.');
+  reader.readAsText(file,'utf-8');
 }
 if(btnExportProd) btnExportProd.addEventListener('click', exportProductsToJson);
 if(btnImportProd && inputImportProd){
