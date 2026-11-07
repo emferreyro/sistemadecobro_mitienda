@@ -1683,7 +1683,13 @@ btnFinalizar.addEventListener('click', ()=> {
       }
     }
 
-    return { ...it, inventariado: inv, stockAntes, stockDespues, invAviso };
+    return { ...it,
+      marca: String(prod?.marca ?? it.marca ?? '').trim(),
+      grupo: String(prod?.grupo ?? it.grupo ?? '').trim(),
+      tipoVenta: (prod?.tipoVenta === 'granel' || it.tipoVenta === 'granel') ? 'granel' : 'pieza',
+      unidad: (prod?.tipoVenta === 'granel' || it.tipoVenta === 'granel') ? 'kg' : 'pza',
+      costoUnitario: prod ? Number(prod.tipoVenta === 'granel' ? (prod.costoKg ?? prod.costo) : prod.costo) || 0 : null,
+      inventariado: inv, stockAntes, stockDespues, invAviso };
   });
 
   // Persistir productos solo si inventario está activo
@@ -2305,15 +2311,15 @@ function actualizarResumenHistorial(){
 /* CIERRE DE VENTAS: exportación compatible con reporte.html y borrado verificado */
 let cierreVentasActivo = false;
 function crearArchivoCierre(ventas){
-  const columnas = ['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal','Método de pago','Pago recibido','Cambio'];
+  const columnas = ['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal','Método de pago','Pago recibido','Cambio','Marca','Grupo','Tipo de venta','Unidad','Costo unitario'];
   const rows = [columnas];
   ventas.forEach(v => {
     const metodo = v.metodoPago === 'Tarjeta' ? 'Tarjeta' : 'Efectivo';
     const pago = (v.pago == null || v.pago === '') ? '' : v.pago;
     const cambio = (v.cambio == null || v.cambio === '') ? '' : v.cambio;
     const items = Array.isArray(v.items) ? v.items : [];
-    if(!items.length) rows.push([v.id,v.fecha,v.total,'','','','','',metodo,pago,cambio]);
-    items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre||'',it.cantidad,it.precio,it.subtotal,metodo,pago,cambio]));
+    if(!items.length) rows.push([v.id,v.fecha,v.total,'','','','','',metodo,pago,cambio,'','','','','']);
+    items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre||'',it.cantidad,it.precio,it.subtotal,metodo,pago,cambio,it.marca||'',it.grupo||'',it.tipoVenta==='granel'?'granel':(it.tipoVenta==='pieza'?'pieza':''),it.unidad||(it.tipoVenta==='granel'?'kg':'pza'),it.costoUnitario??'']));
   });
   return '\uFEFF' + rows.map(r => r.map(c => '"' + String(c ?? '').replace(/"/g,'""') + '"').join(',')).join('\r\n');
 }

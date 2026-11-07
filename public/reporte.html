@@ -322,7 +322,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     <div class="hint" style="margin-top:6px">Selecciona varios cierres a la vez o agrega otros después. Los archivos se combinan para la consulta, sin modificar los originales.</div>
     <div id="csvList" class="small" style="margin-top:10px" aria-live="polite"></div>
     <button id="clearCsv" class="btn btn-outline btn-small" type="button" style="display:none;margin-top:8px">Quitar todos los CSV</button>
-    <div class="hint" style="margin-top:6px">Si usas CSV, debe tener las columnas: <span class="mono">Venta ID, Fecha, Total, Código, Nombre, Cant, Precio, Subtotal</span>.</div>
+    <div class="hint" style="margin-top:6px">CSV anteriores y nuevos son compatibles. Los nuevos cierres agregan <b>Marca, Grupo, Tipo de venta, Unidad y Costo unitario</b>. Los anteriores aparecerán como «Sin clasificar».</div>
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
 
@@ -337,6 +337,15 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
         <div class="small">Hasta</div>
       </div>
     </div>
+
+    <div class="row" style="margin-top:12px">
+      <div style="flex:1 1 155px"><label for="filterMarca">Marca</label><select id="filterMarca"><option value="">Todas las marcas</option></select></div>
+      <div style="flex:1 1 155px"><label for="filterGrupo">Grupo</label><select id="filterGrupo"><option value="">Todos los grupos</option></select></div>
+    </div>
+    <div style="margin-top:10px"><label for="filterTipo">Tipo de venta</label><select id="filterTipo">
+      <option value="">Todas las ventas</option><option value="pieza">Por pieza</option><option value="granel">A granel (kg)</option><option value="sin-clasificar">Sin clasificar (históricos)</option>
+    </select></div>
+    <div class="hint" style="margin-top:7px">Al aplicar filtros, los importes muestran solo los artículos coincidentes, no el ticket completo. Las cantidades en piezas y kg se muestran por separado.</div>
 
     <div class="row" style="margin-top:8px">
       <label style="display:flex;gap:8px;align-items:center">
@@ -390,12 +399,15 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
         <div class="summary-mini-label">Ventas sin código o a granel</div>
         <div class="summary-mini-value" id="kMAmount">—</div>
       </div>
+      <div class="summary-mini"><div class="summary-mini-label">Ventas por pieza</div><div class="summary-mini-value" id="kPieceAmount">—</div></div>
+      <div class="summary-mini"><div class="summary-mini-label">Ventas a granel</div><div class="summary-mini-value" id="kBulkAmount">—</div></div>
+      <div class="summary-mini"><div class="summary-mini-label">Cantidad a granel</div><div class="summary-mini-value" id="kBulkKg">—</div></div>
       <div class="summary-mini">
-        <div class="summary-mini-label">Artículo más vendido</div>
+        <div class="summary-mini-label">Artículo de mayor venta ($)</div>
         <div class="summary-mini-value" id="kTop">—</div>
       </div>
       <div class="summary-mini">
-        <div class="summary-mini-label">Artículo menos vendido</div>
+        <div class="summary-mini-label">Artículo de menor venta ($)</div>
         <div class="summary-mini-value" id="kLow">—</div>
       </div>
     </div>
@@ -421,7 +433,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
             <tr>
               <th>Artículo</th>
               <th class="right">Código / Barras</th>
-              <th class="right">Piezas</th>
+              <th class="right">Cantidad / Unidad</th>
               <th class="right">Importe</th>
               <th class="right">#Ventas</th>
             </tr>
@@ -432,13 +444,13 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     </div>
 
     <div id="panel-mitems" style="display:none">
-      <div class="hint">Agrupación de artículos con código <span class="mono">M-</span> según las palabras configuradas.</div>
+      <div class="hint">Agrupación de artículos con código <span class="mono">M-</span> según las palabras configuradas. La cantidad solo se compara si todos los movimientos usan la misma unidad.</div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
               <th>Grupo</th>
-              <th class="right">Piezas</th>
+              <th class="right">Cantidad*</th>
               <th class="right">Importe</th>
               <th class="right">#Ventas</th>
             </tr>
@@ -460,7 +472,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
             <tr>
               <th>Artículo</th>
               <th class="right">Código</th>
-              <th class="right">Piezas</th>
+              <th class="right">Cantidad / Unidad</th>
               <th class="right">Costo</th>
               <th class="right">Venta prom</th>
               <th class="right">Utilidad</th>
@@ -472,7 +484,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
         </table>
       </div>
       <div class="small" style="margin-top:8px">
-        Nota: La utilidad se calcula como <span class="mono">(venta − costo) × cantidad</span>. El <span class="mono">margen %</span> se calcula como <span class="mono">utilidad ÷ ventas × 100</span>. Si un producto no tiene costo capturado, se asume costo $0.
+        Nota: La utilidad se calcula como <span class="mono">(venta − costo) × cantidad</span>. El <span class="mono">margen %</span> se calcula como <span class="mono">utilidad ÷ ventas × 100</span>. Si el costo es desconocido, la utilidad se muestra como «—». Para cierres nuevos se usa el costo guardado al vender; para registros antiguos se consulta el catálogo actual cuando existe.
       </div>
     </div>
 
@@ -624,16 +636,17 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     $("kLow").textContent = "—";
     $("kMPieces").textContent = "—";
     $("kMAmount").textContent = "—";
+    for(const id of ["kPieceAmount","kBulkAmount","kBulkKg"]) $(id).textContent="—";
     $("scope").textContent = "—";
     $("profitScope").textContent = "—";
   }
 
   function buildItemsCSV(items){
     const lines = [];
-    lines.push(["Articulo","Piezas","Importe","NumVentas"].join(","));
+    lines.push(["Articulo","Codigo","Tipo venta","Cantidad","Unidad","Importe","NumVentas"].join(","));
     for(const it of items){
       const art = '"' + (it.item||"").replaceAll('"','""') + '"';
-      lines.push([art, it.pieces, it.amount, it.salesCount].join(","));
+      lines.push([art, csvCell(it.code),csvCell(it.tipoVenta),it.pieces,csvCell(it.unidad),it.amount,it.salesCount].join(","));
     }
     return lines.join("\r\n");
   }
@@ -660,7 +673,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
         <td class="right">
           ${hasCode ? `<div class="mono" style="font-weight:900">${escapeHtml(code)}</div>` : `<span class="small">—</span>`}
         </td>
-        <td class="right">${fmtNum(it.pieces)}</td>
+        <td class="right">${fmtNum(it.pieces)} ${escapeHtml(it.unidad||'pza')}</td>
         <td class="right">${money(it.amount)}</td>
         <td class="right">${it.salesCount.toLocaleString("es-MX")}</td>`;
       tbody.appendChild(tr);
@@ -688,7 +701,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${escapeHtml(pretty(it.group))}</td>
-        <td class="right">${fmtNum(it.pieces)}</td>
+        <td class="right">${it.mixedUnits?'Mixtas':fmtNum(it.pieces)+' '+escapeHtml(it.unidad||'')}</td>
         <td class="right">${money(it.amount)}</td>
         <td class="right">${it.salesCount.toLocaleString("es-MX")}</td>`;
       tbody.appendChild(tr);
@@ -707,11 +720,11 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
       tr.innerHTML = `
         <td>${escapeHtml(it.item)}</td>
         <td class="right"><span class="mono">${escapeHtml(it.code)}</span></td>
-        <td class="right">${fmtNum(it.pieces)}</td>
-        <td class="right">${money(it.costUnit)}</td>
+        <td class="right">${fmtNum(it.pieces)} ${escapeHtml(it.unidad||'pza')}</td>
+        <td class="right">${it.costKnown?money(it.costUnit):'—'}</td>
         <td class="right">${money(it.avgSellPrice)}</td>
-        <td class="right"><b>${money(it.profit)}</b></td>
-        <td class="right">${pct(it.marginPct)}</td>
+        <td class="right"><b>${it.costKnown?money(it.profit):'—'}</b></td>
+        <td class="right">${it.costKnown?pct(it.marginPct):'—'}</td>
         <td class="right">${it.salesCount.toLocaleString("es-MX")}</td>`;
       tbody.appendChild(tr);
     }
@@ -739,61 +752,60 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
   }
   function exportCompleteReport(){
     if(!FILTERED_REPORT.length) return;
-    let catalog = [];
-    try { catalog = JSON.parse(localStorage.getItem(KEY_PRODUCTS) || "[]"); } catch(e) {}
-    const costs = new Map((Array.isArray(catalog)?catalog:[]).map(p=>[String(p.codigo??"").trim(),safeNum(p.costo)]));
-    const lines = [["Tipo","Venta ID","Fecha","Código","Artículo","Piezas","Precio unitario","Importe vendido","Costo unitario","Costo total","Utilidad estimada"]];
-    let revenue=0,knownCosts=0,knownProfit=0,mRevenue=0,withoutCost=0;
+    const lines=[["Tipo","Venta ID","Fecha","Código","Artículo","Marca","Grupo","Tipo de venta","Cantidad","Unidad","Precio unitario","Importe vendido","Costo unitario","Costo total","Utilidad estimada"]];
     for(const r of FILTERED_REPORT){
-      const code=String(r.codigo??"").trim();
-      const isM=code.startsWith("M-");
-      const hasCost=!isM && code && costs.has(code) && costs.get(code)>0;
-      const c=hasCost ? costs.get(code) : null;
-      const totalCost=hasCost ? c*r.cant : null;
-      const profit=hasCost ? r.subtotal-totalCost : null;
-      revenue+=r.subtotal;
-      if(isM) mRevenue+=r.subtotal;
-      else if(hasCost){knownCosts+=totalCost;knownProfit+=profit;}
-      else withoutCost++;
-      lines.push([isM?"Movimiento M-":"Producto",r.ventaId,r.dt.toLocaleString("es-MX"),code,r.nombre,r.cant,r.precio,r.subtotal,c,totalCost,profit]);
+      const isM=String(r.codigo||'').startsWith('M-');
+      const cost=costForRow(r);
+      lines.push([isM?'Movimiento M-':'Producto',r.ventaId,r.dt.toLocaleString('es-MX'),r.codigo,r.nombre,r.marca||'Sin clasificar',r.grupo||'Sin clasificar',r.tipoVenta||'Sin clasificar',r.cant,r.unidad||'Sin clasificar',r.precio,r.subtotal,cost===null?'':cost,cost===null?'':cost*r.cant,cost===null?'':r.subtotal-cost*r.cant]);
     }
     lines.push([]);
-    lines.push(["RESUMEN","Importe total de renglones", "", "", "", "", "",revenue]);
-    lines.push(["RESUMEN","Importe de movimientos M-", "", "", "", "", "",mRevenue]);
-    lines.push(["RESUMEN","Costos conocidos de productos (sin M-)", "", "", "", "", "", "", "",knownCosts]);
-    lines.push(["RESUMEN","Utilidad estimada de productos con costo conocido", "", "", "", "", "", "", "", "", "",knownProfit]);
-    lines.push(["NOTA","M- y productos sin costo capturado NO tienen utilidad calculada."]);
-    lines.push(["NOTA",withoutCost+" renglones regulares no tienen costo conocido. El costo usado es el actual del catálogo, no necesariamente el histórico."]);
-    downloadCsv("mitienda_movimientos_completos.csv",lines);
+    lines.push(['RESUMEN','Importe filtrado','','','','','','','','','',FILTERED_REPORT.reduce((a,r)=>a+r.subtotal,0)]);
+    lines.push(['NOTA','Los movimientos M- y artículos sin costo conocido no incluyen utilidad; el costo histórico tiene prioridad sobre el catálogo actual.']);
+    downloadCsv('mitienda_movimientos_completos.csv',lines);
   }
   function renderSalesChart(filtered){
-    // Una transacción aparece una sola vez por mes, aunque contenga productos normales y M-.
-    const byTransaction = new Map();
-    for(const r of filtered){
-      const key = String(r.ventaId) + "|" + isoDate(r.dt);
-      if(!byTransaction.has(key)) byTransaction.set(key,{dt:r.dt,total:r.total});
-    }
-    const monthly = new Map();
-    for(const tx of byTransaction.values()){
-      const key=monthKey(tx.dt);
-      monthly.set(key,(monthly.get(key)||0)+tx.total);
-    }
-    MONTHLY_SALES = Array.from(monthly,([period,total])=>({period,total})).sort((a,b)=>a.period.localeCompare(b.period));
-    const root=$("ventasChart"); root.innerHTML="";
+    const monthly=new Map();
+    for(const r of filtered){const k=monthKey(r.dt);monthly.set(k,(monthly.get(k)||0)+r.subtotal);}
+    MONTHLY_SALES=Array.from(monthly,([period,total])=>({period,total})).sort((a,b)=>a.period.localeCompare(b.period));
+    const root=$("ventasChart");root.innerHTML="";
     if(!MONTHLY_SALES.length){root.textContent="Sin ventas para este periodo.";return;}
     const max=Math.max(...MONTHLY_SALES.map(x=>x.total),1);
     for(const {period,total} of MONTHLY_SALES){
-      const col=document.createElement("div");col.className="bar-column";
-      const value=document.createElement("div");value.className="bar-value";value.textContent=money(total);
-      const track=document.createElement("div");track.className="bar-track";
-      const fill=document.createElement("div");fill.className="bar-fill";fill.style.height=Math.max(2,Math.round(145*total/max))+"px";
+      const col=document.createElement('div');col.className='bar-column';
+      const value=document.createElement('div');value.className='bar-value';value.textContent=money(total);
+      const track=document.createElement('div');track.className='bar-track';
+      const fill=document.createElement('div');fill.className='bar-fill';fill.style.height=Math.max(2,Math.round(145*total/max))+'px';
       track.appendChild(fill);
-      const label=document.createElement("div");label.className="bar-label";label.textContent=period;
+      const label=document.createElement('div');label.className='bar-label';label.textContent=period;
       col.append(value,track,label);root.appendChild(col);
     }
-    root.setAttribute("aria-label","Ventas por mes incluyendo M-: "+MONTHLY_SALES.map(x=>x.period+" "+money(x.total)).join("; "));
+    root.setAttribute('aria-label','Importes filtrados por mes: '+MONTHLY_SALES.map(x=>x.period+' '+money(x.total)).join('; '));
   }
 
+  let CATALOG_BY_CODE=new Map();
+  function costForRow(r){
+    if(String(r.codigo||'').startsWith('M-')) return null;
+    if(r.costoUnitario !== null && r.costoUnitario !== undefined && r.costoUnitario !== ''){
+      const n=Number(r.costoUnitario);return Number.isFinite(n)&&n>=0?n:null;
+    }
+    const p=CATALOG_BY_CODE.get(String(r.codigo||''));
+    if(!p) return null;
+    const cost=(r.tipoVenta==='granel')?(p.costoKg??p.costo):p.costo;
+    if(cost===null||cost===undefined||cost==='')return null;
+    const n=Number(cost);return Number.isFinite(n)&&n>=0?n:null;
+  }
+  function setFilterOptions(id,values,allLabel){
+    const el=$(id),old=el.value;
+    el.replaceChildren(new Option(allLabel,''));
+    for(const value of [...new Set(values.map(x=>String(x||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es')))
+      el.add(new Option(value,value));
+    el.add(new Option('Sin clasificar','__sin_clasificar__'));
+    el.value=Array.from(el.options).some(o=>o.value===old)?old:'';
+  }
+  function refreshClassificationFilters(){
+    setFilterOptions('filterMarca',RAW.map(x=>x.marca),'Todas las marcas');
+    setFilterOptions('filterGrupo',RAW.map(x=>x.grupo),'Todos los grupos');
+  }
   function generateReports(){
     if(!RAW.length){ setStatus("No hay datos cargados."); return; }
 
@@ -804,6 +816,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
       productosCatalogo = rawP ? JSON.parse(rawP) : [];
     }catch(e){ productosCatalogo = []; }
 
+    CATALOG_BY_CODE = new Map((Array.isArray(productosCatalogo)?productosCatalogo:[]).filter(p=>p?.codigo).map(p=>[String(p.codigo).trim(),p]));
     const costMap = new Map();
     for(const p of (Array.isArray(productosCatalogo) ? productosCatalogo : [])){
       const code = (p && p.codigo != null) ? String(p.codigo).trim() : "";
@@ -818,6 +831,8 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     const from = $("from").value ? new Date($("from").value+"T00:00:00") : null;
     const to = $("to").value ? new Date($("to").value+"T23:59:59") : null;
     const excludeZero = $("excludeZero").checked;
+    const marcaFilter=$('filterMarca').value, grupoFilter=$('filterGrupo').value, tipoFilter=$('filterTipo').value;
+    const matches=(val,filter)=>!filter || (filter==='__sin_clasificar__'?!val:String(val||'')===filter);
 
     const filtered = [];
     const M_TOTAL = { pieces: 0, amount: 0, records: 0 };
@@ -828,6 +843,8 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
       if(from && d < from) continue;
       if(to && d > to) continue;
       if(excludeZero && (r.subtotal === 0 || r.precio <= 0.01)) continue;
+      if(!matches(r.marca,marcaFilter)||!matches(r.grupo,grupoFilter))continue;
+      if(tipoFilter && (tipoFilter==='sin-clasificar' ? !!r.tipoVenta : r.tipoVenta!==tipoFilter))continue;
 
       if(r.codigo && String(r.codigo).startsWith("M-")){
         M_TOTAL.pieces += r.cant;
@@ -837,7 +854,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
         continue;
       }
 
-      const key = r.codigo ? String(r.codigo) : ("NAME:" + stripAccents(r.nombre));
+      const key = (r.codigo ? String(r.codigo) : ("NAME:" + stripAccents(r.nombre))) + '|' + (r.tipoVenta||'sin-clasificar');
       filtered.push({...r, dt:d, label:r.nombre, key});
     }
 
@@ -846,7 +863,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     for(const r of filtered){
       if(r.key === "M-") continue;
       if(!map.has(r.key)){
-        map.set(r.key,{ item:r.label, code:(r.codigo ? String(r.codigo).trim() : ""), pieces:0, amount:0, ventas:new Set() });
+        map.set(r.key,{ item:r.label, code:(r.codigo ? String(r.codigo).trim() : ""), tipoVenta:r.tipoVenta||'sin-clasificar',unidad:r.unidad||(r.tipoVenta==='granel'?'kg':r.tipoVenta==='pieza'?'pza':'—'), pieces:0, amount:0, ventas:new Set() });
       }
       const it = map.get(r.key);
       it.pieces += r.cant;
@@ -855,7 +872,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     }
     ITEMS = Array.from(map.values()).map(x=>({
       item:x.item,
-      code:x.code || "",
+      code:x.code || "",tipoVenta:x.tipoVenta,unidad:x.unidad,
       pieces:x.pieces,
       amount:x.amount,
       salesCount:x.ventas.size
@@ -863,7 +880,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
 
     const txMap = new Map();
     for(const r of filtered){
-      const k = r.ventaId;
+      const k = r.ventaId+'|'+isoDate(r.dt);
       if(!txMap.has(k)) txMap.set(k,{ ventaId:k, dt:r.dt, total:r.total, metodoPago:r.metodoPago });
     }
     TX = Array.from(txMap.values()).sort((a,b)=> a.dt - b.dt);
@@ -872,8 +889,11 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     const keywords = kwText ? kwText.split(",").map(x=>stripAccents(x)).map(x=>x.trim()).filter(Boolean) : [];
     const gmap = new Map();
     function addGroup(group, r){
-      if(!gmap.has(group)) gmap.set(group,{group, pieces:0, amount:0, ventas:new Set()});
+      if(!gmap.has(group)) gmap.set(group,{group, pieces:0, amount:0, ventas:new Set(),unidad:null,mixedUnits:false});
       const g = gmap.get(group);
+      const unidad=r.unidad||'sin clasificar';
+      if(g.unidad!==null && g.unidad!==unidad)g.mixedUnits=true;
+      g.unidad=unidad;
       g.pieces += r.cant;
       g.amount += r.subtotal;
       g.ventas.add(r.ventaId);
@@ -886,7 +906,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
       addGroup(grp ? grp : "otros m-", r);
     }
     M_GROUPS = Array.from(gmap.values()).map(x=>({
-      group:x.group, pieces:x.pieces, amount:x.amount, salesCount:x.ventas.size
+      group:x.group, pieces:x.pieces, unidad:x.unidad,mixedUnits:x.mixedUnits,amount:x.amount, salesCount:x.ventas.size
     })).sort((a,b)=> b.pieces - a.pieces);
 
     // Utilidad por producto (solo artículos con código que NO sean M-)
@@ -895,9 +915,9 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
       const code = (r.codigo ?? "").toString().trim();
       if(!code || code.startsWith("M-")) continue;
 
-      const key = code; // agrupamos por código
+      const key = code+'|'+(r.tipoVenta||'sin-clasificar'); // no sumar kg con piezas
       if(!pmap.has(key)){
-        pmap.set(key,{ item:r.nombre, code:key, pieces:0, ventas:new Set(), revenue:0, costUnit: costMap.get(key) ?? 0 });
+        pmap.set(key,{ item:r.nombre, code, tipoVenta:r.tipoVenta||'sin-clasificar',unidad:r.unidad||(r.tipoVenta==='granel'?'kg':'pza'),pieces:0, ventas:new Set(), revenue:0, totalCost:0,costKnown:true, costUnit:null });
       }
       const it = pmap.get(key);
       it.pieces += r.cant;
@@ -905,22 +925,21 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
       it.revenue += r.subtotal;
       // si en algún momento cambia el nombre, nos quedamos con el más reciente no vacío
       if(r.nombre) it.item = r.nombre;
-      // refrescar costo si existe
-      const cu = costMap.get(key);
-      if(cu != null) it.costUnit = cu;
+      const cu=costForRow(r);
+      if(cu===null) it.costKnown=false;
+      else {it.totalCost+=cu*r.cant;it.costUnit=cu;}
     }
 
     PROFIT = Array.from(pmap.values()).map(x=>{
-      const costTotal = (x.costUnit || 0) * (x.pieces || 0);
-      const profit = (x.revenue || 0) - costTotal;
-      PROFIT_TOTAL += profit;
+      const profit = x.costKnown ? (x.revenue || 0)-x.totalCost : 0;
+      if(x.costKnown) PROFIT_TOTAL += profit;
       return {
         item: x.item,
         code: x.code,
         pieces: x.pieces,
         salesCount: x.ventas.size,
         revenue: x.revenue,
-        costUnit: x.costUnit || 0,
+        costUnit: x.pieces ? x.totalCost/x.pieces : 0,costKnown:x.costKnown,unidad:x.unidad,
         avgSellPrice: (x.pieces ? (x.revenue / x.pieces) : 0),
         profit,
         marginPct: (x.revenue ? (profit / x.revenue * 100) : 0)
@@ -928,18 +947,22 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     }).sort((a,b)=> b.profit - a.profit);
 
 
-    const totalSales = TX.reduce((s,t)=> s + (t.total||0), 0);
+    const totalSales = filtered.reduce((s,r)=>s+r.subtotal,0);
     REPORT_SALES_TOTAL = totalSales;
     $("kSales").textContent = money(totalSales);
-    const cash = TX.reduce((sum,t)=>sum + (t.metodoPago === "Tarjeta" ? 0 : t.total||0),0);
-    const card = TX.reduce((sum,t)=>sum + (t.metodoPago === "Tarjeta" ? t.total||0 : 0),0);
+    const cash=filtered.reduce((sum,r)=>sum+(r.metodoPago==='Tarjeta'?0:r.subtotal),0);
+    const card=filtered.reduce((sum,r)=>sum+(r.metodoPago==='Tarjeta'?r.subtotal:0),0);
+    $('kPieceAmount').textContent=money(filtered.filter(r=>r.tipoVenta==='pieza').reduce((s,r)=>s+r.subtotal,0));
+    $('kBulkAmount').textContent=money(filtered.filter(r=>r.tipoVenta==='granel').reduce((s,r)=>s+r.subtotal,0));
+    $('kBulkKg').textContent=fmtNum(filtered.filter(r=>r.tipoVenta==='granel').reduce((s,r)=>s+r.cant,0))+' kg';
     $("kCash").textContent = money(cash);
     $("kCard").textContent = money(card);
     $("kProfit").textContent = money(PROFIT_TOTAL);
     $("kTx").textContent = TX.length.toLocaleString("es-MX");
-    $("kTop").textContent = ITEMS.length ? `${ITEMS[0].item} (${fmtNum(ITEMS[0].pieces)} pzas)` : "—";
-    const low = ITEMS.slice().filter(x=>x.pieces>0).sort((a,b)=> a.pieces - b.pieces)[0];
-    $("kLow").textContent = low ? `${low.item} (${fmtNum(low.pieces)} pzas)` : "—";
+    const byAmount=ITEMS.slice().sort((a,b)=>b.amount-a.amount);
+    $("kTop").textContent = byAmount.length ? `${byAmount[0].item} (${money(byAmount[0].amount)})` : "—";
+    const low = byAmount.filter(x=>x.amount>0).sort((a,b)=>a.amount-b.amount)[0];
+    $("kLow").textContent = low ? `${low.item} (${money(low.amount)})` : "—";
     $("kMPieces").textContent = M_TOTAL.records.toLocaleString("es-MX");
     $("kMAmount").textContent = money(M_TOTAL.amount);
 
@@ -947,8 +970,8 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     if(from) scopeParts.push(`desde ${isoDate(from)}`);
     if(to) scopeParts.push(`hasta ${isoDate(to)}`);
     $("scope").textContent = scopeParts.length ? scopeParts.join(" • ") : "Sin filtro de fecha";
-    const missingCost = PROFIT.filter(x=> (x.costUnit||0) <= 0.000001).length;
-    $("profitScope").textContent = `Productos con código: ${PROFIT.length.toLocaleString("es-MX")} • Utilidad total: ${money(PROFIT_TOTAL)}${missingCost? " • Sin costo: "+missingCost.toLocaleString("es-MX"):""}`;
+    const missingCost = PROFIT.filter(x=> !x.costKnown).length;
+    $("profitScope").textContent = `Productos con código: ${PROFIT.length.toLocaleString("es-MX")} • Utilidad calculable: ${money(PROFIT_TOTAL)}${missingCost? " • Sin costo conocido: "+missingCost.toLocaleString("es-MX"):""}`;
 
     renderItems(); renderMItems(); renderProfit(); renderSalesChart(filtered);
     $("exportComplete").disabled = !filtered.length;
@@ -996,6 +1019,10 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
           cant: safeNum(it.cantidad),
           precio: safeNum(it.precio),
           subtotal: safeNum(it.subtotal),
+          marca:String(it.marca??'').trim(),grupo:String(it.grupo??'').trim(),
+          tipoVenta:it.tipoVenta==='granel'?'granel':it.tipoVenta==='pieza'?'pieza':'',
+          unidad:it.unidad||(it.tipoVenta==='granel'?'kg':it.tipoVenta==='pieza'?'pza':''),
+          costoUnitario:it.costoUnitario??null,
           dt: (fechaISO ? new Date(fechaISO) : null)
         });
       }
@@ -1004,6 +1031,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     LOCAL_ROWS = rows;
     if(CSV_FILES.length) return;
     RAW = LOCAL_ROWS;
+    refreshClassificationFilters();
     $("run").disabled = false;
     setStatus(`Historial cargado: ${RAW.length} filas (${hist.length} ventas).`);
     generateReports();
@@ -1044,7 +1072,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     $("export").disabled=true; $("exportComplete").disabled=true; $("exportChart").disabled=true;
     $("ventasChart").textContent="Carga el historial para ver la gráfica.";
     $("run").disabled=!RAW.length;
-    renderCsvList();
+    renderCsvList();refreshClassificationFilters();
     if(RAW.length){ generateReports(); }
     else setStatus("No hay datos. Selecciona archivos CSV o registra ventas.");
   }
@@ -1072,6 +1100,11 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
           cant:safeNum(r[idx["Cant"]]),
           precio:safeNum(r[idx["Precio"]]),
           subtotal:safeNum(r[idx["Subtotal"]]),
+          marca:idx['Marca']===undefined?'':String(r[idx['Marca']]||'').trim(),
+          grupo:idx['Grupo']===undefined?'':String(r[idx['Grupo']]||'').trim(),
+          tipoVenta:idx['Tipo de venta']===undefined?'':(String(r[idx['Tipo de venta']]||'').toLowerCase().trim()==='granel'?'granel':'pieza'),
+          unidad:idx['Unidad']===undefined?'':String(r[idx['Unidad']]||'').trim(),
+          costoUnitario:idx['Costo unitario']===undefined||String(r[idx['Costo unitario']]??'').trim()===''?null:safeNum(r[idx['Costo unitario']]),
           metodoPago:idx["Método de pago"]!==undefined && String(r[idx["Método de pago"]]||"").trim().toLowerCase()==="tarjeta" ? "Tarjeta" : "Efectivo",
           dt:null,fechaISO:null
         }));
@@ -1085,6 +1118,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
   });
   $("clearCsv").addEventListener("click",()=>{CSV_FILES=[];refreshSources();});
   document.getElementById("run").addEventListener("click", generateReports);
+  ['filterMarca','filterGrupo','filterTipo'].forEach(id=>$(id).addEventListener('change',()=>{if(RAW.length)generateReports();}));
 
   document.getElementById("export").addEventListener("click", ()=>{
     if(!ITEMS_EXPORT) return;
