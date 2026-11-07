@@ -767,6 +767,7 @@ body.neon .low-stock{
 </div>
 
 <script src="js/pos_integridad.js"></script>
+<script src="js/fp.min.js"></script>
 <script>
 /* CONFIG y KEYS */
 const ADMIN_PASSWORD_DEFAULT = 'admin'; // solo instalaciones nuevas; se respetan las claves locales existentes
@@ -791,6 +792,93 @@ function setAdminPassword(newPass){
   localStorage.setItem(KEY_ADMIN_PASSWORD, newPass);
 }
 const MAX_PRODUCTS = 50;
+// Index conserva el modo gratuito hasta comprobar la licencia real de FULLV.
+// La autorización se comparte con guardFullv.js mediante la misma clave local.
+const LICENCIA_FULLV_KEY = 'mitienda_licencia_fullv_v2';
+let licenciaFullvActiva = false;
+let licenciaFullvFingerprint = '';
+let comprobacionLicenciaEnCurso = false;
+const limiteProductosActual = () => licenciaFullvActiva ? Infinity : MAX_PRODUCTS;
+function fechaFinLicencia(fecha){
+  if(typeof fecha !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return NaN;
+  return Date.parse(fecha + 'T23:59:59.999');
+}
+function licenciaLocalVigente(lic, fingerprint){
+  const ahora = Date.now();
+  return !!lic && lic.version === 2 && !!fingerprint && lic.id === fingerprint &&
+    Number.isFinite(fechaFinLicencia(lic.vencimiento)) && fechaFinLicencia(lic.vencimiento) >= ahora &&
+    !(typeof lic.ultimoUso === 'number' && ahora + 5*60*1000 < lic.ultimoUso);
+}
+function actualizarEstadoLicenciaIndex(permitida){
+  const anterior = licenciaFullvActiva;
+  licenciaFullvActiva = !!permitida;
+  if(anterior !== licenciaFullvActiva && typeof renderProducts === 'function'){
+    renderProducts();
+    checkProductLimitOnOpen();
+  }
+}
+async function comprobarLicenciaFullvEnIndex(){
+  if(comprobacionLicenciaEnCurso) return;
+  comprobacionLicenciaEnCurso = true;
+  try {
+    // No usar simplemente una bandera de localStorage: requiere fingerprint concordante.
+    if(!licenciaFullvFingerprint){
+      try {
+        if(typeof FingerprintJS !== 'undefined') licenciaFullvFingerprint =
+          (await (await FingerprintJS.load()).get()).visitorId || '';
+      }catch(e){console.warn('Fingerprint no disponible en index:',e);}
+    }
+    let local = null;
+    try { local = JSON.parse(localStorage.getItem(LICENCIA_FULLV_KEY) || 'null'); }catch(e){}
+    if(local && licenciaFullvFingerprint && local.id !== licenciaFullvFingerprint){
+      localStorage.removeItem(LICENCIA_FULLV_KEY);
+      local = null;
+    }
+    let autorizados = null;
+    const controlador = new AbortController();
+    const tiempo = setTimeout(() => controlador.abort(), 6500);
+    try {
+      const r = await fetch('autorizados.json?v='+Date.now(),
+        {cache:'no-store',credentials:'same-origin',signal:controlador.signal});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const datos = await r.json();
+      if(!datos || !Array.isArray(datos.autorizados)) throw new Error('JSON de licencias inválido');
+      autorizados = datos.autorizados;
+    }catch(e){console.warn('No se pudo consultar autorizados.json desde index:',e.message);}
+    finally {clearTimeout(tiempo);}
+    if(autorizados !== null){
+      const entrada = licenciaFullvFingerprint && autorizados.find(a => a && a.id === licenciaFullvFingerprint);
+      const valida = !!entrada && entrada.revocado !== true && entrada.activo !== false &&
+        Number.isFinite(fechaFinLicencia(entrada.vencimiento)) && fechaFinLicencia(entrada.vencimiento) >= Date.now();
+      if(valida){
+        try{localStorage.setItem(LICENCIA_FULLV_KEY,JSON.stringify({version:2,id:entrada.id,
+          user:entrada.user||'admin',vencimiento:entrada.vencimiento,
+          ultimoUso:Math.max(Date.now(),local?.ultimoUso||0),ultimaRevisionOnline:Date.now()}));}catch(e){}
+      }else{
+        try{localStorage.removeItem(LICENCIA_FULLV_KEY);}catch(e){}
+      }
+      actualizarEstadoLicenciaIndex(valida);
+    }else{
+      // Sin red, solo una autorización previamente registrada, vigente y del MISMO fingerprint.
+      const valida = licenciaLocalVigente(local,licenciaFullvFingerprint);
+      if(valida){
+        try{localStorage.setItem(LICENCIA_FULLV_KEY,JSON.stringify({...local,
+          ultimoUso:Math.max(Date.now(),local.ultimoUso||0)}));}catch(e){}
+      }
+      actualizarEstadoLicenciaIndex(valida);
+    }
+  }finally{comprobacionLicenciaEnCurso = false;}
+}
+// La revocación online se refleja aun sin entrar a fullv.
+setInterval(() => {comprobarLicenciaFullvEnIndex().catch(console.warn);},15*60*1000);
+window.addEventListener('online',()=>comprobarLicenciaFullvEnIndex().catch(console.warn));
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden) comprobarLicenciaFullvEnIndex().catch(console.warn);
+});
+window.addEventListener('storage',e=>{
+  if(e.key === LICENCIA_FULLV_KEY) comprobarLicenciaFullvEnIndex().catch(console.warn);
+});
+
 const MANUAL_MAX_PER_SALE = 5;
 
 /* DEFAULT PRODUCTS */
@@ -1087,7 +1175,7 @@ function renderProducts(){
   productsList.innerHTML = '';
   productos.forEach((p, idx) => {
     const div = document.createElement('div'); div.className='product-item';
-    const adminBtns = idx < MAX_PRODUCTS
+    const adminBtns = idx < limiteProductosActual()
       ? `<button data-idx="${idx}" class="btn btn-outline btn-small btn-edit" title="Editar producto">✏️</button>`
       : `<span class="small" title="Producto de consulta y venta; edición exclusiva en versión completa">Solo consulta</span>`;
     div.innerHTML = `<div><div style="font-weight:700">${escapeHtml(String(p.codigo))} — ${escapeHtml(p.nombre)}</div><div class="small">${esGranel(p)?'A granel · Precio/kg: '+formatMXN(p.precio):'Por pieza · Precio: '+formatMXN(p.precio)}</div></div>
@@ -1107,7 +1195,7 @@ function renderProducts(){
 
   document.querySelectorAll('.btn-edit').forEach(b=> b.addEventListener('click', e=> {
     const i = Number(e.currentTarget.getAttribute('data-idx'));
-    if(!Number.isInteger(i) || i < 0 || i >= MAX_PRODUCTS || !productos[i]){
+    if(!Number.isInteger(i) || i < 0 || i >= limiteProductosActual() || !productos[i]){
       alert('Desde esta versión solo se pueden editar los primeros 50 artículos.');
       return;
     }
@@ -1131,8 +1219,8 @@ function checkProductLimitOnOpen(){
   productsWarningArea.innerHTML = '';
   const indiceEdicion = Number(prodCodigo.dataset.editIndex);
   const editandoProducto = typeof prodCodigo.dataset.editIndex !== 'undefined' &&
-    Number.isInteger(indiceEdicion) && indiceEdicion >= 0 && indiceEdicion < MAX_PRODUCTS && !!productos[indiceEdicion];
-  if(productos.length >= MAX_PRODUCTS && !editandoProducto){
+    Number.isInteger(indiceEdicion) && indiceEdicion >= 0 && indiceEdicion < limiteProductosActual() && !!productos[indiceEdicion];
+  if(productos.length >= limiteProductosActual() && !editandoProducto){
     const div = document.createElement('div');
     div.className = 'notice-limit';
     div.textContent = LIMIT_MESSAGE;
@@ -1164,18 +1252,18 @@ btnAddProd.addEventListener('click', ()=>{
   const nuevo={codigo,nombre,precio,tipoVenta};
   // El tipo y precio se editan en FREE, pero costos/stock se administran exclusivamente en FULLV.
   if(!codigo || !nombre || precio <= 0){ alert('Completa código, nombre y precio válidos'); return; }
-  if(typeof prodCodigo.dataset.editIndex === 'undefined' && productos.length >= MAX_PRODUCTS){
+  if(typeof prodCodigo.dataset.editIndex === 'undefined' && productos.length >= limiteProductosActual()){
     alert(LIMIT_MESSAGE);
     if(btnAddProd) btnAddProd.disabled = true;
     return;
   }
   const editIndex = prodCodigo.dataset.editIndex;
   const editando = typeof editIndex !== 'undefined' ? Number(editIndex) : -1;
-  const granelOcupados = productos.slice(0, MAX_PRODUCTS).reduce((n,p,i)=>n+(i!==editando && p.tipoVenta==='granel'?1:0),0);
-  if(tipoVenta==='granel' && granelOcupados>=3){alert('La versión Free permite administrar como máximo 3 productos a granel dentro de los primeros 50 artículos. Para más productos a granel utiliza Fullv.');return;}
+  const granelOcupados = productos.slice(0, limiteProductosActual()).reduce((n,p,i)=>n+(i!==editando && p.tipoVenta==='granel'?1:0),0);
+  if(!licenciaFullvActiva && tipoVenta==='granel' && granelOcupados>=3){alert('La versión Free permite administrar como máximo 3 productos a granel dentro de los primeros 50 artículos. Para más productos a granel utiliza Fullv.');return;}
   if(typeof editIndex !== 'undefined'){
     const indice = Number(editIndex);
-    if(!Number.isInteger(indice) || indice < 0 || indice >= MAX_PRODUCTS || !productos[indice]){
+    if(!Number.isInteger(indice) || indice < 0 || indice >= limiteProductosActual() || !productos[indice]){
       alert('Solo puedes editar los primeros 50 artículos.');
       delete prodCodigo.dataset.editIndex;
       checkProductLimitOnOpen();
@@ -2227,6 +2315,7 @@ window.addEventListener('load', ()=>{
   showPanel(panelVenta);
   inputBusqueda && inputBusqueda.focus();
   checkProductLimitOnOpen();
+  comprobarLicenciaFullvEnIndex().catch(e=>console.warn('Verificación de licencia:',e));
 });
 btnToggleTheme.addEventListener('click', ()=>{
   // Cicla: light -> dark -> neon -> light
