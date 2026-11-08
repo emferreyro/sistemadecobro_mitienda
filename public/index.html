@@ -668,9 +668,9 @@ body.neon .low-stock{
           <div id="products-warning-area"></div>
           <div id="proteccion-catalogo" style="display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-bottom:5px;flex-wrap:wrap">
             <span id="proteccion-estado" class="small" aria-live="polite" style="font-size:11px"></span>
-            <button id="btnProteccionCatalogo" type="button" class="btn btn-outline btn-small">🔒 Proteger catálogo</button>
-            <button id="btnDesbloquearCatalogo" type="button" class="btn btn-outline btn-small" style="display:none">🔓 Desbloquear</button>
-            <button id="btnBloquearCatalogo" type="button" class="btn btn-outline btn-small" style="display:none">🔒 Bloquear</button>
+            <button id="btnProteccionCatalogo" type="button" class="btn btn-outline btn-small">🔒 BLOQUEAR CATÁLOGO</button>
+            <button id="btnDesbloquearCatalogo" type="button" class="btn btn-outline btn-small" style="display:none">🔓 DESBLOQUEAR CATÁLOGO</button>
+            <button id="btnBloquearCatalogo" type="button" class="btn btn-outline btn-small" style="display:none">🔒 BLOQUEAR CATÁLOGO</button>
             <button id="btnOpcionesCatalogo" type="button" class="btn btn-outline btn-small" style="display:none" title="Cambiar o recuperar clave del catálogo" aria-label="Opciones de protección del catálogo">⚙️</button>
           </div>
           <div class="histHeaderRow">
@@ -1293,7 +1293,7 @@ function renderProducts(){
       return;
     }
     if(!catalogoPuedeEditar()){
-      alert('El catálogo está protegido. Pulsa «Desbloquear» y escribe la contraseña del dueño.');
+      alert('El catálogo está protegido. Pulsa «DESBLOQUEAR CATÁLOGO» y escribe la contraseña del dueño.');
       return;
     }
     const p = productos[i];
@@ -1345,10 +1345,10 @@ function actualizarControlesProteccionCatalogo(){
   const desbloquear=document.getElementById('btnDesbloquearCatalogo');
   const bloquear=document.getElementById('btnBloquearCatalogo');
   const opciones=document.getElementById('btnOpcionesCatalogo');
-  if(estado){estado.textContent=protegida ? (libre?'🔓':'🔒') : '';estado.title=protegida?(libre?'Catálogo protegido; edición temporalmente habilitada':'Catálogo protegido; edición bloqueada'):'Edición libre';}
+  if(estado){estado.textContent='';estado.title=protegida?(libre?'Catálogo protegido; edición temporalmente habilitada':'Catálogo protegido; edición bloqueada'):'Edición libre';}
   if(configurar){configurar.textContent='🔒 BLOQUEAR CATÁLOGO';configurar.style.display=protegida?'none':'inline-flex';}
-  if(desbloquear) desbloquear.style.display=protegida && !libre ? 'inline-flex':'none';
-  if(bloquear) bloquear.style.display=protegida && libre ? 'inline-flex':'none';
+  if(desbloquear){desbloquear.textContent='🔓 DESBLOQUEAR CATÁLOGO';desbloquear.style.display=protegida && !libre ? 'inline-flex':'none';}
+  if(bloquear){bloquear.textContent='🔒 BLOQUEAR CATÁLOGO';bloquear.style.display=protegida && libre ? 'inline-flex':'none';}
   if(opciones) opciones.style.display=protegida?'inline-flex':'none';
 }
 function generarClaveCatalogo(clave){
@@ -1397,7 +1397,7 @@ function abrirModalClaveCatalogo(modo){
       if(clave.trim().length<4){alert('La clave debe tener al menos 4 caracteres.');nueva.focus();return;}
       if(clave!==confirmacion.value){alert('Las claves no coinciden.');confirmacion.focus();return;}
       await guardarNuevaClaveCatalogo(clave);modal.remove();
-      alert(modo==='crear'?'Catálogo protegido. Para editar usa «Desbloquear».':'Clave del catálogo actualizada.');
+      alert(modo==='crear'?'Catálogo protegido. Para editar usa «DESBLOQUEAR CATÁLOGO».':'Clave del catálogo actualizada.');
     }catch(e){alert('No se pudo actualizar la protección: '+e.message);}
     finally{guardar.disabled=false;actualizarControlesProteccionCatalogo();}
   };
