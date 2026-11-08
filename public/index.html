@@ -666,14 +666,15 @@ body.neon .low-stock{
         <!-- PRODUCTOS -->
         <div id="panel-productos" class="panel" style="display:none">
           <div id="products-warning-area"></div>
-          <div id="proteccion-catalogo" style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:9px 11px;margin-bottom:12px;border:1px solid #a9a9a9;border-radius:10px">
-            <span id="proteccion-estado" class="small" style="flex:1;min-width:180px" aria-live="polite">Catálogo: edición libre</span>
+          <div id="proteccion-catalogo" style="display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-bottom:5px;flex-wrap:wrap">
+            <span id="proteccion-estado" class="small" aria-live="polite" style="font-size:11px"></span>
             <button id="btnProteccionCatalogo" type="button" class="btn btn-outline btn-small">🔒 Proteger catálogo</button>
-            <button id="btnDesbloquearCatalogo" type="button" class="btn btn-outline btn-small" style="display:none">🔑 Desbloquear</button>
+            <button id="btnDesbloquearCatalogo" type="button" class="btn btn-outline btn-small" style="display:none">🔓 Desbloquear</button>
             <button id="btnBloquearCatalogo" type="button" class="btn btn-outline btn-small" style="display:none">🔒 Bloquear</button>
+            <button id="btnOpcionesCatalogo" type="button" class="btn btn-outline btn-small" style="display:none" title="Cambiar o recuperar clave del catálogo" aria-label="Opciones de protección del catálogo">⚙️</button>
           </div>
           <div class="histHeaderRow">
-            <div><strong>Productos</strong><div class="small">Registra y edita artículos; si lo deseas, protege el catálogo con una contraseña propia.</div></div>
+            <div><strong>Productos</strong><div class="small">Agregar o editar productos</div></div>
             <div id="adminControls" style="display:none"></div>
           </div>
 
@@ -1343,43 +1344,78 @@ function actualizarControlesProteccionCatalogo(){
   const configurar=document.getElementById('btnProteccionCatalogo');
   const desbloquear=document.getElementById('btnDesbloquearCatalogo');
   const bloquear=document.getElementById('btnBloquearCatalogo');
-  if(estado) estado.textContent=!protegida ? '🔓 Catálogo con edición libre (ideal para pruebas)' : libre ? '🔓 Catálogo protegido: edición habilitada en esta pestaña' : '🔒 Catálogo protegido: solo consulta y ventas';
-  if(configurar) configurar.textContent=protegida ? '⚙️ Quitar protección' : '🔒 Proteger catálogo';
+  const opciones=document.getElementById('btnOpcionesCatalogo');
+  if(estado){estado.textContent=protegida ? (libre?'🔓':'🔒') : '';estado.title=protegida?(libre?'Catálogo protegido; edición temporalmente habilitada':'Catálogo protegido; edición bloqueada'):'Edición libre';}
+  if(configurar){configurar.textContent='🔒 Proteger catálogo';configurar.style.display=protegida?'none':'inline-flex';}
   if(desbloquear) desbloquear.style.display=protegida && !libre ? 'inline-flex':'none';
   if(bloquear) bloquear.style.display=protegida && libre ? 'inline-flex':'none';
+  if(opciones) opciones.style.display=protegida?'inline-flex':'none';
 }
-document.getElementById('btnProteccionCatalogo').addEventListener('click',async()=>{
-  const boton=document.getElementById('btnProteccionCatalogo');
-  if(boton.disabled)return;
-  boton.disabled=true;
-  try{
-    if(!catalogoProtegido()){
-      const clave=prompt('Crear contraseña para proteger el catálogo (mínimo 4 caracteres). Guárdala: se necesitará para editar precios y productos.');
-      if(clave===null)return;
-      if(clave.trim().length<4){alert('La contraseña debe tener al menos 4 caracteres.');return;}
-      const confirmacion=prompt('Repite la contraseña de protección del catálogo:');
-      if(confirmacion===null)return;
-      if(clave!==confirmacion){alert('Las contraseñas no coinciden.');return;}
-      if(!window.crypto || !crypto.getRandomValues)throw new Error('Navegador no compatible con protección de contraseñas.');
-      const sal=hexDeBytes(crypto.getRandomValues(new Uint8Array(16)));
-      const hash=await hashClaveCatalogo(clave,sal);
-      // Protección activa inmediatamente: el dueño puede desbloquear con su nueva clave.
-      localStorage.setItem(KEY_PROTECCION_CATALOGO,JSON.stringify({version:1,sal,hash}));
-      catalogoDesbloqueado=false;
-      limpiarFormularioProducto();
-      alert('Catálogo protegido. Las ventas siguen funcionando; para editar, usa «Desbloquear».');
-    }else{
-      const clave=prompt('Contraseña del catálogo para QUITAR la protección:');
-      if(clave===null)return;
-      if(!await verificarClaveCatalogo(clave)){alert('Contraseña incorrecta. No se cambió la protección.');return;}
-      if(!confirm('¿Quitar protección y permitir edición libre a cualquier usuario de esta computadora?'))return;
-      localStorage.removeItem(KEY_PROTECCION_CATALOGO);
-      catalogoDesbloqueado=false;
-      alert('Protección desactivada. El catálogo vuelve a edición libre.');
-    }
-    renderProducts();checkProductLimitOnOpen();
-  }catch(e){alert('No se pudo cambiar la protección: '+e.message);}
-  finally{boton.disabled=false;actualizarControlesProteccionCatalogo();}
+function generarClaveCatalogo(clave){
+  if(!window.crypto || !crypto.getRandomValues) throw new Error('Navegador no compatible con protección de contraseñas.');
+  return hexDeBytes(crypto.getRandomValues(new Uint8Array(16)));
+}
+async function guardarNuevaClaveCatalogo(clave){
+  const sal=generarClaveCatalogo(clave);
+  const hash=await hashClaveCatalogo(clave,sal);
+  localStorage.setItem(KEY_PROTECCION_CATALOGO,JSON.stringify({version:1,sal,hash}));
+  catalogoDesbloqueado=false;
+  limpiarFormularioProducto();renderProducts();checkProductLimitOnOpen();
+}
+function abrirModalClaveCatalogo(modo){
+  if(document.getElementById('modal-clave-catalogo'))return;
+  const titulos={crear:'Proteger catálogo',cambiar:'Cambiar clave',recuperar:'Recuperar clave',quitar:'Quitar protección'};
+  const modal=document.createElement('div');modal.id='modal-clave-catalogo';modal.className='modal';
+  const box=document.createElement('div');box.className='modal-box';box.style.cssText='max-width:380px;box-sizing:border-box';
+  const titulo=document.createElement('strong');titulo.textContent=titulos[modo];box.appendChild(titulo);
+  const aviso=document.createElement('p');aviso.className='small';
+  aviso.textContent=modo==='recuperar'?'Usa el código de soporte, como en la recuperación de Caja.':modo==='crear'?'Crea tu clave para restringir cambios de productos y precios.':modo==='quitar'?'Se permitirá la edición libre de productos.':'Introduce tu clave actual para cambiarla.';
+  box.appendChild(aviso);
+  function campo(etiqueta){const label=document.createElement('label');label.textContent=etiqueta;const inp=document.createElement('input');inp.type='password';inp.autocomplete='off';inp.style.cssText='display:block;width:100%;box-sizing:border-box;margin:5px 0 10px';label.appendChild(inp);box.appendChild(label);return inp;}
+  const anterior=modo==='crear'?null:campo(modo==='recuperar'?'Código de soporte':'Clave actual');
+  const nueva=modo==='quitar'?null:campo('Nueva clave (mínimo 4 caracteres)');
+  const confirmacion=modo==='quitar'?null:campo('Confirmar nueva clave');
+  const actions=document.createElement('div');actions.style.cssText='display:flex;justify-content:flex-end;gap:6px;margin-top:12px';
+  const cancelar=document.createElement('button');cancelar.className='btn btn-outline btn-small';cancelar.textContent='Cancelar';
+  const guardar=document.createElement('button');guardar.className='btn btn-amarillo btn-small';guardar.textContent=modo==='quitar'?'Quitar protección':'Guardar';
+  actions.append(cancelar,guardar);box.appendChild(actions);modal.appendChild(box);document.body.appendChild(modal);
+  cancelar.onclick=()=>modal.remove();
+  guardar.onclick=async()=>{
+    if(guardar.disabled)return;
+    guardar.disabled=true;
+    try{
+      if(modo!=='crear'){
+        const valido=modo==='recuperar' ? anterior.value.trim()===SUPPORT_MASTER_CODE : await verificarClaveCatalogo(anterior.value);
+        if(!valido){alert(modo==='recuperar'?'Código de soporte incorrecto.':'Clave incorrecta.');anterior.focus();return;}
+      }
+      if(modo==='quitar'){
+        if(!confirm('¿Quitar la protección y permitir la edición libre?'))return;
+        localStorage.removeItem(KEY_PROTECCION_CATALOGO);catalogoDesbloqueado=false;
+        limpiarFormularioProducto();renderProducts();checkProductLimitOnOpen();modal.remove();return;
+      }
+      const clave=nueva.value;
+      if(clave.trim().length<4){alert('La clave debe tener al menos 4 caracteres.');nueva.focus();return;}
+      if(clave!==confirmacion.value){alert('Las claves no coinciden.');confirmacion.focus();return;}
+      await guardarNuevaClaveCatalogo(clave);modal.remove();
+      alert(modo==='crear'?'Catálogo protegido. Para editar usa «Desbloquear».':'Clave del catálogo actualizada.');
+    }catch(e){alert('No se pudo actualizar la protección: '+e.message);}
+    finally{guardar.disabled=false;actualizarControlesProteccionCatalogo();}
+  };
+  (anterior||nueva).focus();
+}
+document.getElementById('btnProteccionCatalogo').addEventListener('click',()=>abrirModalClaveCatalogo('crear'));
+document.getElementById('btnOpcionesCatalogo').addEventListener('click',()=>{
+  if(document.getElementById('catalogo-opciones')){document.getElementById('catalogo-opciones').remove();return;}
+  const boton=document.getElementById('btnOpcionesCatalogo');
+  const menu=document.createElement('div');menu.id='catalogo-opciones';
+  menu.style.cssText='position:absolute;right:12px;top:100%;z-index:1500;background:var(--blanco);color:var(--texto);border:1px solid #aaa;border-radius:9px;padding:5px;box-shadow:0 6px 16px #0003;display:flex;flex-direction:column;gap:3px;min-width:160px';
+  [['Cambiar clave','cambiar'],['Recuperar clave','recuperar'],['Quitar protección','quitar']].forEach(([nombre,modo])=>{
+    const b=document.createElement('button');b.className='btn btn-outline btn-small';b.textContent=nombre;b.style.textAlign='left';
+    b.onclick=()=>{menu.remove();abrirModalClaveCatalogo(modo);};menu.appendChild(b);
+  });
+  const panel=document.getElementById('proteccion-catalogo');panel.style.position='relative';panel.appendChild(menu);
+  const close=e=>{if(!panel.contains(e.target)){menu.remove();document.removeEventListener('pointerdown',close);}};
+  setTimeout(()=>document.addEventListener('pointerdown',close),0);
 });
 document.getElementById('btnDesbloquearCatalogo').addEventListener('click',async()=>{
   const boton=document.getElementById('btnDesbloquearCatalogo');
