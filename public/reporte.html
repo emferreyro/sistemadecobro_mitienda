@@ -371,45 +371,18 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
 
   <section class="card">
     <div class="summary-grid" aria-label="Resumen general del reporte">
-      <div class="summary-mini">
-        <div class="summary-mini-label">Ventas acumuladas</div>
-        <div class="summary-mini-value" id="kSales">—</div>
-      </div>
-      <div class="summary-mini">
-        <div class="summary-mini-label">Operaciones acumuladas</div>
-        <div class="summary-mini-value" id="kTx">—</div>
-      </div>
-      <div class="summary-mini">
-        <div class="summary-mini-label">Cobros en efectivo</div>
-        <div class="summary-mini-value" id="kCash">—</div>
-      </div>
-      <div class="summary-mini">
-        <div class="summary-mini-label">Cobros con tarjeta</div>
-        <div class="summary-mini-value" id="kCard">—</div>
-      </div>
-      <div class="summary-mini">
-        <div class="summary-mini-label">Utilidad estimada</div>
-        <div class="summary-mini-value" id="kProfit">—</div>
-      </div>
-      <div class="summary-mini">
-        <div class="summary-mini-label">Registros sin código o a granel</div>
-        <div class="summary-mini-value" id="kMPieces">—</div>
-      </div>
-      <div class="summary-mini">
-        <div class="summary-mini-label">Ventas sin código o a granel</div>
-        <div class="summary-mini-value" id="kMAmount">—</div>
-      </div>
-      <div class="summary-mini"><div class="summary-mini-label">Ventas por pieza</div><div class="summary-mini-value" id="kPieceAmount">—</div></div>
-      <div class="summary-mini"><div class="summary-mini-label">Ventas a granel</div><div class="summary-mini-value" id="kBulkAmount">—</div></div>
-      <div class="summary-mini"><div class="summary-mini-label">Cantidad a granel</div><div class="summary-mini-value" id="kBulkKg">—</div></div>
-      <div class="summary-mini">
-        <div class="summary-mini-label">Artículo de mayor venta ($)</div>
-        <div class="summary-mini-value" id="kTop">—</div>
-      </div>
-      <div class="summary-mini">
-        <div class="summary-mini-label">Artículo de menor venta ($)</div>
-        <div class="summary-mini-value" id="kLow">—</div>
-      </div>
+      <div class="summary-mini"><div class="summary-mini-label">Operaciones acumuladas</div><div class="summary-mini-value" id="kTx">—</div></div>
+      <div class="summary-mini"><div class="summary-mini-label">Total de ventas acumuladas</div><div class="summary-mini-value" id="kSales">—</div></div>
+      <div class="summary-mini"><div class="summary-mini-label">Utilidad estimada</div><div class="summary-mini-value" id="kProfit">—</div></div>
+      <div class="summary-mini"><div class="summary-mini-label">Cobros con tarjeta</div><div class="summary-mini-value" id="kCard">—</div></div>
+      <div class="summary-mini"><div class="summary-mini-label">Cobros en efectivo</div><div class="summary-mini-value" id="kCash">—</div></div>
+      <div class="summary-mini"><div class="summary-mini-label">Cobros con vales</div><div class="summary-mini-value" id="kVouchers">—</div></div>
+      <div class="summary-mini"><div class="summary-mini-label">Registros sin códigos</div><div class="summary-mini-value" id="kMPieces">—</div></div>
+      <div class="summary-mini"><div class="summary-mini-label">Total de ventas sin código</div><div class="summary-mini-value" id="kMAmount">—</div></div>
+      <div class="summary-mini"><div class="summary-mini-label">Registros de ventas a granel</div><div class="summary-mini-value" id="kBulkRecords">—</div></div>
+      <div class="summary-mini"><div class="summary-mini-label">Total de ventas a granel</div><div class="summary-mini-value" id="kBulkAmount">—</div></div>
+      <div class="summary-mini"><div class="summary-mini-label">Artículo más vendido</div><div class="summary-mini-value" id="kTop">—</div></div>
+      <div class="summary-mini"><div class="summary-mini-label">Artículo menos vendido</div><div class="summary-mini-value" id="kLow">—</div></div>
     </div>
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
@@ -540,6 +513,13 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     if(!isFinite(n)) return "—";
     return n.toLocaleString("es-MX",{style:"currency",currency:"MXN"});
   }
+  // Formatos recientes: Efectivo, Tarjeta, Vales. Compatibilidad con CSV antiguos.
+  function normalizarMetodoPago(valor){
+    const v = stripAccents(String(valor ?? '')).replace(/\s+/g,' ').trim();
+    if(v==='tarjeta' || v==='credito' || v==='debito') return 'Tarjeta';
+    if(v==='vales' || v==='vale') return 'Vales';
+    return 'Efectivo';
+  }
   function safeNum(x){
     const n = Number(String(x ?? "").replace(/,/g,"").trim());
     return isFinite(n) ? n : 0;
@@ -630,13 +610,14 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     $("kSales").textContent = "—";
     $("kCash").textContent = "—";
     $("kCard").textContent = "—";
+    $("kVouchers").textContent = "—";
     $("kProfit").textContent = "—";
     $("kTx").textContent = "—";
     $("kTop").textContent = "—";
     $("kLow").textContent = "—";
     $("kMPieces").textContent = "—";
     $("kMAmount").textContent = "—";
-    for(const id of ["kPieceAmount","kBulkAmount","kBulkKg"]) $(id).textContent="—";
+    for(const id of ["kBulkRecords","kBulkAmount"]) $(id).textContent="—";
     $("scope").textContent = "—";
     $("profitScope").textContent = "—";
   }
@@ -850,7 +831,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     const matches=(val,filter)=>!filter || (filter==='__sin_clasificar__'?!val:String(val||'')===filter);
 
     const filtered = [];
-    const M_TOTAL = { pieces: 0, amount: 0, records: 0 };
+    const M_TOTAL = { amount: 0, records: 0 };
 
     for(const rawRow of RAW){
       const r=getRowClassifications(rawRow);
@@ -862,10 +843,15 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
       if(!matches(r.marca,marcaFilter)||!matches(r.grupo,grupoFilter))continue;
       if(tipoFilter && (tipoFilter==='sin-clasificar' ? !!r.tipoVenta : r.tipoVenta!==tipoFilter))continue;
 
-      if(r.codigo && String(r.codigo).startsWith("M-")){
-        M_TOTAL.pieces += r.cant;
+      // Los movimientos M- se tratan como ventas sin código de barras;
+      // también se consideran registros sin código los que vienen con código vacío.
+      // A granel se contabiliza de manera independiente por su tipo de venta.
+      const codigo = String(r.codigo ?? '').trim();
+      if(!codigo || codigo.startsWith('M-')){
         M_TOTAL.amount += r.subtotal;
         M_TOTAL.records += 1;
+      }
+      if(codigo.startsWith('M-')){
         filtered.push({...r, dt:d, label:r.nombre, key:"M-"});
         continue;
       }
@@ -966,13 +952,17 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
     const totalSales = filtered.reduce((s,r)=>s+r.subtotal,0);
     REPORT_SALES_TOTAL = totalSales;
     $("kSales").textContent = money(totalSales);
-    const cash=filtered.reduce((sum,r)=>sum+(r.metodoPago==='Tarjeta'?0:r.subtotal),0);
-    const card=filtered.reduce((sum,r)=>sum+(r.metodoPago==='Tarjeta'?r.subtotal:0),0);
-    $('kPieceAmount').textContent=money(filtered.filter(r=>r.tipoVenta==='pieza').reduce((s,r)=>s+r.subtotal,0));
-    $('kBulkAmount').textContent=money(filtered.filter(r=>r.tipoVenta==='granel').reduce((s,r)=>s+r.subtotal,0));
-    $('kBulkKg').textContent=fmtNum(filtered.filter(r=>r.tipoVenta==='granel').reduce((s,r)=>s+r.cant,0))+' kg';
-    $("kCash").textContent = money(cash);
-    $("kCard").textContent = money(card);
+    const cobros = {Efectivo:0, Tarjeta:0, Vales:0};
+    for(const r of filtered){
+      const metodo = normalizarMetodoPago(r.metodoPago);
+      cobros[metodo] += r.subtotal;
+    }
+    const granel = filtered.filter(r=>r.tipoVenta==='granel');
+    $('kBulkRecords').textContent=granel.length.toLocaleString('es-MX');
+    $('kBulkAmount').textContent=money(granel.reduce((s,r)=>s+r.subtotal,0));
+    $("kCash").textContent = money(cobros.Efectivo);
+    $("kCard").textContent = money(cobros.Tarjeta);
+    $("kVouchers").textContent = money(cobros.Vales);
     $("kProfit").textContent = money(PROFIT_TOTAL);
     $("kTx").textContent = TX.length.toLocaleString("es-MX");
     const byAmount=ITEMS.slice().sort((a,b)=>b.amount-a.amount);
@@ -1030,7 +1020,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
           fechaRaw,
           fechaISO,
           total,
-          metodoPago: v.metodoPago === "Tarjeta" ? "Tarjeta" : "Efectivo",
+          metodoPago: normalizarMetodoPago(v.metodoPago),
           codigo: (it.codigo ?? "").toString().trim(),
           nombre: (it.nombre ?? "").toString().trim(),
           cant: safeNum(it.cantidad),
@@ -1122,7 +1112,7 @@ body.neon .ventas-chart .bar-fill{background:#34ff6a}
           tipoVenta:idx['Tipo de venta']===undefined?'':(String(r[idx['Tipo de venta']]||'').toLowerCase().trim()==='granel'?'granel':'pieza'),
           unidad:idx['Unidad']===undefined?'':String(r[idx['Unidad']]||'').trim(),
           costoUnitario:idx['Costo unitario']===undefined||String(r[idx['Costo unitario']]??'').trim()===''?null:safeNum(r[idx['Costo unitario']]),
-          metodoPago:idx["Método de pago"]!==undefined && String(r[idx["Método de pago"]]||"").trim().toLowerCase()==="tarjeta" ? "Tarjeta" : "Efectivo",
+          metodoPago:normalizarMetodoPago(idx["Método de pago"]===undefined ? "" : r[idx["Método de pago"]]),
           dt:null,fechaISO:null
         }));
         CSV_FILES.push({name:file.name,key,rows:parsed}); added++;
