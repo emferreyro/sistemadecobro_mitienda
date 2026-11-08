@@ -640,6 +640,7 @@ body.neon .low-stock{
                       <select id="metodoPago" style="padding:10px 12px;border:1px solid #e6e7ea;border-radius:10px;font-size:15px;min-height:42px">
                         <option value="Efectivo">Efectivo</option>
                         <option value="Tarjeta">Tarjeta</option>
+<option value="Vales">Vales de despensa</option>
                       </select>
                     </div>
                     <div class="pay-field">
@@ -696,7 +697,7 @@ body.neon .low-stock{
           <div class="histHeaderRow">
             <div class="histLeft">
               <strong>Historial de ventas</strong>
-              <div class="small">Ventas guardadas localmente</div>
+              <div class="small">Acumulado de ventas:</div>
               <div class="small" style="margin-top:4px">
                 Hoy: <strong id="historialHoy">$0.00</strong> · 
                 Mes: <strong id="historialMes">$0.00</strong> · 
@@ -713,6 +714,12 @@ body.neon .low-stock{
               </div>
               <div class="cashFooter">Efectivo esperado en caja: <strong id="cashExpectedClose">$0.00</strong></div>
             </div>
+<div class="cobros-hoy-panel" style="margin-top:12px;border:1px solid rgba(128,128,128,.28);border-radius:12px;padding:11px 14px;min-width:240px">
+  <div style="font-weight:800;margin-bottom:7px">Resumen de cobros hoy</div>
+  <div style="display:flex;justify-content:space-between;gap:15px;margin:5px 0">Efectivo $ <strong id="cobrosHoyEfectivo">$0.00</strong></div>
+  <div style="display:flex;justify-content:space-between;gap:15px;margin:5px 0">Tarjeta $ <strong id="cobrosHoyTarjeta">$0.00</strong></div>
+  <div style="display:flex;justify-content:space-between;gap:15px;margin:5px 0">Vales $ <strong id="cobrosHoyVales">$0.00</strong></div>
+</div>
             <div id="adminHistControls" style="display:none">
               <button id="btnExportCSV" class="btn btn-outline">Reporte Ventas</button>
             </div>
@@ -1135,6 +1142,22 @@ function setCashStartForToday(amount){
   }catch(e){}
 }
 
+/* Resumen diario por método; los registros antiguos sin método son efectivo. */
+function actualizarCobrosHoy(){
+  const hoy=new Date();
+  const importes={Efectivo:0,Tarjeta:0,Vales:0};
+  historial.forEach(v=>{
+    const fecha=parseVentaDate(v);
+    if(!fecha || fecha.getFullYear()!==hoy.getFullYear() || fecha.getMonth()!==hoy.getMonth() || fecha.getDate()!==hoy.getDate()) return;
+    const metodo=v.metodoPago==='Tarjeta'?'Tarjeta':(v.metodoPago==='Vales'||v.metodoPago==='Vale'?'Vales':'Efectivo');
+    importes[metodo]+=Number(v.total)||0;
+  });
+  for(const [metodo,id] of [['Efectivo','cobrosHoyEfectivo'],['Tarjeta','cobrosHoyTarjeta'],['Vales','cobrosHoyVales']]){
+    const el=document.getElementById(id);
+    if(el) el.textContent=formatMXN(importes[metodo]);
+  }
+}
+
 function actualizarCaja(totalHoy){
   const box = document.getElementById('cashBox');
   const input = document.getElementById('cashStartInput');
@@ -1148,7 +1171,7 @@ function actualizarCaja(totalHoy){
     const fecha = parseVentaDate(v);
     const ahora = new Date();
     if(!fecha || fecha.getFullYear()!==ahora.getFullYear() || fecha.getMonth()!==ahora.getMonth() || fecha.getDate()!==ahora.getDate()) return s;
-    return s + (v.metodoPago === 'Tarjeta' ? 0 : (Number(v.total)||0));
+    return s + ((v.metodoPago === 'Tarjeta' || v.metodoPago === 'Vales' || v.metodoPago === 'Vale') ? 0 : (Number(v.total)||0));
   },0);
   const cierre = (Number(inicio)||0) + efectivoHoy + MiTiendaIntegridad.efectivoCerradoHoy(historial);
   closeEl.textContent = formatMXN(cierre);
@@ -1588,11 +1611,11 @@ if(inputBusqueda) inputBusqueda.value='';
 
 /* Payment & Change logic */
 function updatePaymentChange(){
-  const tarjeta = metodoPagoInput.value === 'Tarjeta';
-  pagoInput.disabled = tarjeta;
-  pagoInput.placeholder = tarjeta ? 'Cobro con tarjeta' : '0.00';
-  labelPago.textContent = tarjeta ? 'Importe en tarjeta $' : 'Su pago $';
-  if(tarjeta){
+  const metodoSinCambio = metodoPagoInput.value === 'Tarjeta' || metodoPagoInput.value === 'Vales';
+  pagoInput.disabled = metodoSinCambio;
+  pagoInput.placeholder = metodoPagoInput.value === 'Vales' ? 'Cobro con vales' : (metodoSinCambio ? 'Cobro con tarjeta' : '0.00');
+  labelPago.textContent = metodoPagoInput.value === 'Vales' ? 'Importe en vales $' : (metodoSinCambio ? 'Importe en tarjeta $' : 'Su pago $');
+  if(metodoSinCambio){
     pagoInput.value = currentTotal.toFixed(2);
     cambioLabel.textContent = formatMXN(0);
     cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
@@ -1619,7 +1642,7 @@ pagoInput.addEventListener('input',updatePaymentChange);
 
 btnFinalizar.addEventListener('click', ()=> {
   const metodoPago = metodoPagoInput.value;
-  const pago = metodoPago === 'Tarjeta' ? currentTotal : Math.max(0, Number(pagoInput.value) || 0);
+  const pago = metodoPago !== 'Efectivo' ? currentTotal : Math.max(0, Number(pagoInput.value) || 0);
   if(carrito.length === 0){ alert('El carrito está vacío.'); return; }
   if(metodoPago === 'Efectivo' && pago < currentTotal){
     const faltante = Number((currentTotal - pago).toFixed(2));
@@ -1660,7 +1683,7 @@ btnFinalizar.addEventListener('click', ()=> {
     fecha: now.toLocaleString(), fechaISO: now.toISOString(),
     total: Number(total.toFixed(2)), items:itemsVenta,
     metodoPago: metodoPago, pago:pago,
-    cambio: metodoPago === 'Tarjeta' ? 0 : Number((pago - total).toFixed(2))
+    cambio: metodoPago !== 'Efectivo' ? 0 : Number((pago - total).toFixed(2))
   };
   try{
     MiTiendaIntegridad.guardarVenta({venta,productos:productosNuevos,historial,historyKey:KEY_HISTORY,productsKey:KEY_PRODUCTS,cartKey:KEY_CART});
@@ -1749,7 +1772,7 @@ function renderHistorial(){
       d.innerHTML = `<div><div style="font-weight:700">Venta #${v.id}</div><div class="small">${v.fecha}</div></div>
                      <div style="text-align:right">
                        <div style="font-weight:800;color:var(--rojo)">${formatMXN(v.total)}</div>
-                       <div class="small">${v.metodoPago === 'Tarjeta' ? '💳 Tarjeta' : '💵 Efectivo'}</div>
+                       <div class="small">${v.metodoPago === 'Tarjeta' ? '💳 Tarjeta' : ((v.metodoPago === 'Vales' || v.metodoPago === 'Vale') ? '🎟️ Vales' : '💵 Efectivo')}</div>
                        <details style="margin-top:8px">
                          <summary class="small">Ver detalles</summary>
                          <table style="width:100%;margin-top:8px;border-collapse:collapse">
@@ -1857,6 +1880,7 @@ function actualizarResumenHistorial(){
   elMes.textContent = formatMXN(totalMes);
   elTotal.textContent = formatMXN(totalGeneral);
   actualizarCaja(totalHoy);
+  actualizarCobrosHoy();
 }
 
 
@@ -1947,7 +1971,7 @@ function armarTextoTicket(v){
 
   // TOTALES
   lineas.push(right('TOTAL: ', formatMXN(v.total)));
-  lineas.push('METODO DE PAGO: ' + (v.metodoPago === 'Tarjeta' ? 'TARJETA' : 'EFECTIVO'));
+  lineas.push('METODO DE PAGO: ' + (v.metodoPago === 'Tarjeta' ? 'TARJETA' : ((v.metodoPago === 'Vales' || v.metodoPago === 'Vale') ? 'VALES' : 'EFECTIVO')));
   if(typeof v.pago !== 'undefined'){
     lineas.push(right('PAGO: ', formatMXN(v.pago)));
   }
@@ -2004,8 +2028,8 @@ html,body{margin:0;padding:0;background:#fff;color:#111}
 /* EXPORT CSV */
 async function exportHistorialCSV(){
   if(historial.length === 0){ alert('No hay historial para exportar.'); return; }
-  let rows=[['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal','Tipo de venta','Gramos vendidos','Costo de mercancía']];
-  historial.forEach(v=>{ v.items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre,it.cantidad,it.precio,it.subtotal,esGranel(it)?'granel':'pieza',esGranel(it)?(Number(it.cantidad)*1000):'',''])); });
+  let rows=[['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal','Tipo de venta','Gramos vendidos','Costo de mercancía','Método de pago','Pago recibido','Cambio']];
+  historial.forEach(v=>{ v.items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre,it.cantidad,it.precio,it.subtotal,esGranel(it)?'granel':'pieza',esGranel(it)?(Number(it.cantidad)*1000):'','',v.metodoPago||'Efectivo',v.pago??'',v.cambio??''])); });
   const csv = rows.map(r=> r.map(c=> '"' + String(c).replace(/"/g,'""') + '"').join(',') ).join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const ts = new Date(); const fname = 'Historial_'+ ts.getFullYear() + '-' + String(ts.getMonth()+1).padStart(2,'0') + '-' + String(ts.getDate()).padStart(2,'0') + '_' + String(ts.getHours()).padStart(2,'0') + '-' + String(ts.getMinutes()).padStart(2,'0') + '-' + String(ts.getSeconds()).padStart(2,'0') + '.csv';
