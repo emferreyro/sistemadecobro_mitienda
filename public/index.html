@@ -1022,7 +1022,7 @@ function mostrarEstadoAlmacenamiento(){
     cerrar.onclick=()=>aviso.remove();aviso.append(cerrar);document.body.append(aviso);
   }
   let txt=aviso.querySelector('[data-alerta]');if(!txt){txt=document.createElement('span');txt.dataset.alerta='1';aviso.prepend(txt);}
-  txt.textContent='⚠ MANTENIMIENTO OBLIGATORIO: almacenamiento local cercano a 4 MB. Antes de otra venta, desde Modo Admin utiliza «Guardar y borrar acumulado», confirma el archivo CSV y vuelve a esta pantalla.';
+  txt.textContent='⚠ AVISO PREVENTIVO: este navegador usa aproximadamente '+(info.bytes/1048576).toFixed(2)+' MiB de almacenamiento local (referencia: 4 MiB). Puedes seguir vendiendo mientras el navegador permita guardar. Respalda tus productos y ventas; no borres los datos del sitio sin verificar los respaldos.';
 }
 setInterval(mostrarEstadoAlmacenamiento,60000);
 window.addEventListener('load',mostrarEstadoAlmacenamiento);
