@@ -1,10 +1,10 @@
 {"autorizados":[
-{"id":"c46bb58c9fb656115328dbd55c0fbfd3","user":"admin","vencimiento":"2030-12-31","cliente":"dell latitude"},
-{"id":"a5a5dabc300596dfb6d2efc4067bf9a2","user":"admin","vencimiento":"2026-12-31","cliente":"Tienda Charmin"},
-{"id":"bdc5d2ee3ad742dfd5e0c7fc4c1952bd","user":"admin","vencimiento":"2026-12-31","cliente":"chrome dell","revocado":false},
-{"id":"0698debb1102dbc18effabd22172c8f8","user":"admin","vencimiento":"2026-12-31","cliente":"Probook firefox"},
-{"id":"1dca452af794334c30ad6df8abbf839b","user":"admin","vencimiento":"2026-12-31","cliente":"Pruebas edge","revocado":false},
-{"id":"0e409ddb2d57c98ee16abea6171a5485","user":"admin","vencimiento":"2026-12-31","cliente":"Pruebas chrome","revocado":false},
-{"id":"94e78e317a1450c9d239bb3d8b70ddf7","user":"admin","vencimiento":"2026-12-31","cliente":"Tableta chrome","revocado":false},
-{"id":"df1c38caab54e410f4bab2499b2501c7","user":"admin","vencimiento":"2026-12-31","cliente":"Tableta firefox","revocado":false}
+{"id":"c46bb58c9fb656115328dbd55c0fbfd3","user":"admin","vencimiento":"2027-12-31","cliente":"dell latitude"},
+{"id":"a5a5dabc300596dfb6d2efc4067bf9a2","user":"admin","vencimiento":"2027-12-31","cliente":"Tienda Charmin"},
+{"id":"bdc5d2ee3ad742dfd5e0c7fc4c1952bd","user":"admin","vencimiento":"2027-12-31","cliente":"chrome dell","revocado":false},
+{"id":"0698debb1102dbc18effabd22172c8f8","user":"admin","vencimiento":"2027-12-31","cliente":"Probook firefox"},
+{"id":"1dca452af794334c30ad6df8abbf839b","user":"admin","vencimiento":"2027-12-31","cliente":"Pruebas edge","revocado":false},
+{"id":"0e409ddb2d57c98ee16abea6171a5485","user":"admin","vencimiento":"2027-12-31","cliente":"Pruebas chrome","revocado":false},
+{"id":"94e78e317a1450c9d239bb3d8b70ddf7","user":"admin","vencimiento":"2027-12-31","cliente":"Tableta chrome","revocado":false},
+{"id":"df1c38caab54e410f4bab2499b2501c7","user":"admin","vencimiento":"2027-12-31","cliente":"Tableta firefox","revocado":false}
 ]}
