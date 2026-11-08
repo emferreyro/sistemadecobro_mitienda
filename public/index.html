@@ -670,7 +670,7 @@ body.neon .low-stock{
             <span id="proteccion-estado" class="small" aria-live="polite" style="font-size:11px"></span>
             <button id="btnProteccionCatalogo" type="button" class="btn btn-outline btn-small">🔒 Proteger catálogo</button>
             <button id="btnDesbloquearCatalogo" type="button" class="btn btn-outline btn-small" style="display:none">🔓 Desbloquear</button>
-            <button id="btnBloquearCatalogo" type="button" class="btn btn-outline btn-small" style="display:none">🔒 Bloquear catálogo</button>
+            <button id="btnBloquearCatalogo" type="button" class="btn btn-outline btn-small" style="display:none">🔒 Bloquear</button>
             <button id="btnOpcionesCatalogo" type="button" class="btn btn-outline btn-small" style="display:none" title="Cambiar o recuperar clave del catálogo" aria-label="Opciones de protección del catálogo">⚙️</button>
           </div>
           <div class="histHeaderRow">
@@ -1346,7 +1346,7 @@ function actualizarControlesProteccionCatalogo(){
   const bloquear=document.getElementById('btnBloquearCatalogo');
   const opciones=document.getElementById('btnOpcionesCatalogo');
   if(estado){estado.textContent=protegida ? (libre?'🔓':'🔒') : '';estado.title=protegida?(libre?'Catálogo protegido; edición temporalmente habilitada':'Catálogo protegido; edición bloqueada'):'Edición libre';}
-  if(configurar){configurar.textContent='🔒 Proteger catálogo';configurar.style.display=protegida?'none':'inline-flex';}
+  if(configurar){configurar.textContent='🔒 BLOQUEAR CATÁLOGO';configurar.style.display=protegida?'none':'inline-flex';}
   if(desbloquear) desbloquear.style.display=protegida && !libre ? 'inline-flex':'none';
   if(bloquear) bloquear.style.display=protegida && libre ? 'inline-flex':'none';
   if(opciones) opciones.style.display=protegida?'inline-flex':'none';
