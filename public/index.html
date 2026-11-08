@@ -1027,7 +1027,68 @@ function mostrarEstadoAlmacenamiento(){
 setInterval(mostrarEstadoAlmacenamiento,60000);
 window.addEventListener('load',mostrarEstadoAlmacenamiento);
 
+/* Optimización local del logo: no toca productos, ventas, inventarios ni licencias.
+   Conserva el original si la conversión falla o no consigue una imagen más pequeña. */
+const LOGO_MAX_ANCHO = 300;
+const LOGO_MAX_ALTO = 150;
+const LOGO_OBJETIVO_BYTES = 50 * 1024;
+function tamanoEstimadoLogo(dataUrl){return 2 * String(dataUrl || '').length;}
+function cargarImagenLogo(dataUrl){
+  return new Promise((resolve,reject)=>{
+    const imagen = new Image();
+    imagen.onload=()=>resolve(imagen);
+    imagen.onerror=()=>reject(new Error('No fue posible interpretar la imagen del logo.'));
+    imagen.src=dataUrl;
+  });
+}
+async function optimizarLogoDataUrl(original){
+  if(typeof original!=='string' || !original.startsWith('data:image/')) return original;
+  if(tamanoEstimadoLogo(original) <= LOGO_OBJETIVO_BYTES) return original;
+  const img=await cargarImagenLogo(original);
+  if(!img.naturalWidth || !img.naturalHeight) return original;
+  const escala=Math.min(1,LOGO_MAX_ANCHO/img.naturalWidth,LOGO_MAX_ALTO/img.naturalHeight);
+  const baseAncho=Math.max(1,Math.round(img.naturalWidth*escala));
+  const baseAlto=Math.max(1,Math.round(img.naturalHeight*escala));
+  let mejor=original;
+  // WebP y PNG mantienen transparencia. Nunca convertimos el logo a JPG opaco.
+  for(const factor of [1,0.8,0.6,0.45]){
+    const lienzo=document.createElement('canvas');
+    lienzo.width=Math.max(1,Math.round(baseAncho*factor));
+    lienzo.height=Math.max(1,Math.round(baseAlto*factor));
+    const ctx=lienzo.getContext('2d');
+    if(!ctx) break;
+    ctx.clearRect(0,0,lienzo.width,lienzo.height);
+    ctx.imageSmoothingEnabled=true;
+    ctx.imageSmoothingQuality='high';
+    ctx.drawImage(img,0,0,lienzo.width,lienzo.height);
+    for(const formato of ['image/webp','image/png']){
+      const calidades=formato==='image/webp'?[0.85,0.7,0.55]:[1];
+      for(const calidad of calidades){
+        let resultado;
+        try{resultado=lienzo.toDataURL(formato,calidad);}catch(_){continue;}
+        if(!resultado.startsWith('data:'+formato+';')) continue;
+        if(resultado.length < mejor.length) mejor=resultado;
+        if(tamanoEstimadoLogo(mejor)<=LOGO_OBJETIVO_BYTES) return mejor;
+      }
+    }
+  }
+  return mejor;
+}
+function optimizarLogoExistente(original){
+  if(!original || !original.startsWith('data:image/') || tamanoEstimadoLogo(original)<=LOGO_OBJETIVO_BYTES) return;
+  optimizarLogoDataUrl(original).then(resultado=>{
+    // Evita sobrescribir un logo nuevo mientras se procesaba el anterior.
+    if(resultado===original || localStorage.getItem(KEY_LOGO)!==original) return;
+    try{
+      localStorage.setItem(KEY_LOGO,resultado);
+      if(logoImg && logoImg.getAttribute('src')===original) logoImg.src=resultado;
+      console.info('Mi Tienda: logo optimizado de', Math.round(tamanoEstimadoLogo(original)/1024),
+        'a',Math.round(tamanoEstimadoLogo(resultado)/1024),'KiB (estimados).');
+    }catch(error){console.warn('No se pudo guardar el logo optimizado; se conserva el original.',error);}
+  }).catch(error=>console.warn('No se modificó el logo existente.',error));
+}
 function saveLogo(dataUrl){ localStorage.setItem(KEY_LOGO, dataUrl); }
+
 function loadState(){
   MiTiendaIntegridad.recuperar({historyKey:KEY_HISTORY,productsKey:KEY_PRODUCTS,cartKey:KEY_CART});
   const p = localStorage.getItem(KEY_PRODUCTS);
@@ -1035,7 +1096,7 @@ function loadState(){
   carrito = JSON.parse(localStorage.getItem(KEY_CART) || '[]');
   historial = JSON.parse(localStorage.getItem(KEY_HISTORY) || '[]');
   const logo = localStorage.getItem(KEY_LOGO);
-  if(logo){ logoImg.src = logo; } else { logoImg.src = 'imagenes/logo.png'; logoImg.alt = 'Mi Tienda'; }
+  if(logo){ logoImg.src = logo; optimizarLogoExistente(logo); } else { logoImg.src = 'imagenes/logo.png'; logoImg.alt = 'Mi Tienda'; }
 }
 
 
