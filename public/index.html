@@ -640,7 +640,7 @@ body.neon .low-stock{
                       <select id="metodoPago" style="padding:10px 12px;border:1px solid #e6e7ea;border-radius:10px;font-size:15px;min-height:42px">
                         <option value="Efectivo">Efectivo</option>
                         <option value="Tarjeta">Tarjeta</option>
-<option value="Vales">Vales de despensa</option>
+<option value="Vales">Vales</option>
                       </select>
                     </div>
                     <div class="pay-field">
@@ -703,6 +703,10 @@ body.neon .low-stock{
                 Mes: <strong id="historialMes">$0.00</strong> · 
                 Total: <strong id="historialAcumulado">$0.00</strong>
               </div>
+              <div class="small cobros-hoy-panel" style="margin-top:9px;line-height:1.6">
+  <div><strong>Resumen de cobros hoy:</strong></div>
+  <div>Efectivo: <strong id="cobrosHoyEfectivo">$0.00</strong> · Tarjeta: <strong id="cobrosHoyTarjeta">$0.00</strong> · Vales: <strong id="cobrosHoyVales">$0.00</strong></div>
+</div>
             </div>
             <div class="histRight">
               <div id="cashBox" class="cashBox">
@@ -714,12 +718,7 @@ body.neon .low-stock{
               </div>
               <div class="cashFooter">Efectivo esperado en caja: <strong id="cashExpectedClose">$0.00</strong></div>
             </div>
-<div class="cobros-hoy-panel" style="margin-top:12px;border:1px solid rgba(128,128,128,.28);border-radius:12px;padding:11px 14px;min-width:240px">
-  <div style="font-weight:800;margin-bottom:7px">Resumen de cobros hoy</div>
-  <div style="display:flex;justify-content:space-between;gap:15px;margin:5px 0">Efectivo $ <strong id="cobrosHoyEfectivo">$0.00</strong></div>
-  <div style="display:flex;justify-content:space-between;gap:15px;margin:5px 0">Tarjeta $ <strong id="cobrosHoyTarjeta">$0.00</strong></div>
-  <div style="display:flex;justify-content:space-between;gap:15px;margin:5px 0">Vales $ <strong id="cobrosHoyVales">$0.00</strong></div>
-</div>
+
             <div id="adminHistControls" style="display:none">
               <button id="btnExportCSV" class="btn btn-outline">Reporte Ventas</button>
             </div>
