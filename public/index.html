@@ -543,7 +543,7 @@ body.neon .low-stock{
 <header>
   <div class="header-container">
     <div class="header-left">
-      <img src="imagenes/bandera-mx.png" alt="Bandera de México" class="bandera-mx" />
+      <img id="banderaDiagnostico" src="imagenes/bandera-mx.png" alt="Bandera de México" class="bandera-mx" title="" draggable="false" />
       <img id="logoImg" class="logo-img" src="imagenes/logo.png" alt="Mi Tienda" />
       <div>
         <div class="title">Mi Tienda</div>
@@ -1913,7 +1913,37 @@ function imprimirTicket(venta){
 html,body{margin:0;padding:0;background:#fff;color:#111}
 .ticket{box-sizing:border-box;width:80mm;margin:0;padding:3mm;white-space:pre;font:10px/1.3 monospace;text-align:left}
 @media print{html,body{margin:0;padding:0}.ticket{width:80mm}}
-</style></head><body><pre class="ticket">${safe}</pre></body></html>`;
+</style></head><body><pre class="ticket">${safe}</pre>
+<script id="mitienda-acceso-diagnostico">
+/* Acceso técnico: mantener la bandera de México pulsada 3 segundos.
+   Navega en la MISMA ventana para funcionar en kiosco y PWA. */
+(() => {
+  const bandera = document.getElementById('banderaDiagnostico');
+  if (!bandera) return;
+  let temporizador = null, activado = false;
+  const cancelar = () => { if (temporizador !== null) clearTimeout(temporizador); temporizador = null; };
+  const iniciar = (evento) => {
+    if (evento.type === 'mousedown' && evento.button !== 0) return;
+    cancelar(); activado = false;
+    temporizador = setTimeout(() => {
+      temporizador = null; activado = true;
+      // Ruta relativa: conserva origen, perfil y almacenamiento de la instalación.
+      window.location.assign('./mantenimiento.html');
+    }, 3000);
+  };
+  if (window.PointerEvent) {
+    bandera.addEventListener('pointerdown', iniciar);
+    ['pointerup','pointercancel','pointerleave'].forEach(e => bandera.addEventListener(e, cancelar));
+  } else {
+    bandera.addEventListener('mousedown', iniciar);
+    bandera.addEventListener('touchstart', iniciar, {passive:true});
+    ['mouseup','mouseleave','touchend','touchcancel'].forEach(e => bandera.addEventListener(e, cancelar));
+  }
+  bandera.addEventListener('contextmenu', e => e.preventDefault());
+  bandera.addEventListener('dragstart', e => e.preventDefault());
+})();
+</script>
+</body></html>`;
   document.getElementById('mitienda-ticket-preview')?.remove();
   const overlay = document.createElement('div');
   overlay.id = 'mitienda-ticket-preview';
