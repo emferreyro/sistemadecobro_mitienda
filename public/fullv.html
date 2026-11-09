@@ -2,7 +2,29 @@
 <!DOCTYPE html>
 
 <html lang="es">
-<head><script>document.documentElement.classList.add("licencia-pendiente");</script><style>html.licencia-pendiente body{visibility:hidden} html.licencia-rechazada body{visibility:hidden} html.licencia-rechazada #guardFullvAviso{visibility:visible}</style><script src="js/fp.min.js">
+<head><script>document.documentElement.classList.add("licencia-pendiente");</script><style>html.licencia-pendiente body{visibility:hidden} html.licencia-rechazada body{visibility:hidden} html.licencia-rechazada #guardFullvAviso{visibility:visible}
+/* Catálogo compacto y búsqueda independiente del buscador de ventas */
+#panel-productos .catalogo-busqueda{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 8px}
+#panel-productos .catalogo-busqueda input{box-sizing:border-box;flex:1 1 260px;min-width:0;max-width:100%;padding:9px 12px;border-radius:9px}
+#panel-productos .catalogo-resultado{font-size:12px;opacity:.85;white-space:nowrap}
+#panel-productos .catalogo-sin-resultados{padding:12px;opacity:.8;font-size:13px}
+#panel-productos .product-item{gap:10px}
+#panel-productos .product-item>div:first-child{min-width:0;overflow-wrap:anywhere}
+#panel-productos .catalogo-form-principal{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+#panel-productos .catalogo-form-principal #prod-codigo{width:145px;box-sizing:border-box}
+#panel-productos .catalogo-form-principal #prod-nombre{flex:1 1 185px;min-width:140px;box-sizing:border-box}
+#panel-productos .catalogo-form-principal .field-float input{width:92px;box-sizing:border-box}
+#panel-productos .catalogo-form-principal #prod-stock{width:105px!important;box-sizing:border-box}
+#panel-productos .mg-product-fields{display:flex!important;gap:8px!important;align-items:flex-end;flex-wrap:wrap;margin:6px 0 8px!important}
+#panel-productos .mg-product-fields>div{flex:1 1 125px!important;min-width:115px!important;max-width:210px}
+#panel-productos .mg-product-fields select{padding:8px!important;min-height:37px}
+#panel-productos .mg-product-fields label{margin-bottom:3px}
+#panel-productos .catalogo-tipo-celda{flex:0 1 135px!important;min-width:115px!important}
+#panel-productos .catalogo-tipo-celda select{width:100%;box-sizing:border-box;min-height:37px;padding:7px}
+#panel-productos .catalogo-agregar-celda{flex:0 0 auto!important;min-width:0!important}
+#panel-productos .catalogo-agregar-celda button{min-height:37px}
+@media(max-width:650px){#panel-productos .catalogo-form-principal #prod-nombre{flex-basis:200px}#panel-productos .mg-product-fields>div{max-width:none}}
+</style><script src="js/fp.min.js">
 // Inventario progresivo: solo FULLV registra (descuenta) stock; MiTienda solo refleja
 window.INVENTARIO_ACTIVO = true;
 
@@ -629,21 +651,19 @@ body.neon #granel-modal{
 <div><strong>Productos</strong><div class="small">Agregar o editar productos (admin)</div></div>
 <div id="adminControls" style="display:none"></div>
 </div>
-<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
-<div style="display:flex;gap:8px;align-items:center">
+<div class="catalogo-form-principal">
 <input id="prod-codigo" placeholder="Código numérico"/>
-
-</div>
 <input id="prod-nombre" placeholder="Nombre del producto" style="flex:1"/>
 <div style="display:flex; gap:10px; align-items:center"><div class="field-float"><span class="field-label">Costo</span><input id="prod-costo" type="number" step="0.01" placeholder="0.00"/></div><div class="field-float"><span class="field-label">Precio</span><input id="prod-precio" type="number" step="0.01" placeholder="0.00"/></div></div>
 <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6b7280;margin:0 0 0 0;white-space:nowrap"><input id="prod-inventariado" type="checkbox" />Inventario</label>
 <input id="prod-stock" placeholder="Existencias" type="number" step="1" min="0" style="width:120px" />
 </div>
-<div class="mg-product-fields" style="display:flex;gap:12px;flex-wrap:wrap;margin:8px 0">
+<div class="mg-product-fields">
  <div style="flex:1 1 200px;min-width:0"><label for="prod-marca">Marca</label><select id="prod-marca" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px"><option value="">SIN MARCA</option><option value="__nueva__">+ CREAR NUEVA MARCA</option></select><input id="prod-marca-nueva" type="text" placeholder="NUEVA MARCA" autocomplete="off" style="display:none;width:100%;box-sizing:border-box;margin-top:6px;text-transform:uppercase"/></div>
  <div style="flex:1 1 200px;min-width:0"><label for="prod-grupo">Grupo</label><select id="prod-grupo" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px"><option value="">SIN GRUPO</option><option value="__nueva__">+ CREAR NUEVO GRUPO</option></select><input id="prod-grupo-nuevo" type="text" placeholder="NUEVO GRUPO" autocomplete="off" style="display:none;width:100%;box-sizing:border-box;margin-top:6px;text-transform:uppercase"/></div>
+<div class="catalogo-tipo-celda"><label for="prod-tipo">Tipo de venta</label><select id="prod-tipo"><option value="pieza">Por pieza</option><option value="granel">A granel</option></select></div>
+<div class="catalogo-agregar-celda"><button class="btn btn-rojo" id="btn-add-prod">Agregar</button></div>
 </div>
-<div style="margin:8px 0"><label for="prod-tipo">Tipo de venta</label><select id="prod-tipo"><option value="pieza">Por pieza</option><option value="granel">A granel</option></select></div>
 <div id="granel-campos" class="granel-campos">
 <div><label>Existencia (kg)</label><input id="prod-stock-kg" type="number" min="0" step="0.001" placeholder="Ej. 25"/></div>
 <div><label>Costo por kg $</label><input id="prod-costo-kg" type="number" min="0" step="0.0001" placeholder="Ej. 24"/></div>
@@ -651,7 +671,8 @@ body.neon #granel-modal{
 <div><label>Costo del costal $</label><input id="prod-costo-costal" type="number" min="0" step="0.01" placeholder="Opcional"/></div>
 <div class="small" style="width:100%">Precio = precio de venta por kg; costo y utilidad de granel se calculan por kg.</div>
 </div>
-<div style="margin:10px 0 14px"><button class="btn btn-rojo" id="btn-add-prod">Agregar</button></div>
+
+<div class="catalogo-busqueda"><input id="buscar-catalogo" type="search" placeholder="🔎 Buscar artículo por nombre o código" aria-label="Buscar entre artículos registrados" autocomplete="off"/><span id="catalogo-resultado" class="catalogo-resultado" aria-live="polite"></span></div>
 <div class="right-controls" style="margin-bottom:8px">
 <button class="btn btn-amarillo btn-small" id="btn-low-stock" title="Ver artículos con inventario y menos de 5 piezas">⚠ Poco stock</button>
 
@@ -1335,12 +1356,39 @@ for(const [selector,nuevo] of [[prodMarca,prodMarcaNueva],[prodGrupo,prodGrupoNu
   nuevo.addEventListener('input',()=>{const pos=nuevo.selectionStart; nuevo.value=nuevo.value.toLocaleUpperCase('es-MX');try{nuevo.setSelectionRange(pos,pos);}catch(e){}});
 }
 /* PRODUCTS UI */
+/* Filtro visual: nunca altera los índices originales usados por editar/eliminar. */
+function normalizarBusquedaCatalogo(texto){return String(texto??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-MX').trim();}
+function filtrarCatalogoRegistrado(){
+  const campo=document.getElementById('buscar-catalogo');
+  const lista=document.getElementById('products-list');
+  const contador=document.getElementById('catalogo-resultado');
+  if(!campo||!lista)return;
+  const palabras=normalizarBusquedaCatalogo(campo.value).split(/\s+/).filter(Boolean);
+  let visibles=0;
+  Array.from(lista.children).forEach(item=>{
+    if(!item.classList.contains('product-item'))return;
+    const texto=normalizarBusquedaCatalogo(item.dataset.catalogoTexto||'');
+    const coincide=palabras.every(p=>texto.includes(p));
+    item.hidden=!coincide;
+    item.style.display=coincide?'':'none';
+    if(coincide)visibles++;
+  });
+  const vacio=lista.querySelector('.catalogo-sin-resultados');
+  if(vacio)vacio.remove();
+  if(!visibles&&palabras.length){
+    const aviso=document.createElement('div');aviso.className='catalogo-sin-resultados';
+    aviso.textContent='No se encontraron artículos con esa búsqueda.';lista.appendChild(aviso);
+  }
+  if(contador)contador.textContent=palabras.length?`${visibles} de ${productos.length} artículos`:`${productos.length} artículos`;
+}
+
 function renderProducts(){
   productsList.innerHTML = '';
   rightProducts.innerHTML = '';
   actualizarSugerenciasClasificacion();
   productos.forEach((p, idx) => {
     const div = document.createElement('div'); div.className='product-item';
+    div.dataset.catalogoTexto = [p.codigo,p.nombre,p.marca,p.grupo].filter(Boolean).join(' ');
     const adminBtns = isAdmin ? `<button data-idx="${idx}" class="btn btn-outline btn-small btn-edit">✏️</button>
       <button data-idx="${idx}" class="btn btn-outline btn-small btn-del">🗑️</button>` : '';
     div.innerHTML = `<div><div style="font-weight:700">${p.codigo} — ${escapeHtml(p.nombre)}</div>${p.marca||p.grupo?`<div class="small" style="margin:3px 0">${p.marca?'Marca: '+escapeHtml(String(p.marca)): ''}${p.marca&&p.grupo?' · ':''}${p.grupo?'Grupo: '+escapeHtml(String(p.grupo)):''}</div>`:''}<div class="small product-meta"><span><span class="label">${esGranel(p)?"Precio/kg":"Precio"}:</span> <span class="val">${formatMXN(p.precio)}</span></span><span class="spacer"></span><span class="meta-right"><span><span class="label">${esGranel(p)?"Costo/kg":"Costo"}:</span> <span class="val">${formatMXN(esGranel(p)?(Number(p.costoKg)||0):(Number(p.costo)||0))}</span></span><span><span class="label">${esGranel(p)?"Utilidad/kg":"Utilidad"}:</span> <span class="val">${formatMXN((Number(p.precio)||0)-(esGranel(p)?(Number(p.costoKg)||0):(Number(p.costo)||0)))}</span></span></span></div></div>
@@ -1352,6 +1400,7 @@ function renderProducts(){
                      </div>`;
     productsList.appendChild(div);
   });
+  filtrarCatalogoRegistrado();
   actualizarBusquedaRapida();
 
   /* Eventos */
@@ -2238,6 +2287,9 @@ body.dark #lowStockModal .low-stock{
 </head>
 <body>
   <pre class="ticket">${safe}</pre>
+<script>
+document.getElementById('buscar-catalogo')?.addEventListener('input',filtrarCatalogoRegistrado);
+</script>
 </body>
 </html>`;
   })();

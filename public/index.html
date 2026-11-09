@@ -371,6 +371,28 @@ body.neon{
   .cashTitle, .cashFooter{ text-align:left; }
   .cashRow{ justify-content:flex-start; }
 }
+
+/* Catálogo compacto y búsqueda independiente del buscador de ventas */
+#panel-productos .catalogo-busqueda{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 8px}
+#panel-productos .catalogo-busqueda input{box-sizing:border-box;flex:1 1 260px;min-width:0;max-width:100%;padding:9px 12px;border-radius:9px}
+#panel-productos .catalogo-resultado{font-size:12px;opacity:.85;white-space:nowrap}
+#panel-productos .catalogo-sin-resultados{padding:12px;opacity:.8;font-size:13px}
+#panel-productos .product-item{gap:10px}
+#panel-productos .product-item>div:first-child{min-width:0;overflow-wrap:anywhere}
+#panel-productos .catalogo-form-principal{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+#panel-productos .catalogo-form-principal #prod-codigo{width:145px;box-sizing:border-box}
+#panel-productos .catalogo-form-principal #prod-nombre{flex:1 1 185px;min-width:140px;box-sizing:border-box}
+#panel-productos .catalogo-form-principal .field-float input{width:92px;box-sizing:border-box}
+#panel-productos .catalogo-form-principal #prod-stock{width:105px!important;box-sizing:border-box}
+#panel-productos .mg-product-fields{display:flex!important;gap:8px!important;align-items:flex-end;flex-wrap:wrap;margin:6px 0 8px!important}
+#panel-productos .mg-product-fields>div{flex:1 1 125px!important;min-width:115px!important;max-width:210px}
+#panel-productos .mg-product-fields select{padding:8px!important;min-height:37px}
+#panel-productos .mg-product-fields label{margin-bottom:3px}
+#panel-productos .catalogo-tipo-celda{flex:0 1 135px!important;min-width:115px!important}
+#panel-productos .catalogo-tipo-celda select{width:100%;box-sizing:border-box;min-height:37px;padding:7px}
+#panel-productos .catalogo-agregar-celda{flex:0 0 auto!important;min-width:0!important}
+#panel-productos .catalogo-agregar-celda button{min-height:37px}
+@media(max-width:650px){#panel-productos .catalogo-form-principal #prod-nombre{flex-basis:200px}#panel-productos .mg-product-fields>div{max-width:none}}
 </style>
 
 <style id="neon-contrast-fix">
@@ -688,6 +710,7 @@ body.neon .low-stock{
           </div>
 
           <div class="granel-control"><label for="prod-tipo">Tipo de venta</label><select id="prod-tipo"><option value="pieza">Por pieza</option><option value="granel">A granel</option></select><span id="total-productos-registrados" class="total-productos-registrados" aria-live="polite">Artículos registrados: <strong>0</strong></span></div>
+          <div class="catalogo-busqueda"><input id="buscar-catalogo" type="search" placeholder="🔎 Buscar artículo por nombre o código" aria-label="Buscar entre artículos registrados" autocomplete="off"/><span id="catalogo-resultado" class="catalogo-resultado" aria-live="polite"></span></div>
           <div id="granel-campos" class="granel-campos">
 
 
@@ -1259,6 +1282,32 @@ function renderCart(){
 }
 
 /* PRODUCTS UI */
+/* Filtro visual: nunca altera los índices originales usados por editar/eliminar. */
+function normalizarBusquedaCatalogo(texto){return String(texto??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-MX').trim();}
+function filtrarCatalogoRegistrado(){
+  const campo=document.getElementById('buscar-catalogo');
+  const lista=document.getElementById('products-list');
+  const contador=document.getElementById('catalogo-resultado');
+  if(!campo||!lista)return;
+  const palabras=normalizarBusquedaCatalogo(campo.value).split(/\s+/).filter(Boolean);
+  let visibles=0;
+  Array.from(lista.children).forEach(item=>{
+    if(!item.classList.contains('product-item'))return;
+    const texto=normalizarBusquedaCatalogo(item.dataset.catalogoTexto||'');
+    const coincide=palabras.every(p=>texto.includes(p));
+    item.hidden=!coincide;
+    item.style.display=coincide?'':'none';
+    if(coincide)visibles++;
+  });
+  const vacio=lista.querySelector('.catalogo-sin-resultados');
+  if(vacio)vacio.remove();
+  if(!visibles&&palabras.length){
+    const aviso=document.createElement('div');aviso.className='catalogo-sin-resultados';
+    aviso.textContent='No se encontraron artículos con esa búsqueda.';lista.appendChild(aviso);
+  }
+  if(contador)contador.textContent=palabras.length?`${visibles} de ${productos.length} artículos`:`${productos.length} artículos`;
+}
+
 function renderProducts(){
   actualizarControlesProteccionCatalogo();
   const contadorProductos = document.querySelector('#total-productos-registrados strong');
@@ -1266,6 +1315,7 @@ function renderProducts(){
   productsList.innerHTML = '';
   productos.forEach((p, idx) => {
     const div = document.createElement('div'); div.className='product-item';
+    div.dataset.catalogoTexto = [p.codigo,p.nombre,p.marca,p.grupo].filter(Boolean).join(' ');
     const adminBtns = idx < limiteProductosActual()
       ? (catalogoPuedeEditar()
         ? `<button data-idx="${idx}" class="btn btn-outline btn-small btn-edit" title="Editar producto">✏️</button>`
@@ -1280,6 +1330,7 @@ function renderProducts(){
 
   });
 
+  filtrarCatalogoRegistrado();
   renderBusquedaRapida();
   document.querySelectorAll('.btn-add-to-cart').forEach(b=> b.addEventListener('click', e=> { 
     const c = e.currentTarget.getAttribute('data-codigo'); 
@@ -2154,7 +2205,10 @@ function imprimirTicket(venta){
 html,body{margin:0;padding:0;background:#fff;color:#111}
 .ticket{box-sizing:border-box;width:80mm;margin:0;padding:3mm;white-space:pre;font:10px/1.3 monospace;text-align:left}
 @media print{html,body{margin:0;padding:0}.ticket{width:80mm}}
-</style></head><body><pre class="ticket">${safe}</pre></body></html>`;
+</style></head><body><pre class="ticket">${safe}</pre><script>
+document.getElementById('buscar-catalogo')?.addEventListener('input',filtrarCatalogoRegistrado);
+</script>
+</body></html>`;
   document.getElementById('mitienda-ticket-preview')?.remove();
   const overlay = document.createElement('div');
   overlay.id = 'mitienda-ticket-preview';
