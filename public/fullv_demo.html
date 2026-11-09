@@ -1491,6 +1491,9 @@ for(const [selector,nuevo] of [[prodMarca,prodMarcaNueva],[prodGrupo,prodGrupoNu
 /* PRODUCTS UI */
 /* Filtro visual: nunca altera los índices originales usados por editar/eliminar. */
 function normalizarBusquedaCatalogo(texto){return String(texto??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-MX').trim();}
+document.addEventListener('input', function(evento){
+  if(evento.target && evento.target.id === 'buscar-catalogo') filtrarCatalogoRegistrado();
+});
 function filtrarCatalogoRegistrado(){
   const campo=document.getElementById('buscar-catalogo');
   const lista=document.getElementById('products-list');
@@ -2415,9 +2418,6 @@ body.dark #lowStockModal .low-stock{
 </head>
 <body>
   <pre class="ticket">${safe}</pre>
-<script>
-document.getElementById('buscar-catalogo')?.addEventListener('input',filtrarCatalogoRegistrado);
-</script>
 </body>
 </html>`;
   })();
