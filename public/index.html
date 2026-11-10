@@ -2581,12 +2581,14 @@ btnAccesorios && btnAccesorios.addEventListener('click', ()=>{
 
 
 btnVideo && btnVideo.addEventListener('click', ()=>{
-  // Abrir el video en una ventana "flotante" centrada
-  const w = 980, h = 620;
-  const left = Math.max(0, Math.floor((screen.width - w) / 2));
-  const top  = Math.max(0, Math.floor((screen.height - h) / 2));
-  const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=no`;
-  window.open('video.html', 'mitiendaVideo', features);
+  // YouTube en una ventana reducida, independiente del POS y con controles para cerrarla.
+  const w = Math.min(800, screen.availWidth || 800);
+  const h = Math.min(500, screen.availHeight || 500);
+  const left = Math.max(0, Math.floor(((screen.availWidth || screen.width) - w) / 2));
+  const top  = Math.max(0, Math.floor(((screen.availHeight || screen.height) - h) / 2));
+  const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+  const videoWindow = window.open('https://www.youtube.com/watch?v=X1zU6zB7cXM&t=259s', 'mitiendaVideo', features);
+  if(videoWindow) videoWindow.focus();
 });
 
 btnAcerca && btnAcerca.addEventListener('click', ()=>{
