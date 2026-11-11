@@ -5,7 +5,7 @@
 const PENDING='sistemacobro_venta_pendiente_v1';
 const LAST_ID='sistemacobro_ultimo_id_venta_v1';
 const CLOSED='sistemacobro_cash_closed_v1';
-const LIMIT=4*1024*1024; // estimación conservadora en bytes (UTF-16)
+const LIMIT=4*1024*1024; // umbral de aviso, no bloqueo de ventas (estimación UTF-16)
 function tamano(){
   let bytes=0;
   for(let i=0;i<localStorage.length;i++){
@@ -14,7 +14,7 @@ function tamano(){
   }
   return bytes;
 }
-function estado(){return {bytes:tamano(),limite:LIMIT,superado:tamano()>=LIMIT};}
+function estado(){const bytes=tamano();return {bytes,limite:LIMIT,superado:bytes>=LIMIT};}
 function fechaClave(d){const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
 function fechaVenta(v){if(v.fechaISO){const d=new Date(v.fechaISO);if(!Number.isNaN(d.getTime()))return d;}
   const m=String(v.fecha||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
@@ -28,14 +28,11 @@ function siguienteId(historial){
 }
 function guardarVenta({venta,productos,historial,historyKey,productsKey,cartKey}){
  if(localStorage.getItem(PENDING))throw new Error('Hay una venta pendiente de recuperación. Recarga la aplicación antes de cobrar.');
- const bytes=tamano();
- if(bytes>=LIMIT)throw new Error('El almacenamiento llegó al nivel de mantenimiento (4 MB). Guarda y borra el acumulado desde Modo Admin antes de registrar otra venta.');
+ // 4 MiB es un aviso de mantenimiento, NO una cuota real del navegador.
+ // Permitir la venta mientras localStorage acepte las escrituras; si se agota la cuota,
+ // el bloque try/catch inferior evita nuevos cobros y permite recuperar la transacción.
  const histNuevo=JSON.stringify([venta,...historial]);
  const prodNuevo=JSON.stringify(productos);
- const actualH=localStorage.getItem(historyKey)||'[]';
- const actualP=localStorage.getItem(productsKey)||'[]';
- const proyeccion=bytes + 2*((histNuevo.length-actualH.length)+(prodNuevo.length-actualP.length));
- if(proyeccion>=LIMIT)throw new Error('Esta venta superaría el umbral preventivo de 4 MB. Es necesario respaldar y liberar historial antes de cobrar.');
  const cambios=productos.filter(p=>venta.items.some(it=>String(it.codigo)===String(p.codigo)))
   .map(p=>({codigo:p.codigo,stock:p.stock,stockGramos:p.stockGramos}));
  const pendiente={id:venta.id,historyKey,productsKey,cartKey,cambios};
@@ -50,7 +47,7 @@ function guardarVenta({venta,productos,historial,historyKey,productsKey,cartKey}
    localStorage.removeItem(PENDING);
  }catch(e){
    // No reintentar automáticamente el cobro. La recuperación es idempotente tras recargar.
-   throw new Error('Hubo un problema al guardar la venta. No vuelvas a cobrar todavía. Recarga la página para recuperar el estado y revisa el historial. Detalle: '+e.message);
+   throw new Error('Hubo un problema real al guardar la venta (posible cuota de almacenamiento llena). No vuelvas a cobrar todavía. Recarga la página para recuperar el estado y revisa el historial antes de intentar otra venta. Detalle: '+e.message);
  }
 }
 function recuperar({historyKey,productsKey,cartKey}){
