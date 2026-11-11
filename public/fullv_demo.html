@@ -1255,7 +1255,7 @@ function mostrarEstadoAlmacenamiento(){
     cerrar.onclick=()=>aviso.remove();aviso.append(cerrar);document.body.append(aviso);
   }
   let txt=aviso.querySelector('[data-alerta]');if(!txt){txt=document.createElement('span');txt.dataset.alerta='1';aviso.prepend(txt);}
-  txt.textContent='⚠ MANTENIMIENTO OBLIGATORIO: almacenamiento local cercano a 4 MB. Antes de otra venta, desde Modo Admin utiliza «Guardar y borrar acumulado», confirma el archivo CSV y vuelve a esta pantalla.';
+  txt.textContent='⚠ AVISO PREVENTIVO: este navegador usa aproximadamente '+(info.bytes/1048576).toFixed(2)+' MiB de almacenamiento local (referencia: 4 MiB). Puedes seguir vendiendo mientras el navegador permita guardar. Se recomienda respaldar las ventas desde Modo Admin para evitar agotar el espacio disponible.';
 }
 setInterval(mostrarEstadoAlmacenamiento,60000);
 window.addEventListener('load',mostrarEstadoAlmacenamiento);
@@ -1909,7 +1909,7 @@ btnFinalizar.addEventListener('click', ()=> {
   }
   const total = currentTotal;
   for(const it of carrito){const p=productos.find(x=>x.codigo===it.codigo);if(esGranel(it)&&esGranel(p)&&gramosInventario(p)!==null&&Math.round(Number(it.cantidad)*1000)>gramosInventario(p)){alert('No hay existencia suficiente para '+p.nombre);return;}}
-  if(MiTiendaIntegridad.estado().superado){mostrarEstadoAlmacenamiento();alert("Almacenamiento en nivel de mantenimiento. Debes respaldar y liberar el historial antes de cobrar.");return;}
+  // La referencia preventiva de 4 MiB genera un aviso, pero no bloquea el cobro.
   // === Inventario progresivo (fase 1): permitir venta pero generar alertas en historial ===
   const warnings = [];
   const prodIndexByCode = new Map(productos.map((p, i)=> [String(p.codigo), i]));
