@@ -433,6 +433,8 @@ body.neon #products-list .product-item button{
   color: #fff !important;
 }
 
+/* Indicador de poco stock (misma regla de FULLV: menos de 5 piezas). */
+.low-stock{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;background:#fee2e2;color:#b91c1c;font-weight:800;font-size:12px;}
 /* Badges de inventario */
 body.neon .low-stock{
   background: rgba(255,59,77,0.16) !important;
@@ -1324,7 +1326,21 @@ function renderProducts(){
         ? `<button data-idx="${idx}" class="btn btn-outline btn-small btn-edit" title="Editar producto">✏️</button>`
         : `<span class="small" title="Desbloquea el catálogo para editar">🔒</span>`)
       : `<span class="small" title="Producto de consulta y venta; edición exclusiva en versión completa">Solo consulta</span>`;
-    div.innerHTML = `<div><div style="font-weight:700">${escapeHtml(String(p.codigo))} — ${escapeHtml(p.nombre)}</div><div class="small">${esGranel(p)?'A granel · Precio/kg: '+formatMXN(p.precio):'Por pieza · Precio: '+formatMXN(p.precio)}</div></div>
+    // En index, el inventario solo se muestra con licencia FULLV vigente.
+    // Los artículos sin inventario registrado no reciben una existencia ficticia.
+    let detalleInventario = '';
+    if(licenciaFullvActiva){
+      if(esGranel(p)){
+        const gramos = gramosInventario(p);
+        detalleInventario = `<div class="small">⚖️ A granel · ${gramos===null?'Sin inventario registrado':(gramos/1000).toFixed(3)+' kg disponibles'}</div>`;
+      }else if(p.inventariado){
+        const stock = p.stock==null || p.stock==='' ? null : Number(p.stock);
+        const valido = stock!==null && Number.isFinite(stock) && stock>=0;
+        const aviso = valido && stock<5 ? ' <span class="low-stock">⚠ Poco stock</span>' : '';
+        detalleInventario = `<div class="small">📦 Inventario · Stock: ${valido?stock:'—'}${aviso}</div>`;
+      }
+    }
+    div.innerHTML = `<div><div style="font-weight:700">${escapeHtml(String(p.codigo))} — ${escapeHtml(p.nombre)}</div><div class="small">${esGranel(p)?'A granel · Precio/kg: '+formatMXN(p.precio):'Por pieza · Precio: '+formatMXN(p.precio)}</div>${detalleInventario}</div>
                      <div style="display:flex;gap:8px;align-items:center">
                        ${adminBtns}
                        <button data-codigo="${p.codigo}" class="btn btn-rojo btn-add-to-cart">Agregar</button>
