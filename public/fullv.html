@@ -6,7 +6,8 @@
 
 /* Edición múltiple del catálogo (solo FULLV). */
 #panel-productos .bulk-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:5px 0 10px;padding:8px 10px;border:1px solid #d5d7dd;border-radius:10px;background:#222;color:#f5f5f5}
-#panel-productos .bulk-toolbar[hidden],#panel-productos .bulk-check[hidden],#bulk-modal[hidden]{display:none!important}
+#panel-productos .bulk-toolbar[hidden],#bulk-modal[hidden]{display:none!important}
+#panel-productos:not(.bulk-mode-active) .bulk-check{display:none!important}
 #panel-productos .bulk-check{flex:0 0 auto;width:21px;height:21px;cursor:pointer;accent-color:#c62828;margin:0 4px 0 0}
 #panel-productos .product-item.bulk-selected{outline:2px solid #e5b900;outline-offset:-2px}
 #panel-productos .bulk-toolbar .small{margin-right:auto}
@@ -692,7 +693,6 @@ body.neon #granel-modal{
 <div class="small" style="width:100%">Precio = precio de venta por kg; costo y utilidad de granel se calculan por kg.</div>
 </div>
 
-<div class="small" id="bulk-version-label" style="margin:4px 0 8px;color:#e4bb33;font-weight:700;font-size:12px">✓ Edición múltiple de artículos integrada · FULLV 14-11-2026</div>
 <div class="catalogo-busqueda"><input id="buscar-catalogo" type="search" placeholder="🔎 Buscar artículo por nombre o código" aria-label="Buscar entre artículos registrados" autocomplete="off"/><span id="catalogo-resultado" class="catalogo-resultado" aria-live="polite"></span></div>
 <div class="right-controls" style="margin-bottom:8px">
 <button class="btn btn-amarillo btn-small" id="btn-low-stock" title="Ver artículos con inventario y menos de 5 piezas">⚠ Poco stock</button>
@@ -706,6 +706,7 @@ body.neon #granel-modal{
 <button class="btn btn-outline btn-small" id="btnImportProd" title="Restaurar todos los datos del inventario desde un respaldo JSON">📥 Cargar respaldo JSON</button>
 <input accept=".json,application/json" id="inputImportProd" style="display:none" type="file"/>
 </div>
+<div style="margin:5px 0 8px"><button type="button" class="btn btn-outline btn-small" id="bulk-toggle" aria-pressed="false">Cambios múltiples</button></div>
 <div class="bulk-toolbar" id="bulk-toolbar" hidden>
 <label style="display:flex;align-items:center;gap:5px;font-weight:600;font-size:13px"><input id="bulk-select-visible" type="checkbox" style="width:19px;height:19px"/> Seleccionar todos los resultados visibles</label>
 <span id="bulk-count" class="small">0 seleccionados</span>
@@ -1413,6 +1414,17 @@ for(const [selector,nuevo] of [[prodMarca,prodMarcaNueva],[prodGrupo,prodGrupoNu
 const bulkSeleccionados = new Set();
 let bulkPendientes = null;
 const bulkToolbar=document.getElementById('bulk-toolbar');
+const bulkToggle=document.getElementById('bulk-toggle');
+const bulkPanel=document.getElementById('panel-productos');
+let bulkModoActivo=false;
+function bulkCambiarModo(activar){
+  if(activar&&!isAdmin)return;
+  bulkModoActivo=Boolean(activar);
+  bulkSeleccionados.clear();
+  if(!bulkModoActivo)bulkCerrar();
+  bulkActualizaControles();
+}
+bulkToggle.addEventListener('click',()=>bulkCambiarModo(!bulkModoActivo));
 const bulkSelectVisible=document.getElementById('bulk-select-visible');
 const bulkCount=document.getElementById('bulk-count');
 const bulkOpen=document.getElementById('bulk-open');
@@ -1430,10 +1442,15 @@ function bulkActualizaControles(){
   const lista=[...productsList.querySelectorAll('.product-item')];
   const visibles=lista.filter(el=>!el.hidden);
   const seleccionadosVisibles=visibles.filter(el=>bulkSeleccionados.has(el.dataset.bulkCodigo));
-  bulkToolbar.hidden=!isAdmin;
+  if(!isAdmin)bulkModoActivo=false;
+  bulkPanel.classList.toggle('bulk-mode-active',bulkModoActivo&&isAdmin);
+  bulkToggle.hidden=!isAdmin;
+  bulkToggle.textContent=bulkModoActivo?'Salir de cambios múltiples':'Cambios múltiples';
+  bulkToggle.setAttribute('aria-pressed',String(bulkModoActivo&&isAdmin));
+  bulkToolbar.hidden=!isAdmin||!bulkModoActivo;
   bulkCount.textContent=`${bulkSeleccionados.size} seleccionados`;
-  bulkOpen.disabled=!isAdmin||bulkSeleccionados.size===0;
-  bulkSelectVisible.disabled=!isAdmin||visibles.length===0;
+  bulkOpen.disabled=!isAdmin||!bulkModoActivo||bulkSeleccionados.size===0;
+  bulkSelectVisible.disabled=!isAdmin||!bulkModoActivo||visibles.length===0;
   bulkSelectVisible.checked=visibles.length>0&&seleccionadosVisibles.length===visibles.length;
   bulkSelectVisible.indeterminate=seleccionadosVisibles.length>0&&seleccionadosVisibles.length<visibles.length;
   lista.forEach(el=>{
@@ -1456,7 +1473,7 @@ function bulkActualizaModo(){
   bulkPendientes=null;bulkPreviewArea.hidden=true;bulkError.textContent='';
 }
 function bulkCalcular(){
-  if(!isAdmin)throw new Error('Esta función requiere Modo Admin.');
+  if(!isAdmin||!bulkModoActivo)throw new Error('Activa Cambios múltiples en Modo Admin.');
   const lista=productos.filter(p=>bulkSeleccionados.has(String(p.codigo)));
   if(!lista.length)throw new Error('Selecciona al menos un artículo.');
   const mantener=bulkMaintain.checked;
@@ -1501,7 +1518,7 @@ bulkSelectVisible.addEventListener('change',()=>{
 });
 document.getElementById('bulk-clear').addEventListener('click',()=>{bulkSeleccionados.clear();bulkActualizaControles();});
 bulkOpen.addEventListener('click',()=>{
-  if(!isAdmin||!bulkSeleccionados.size)return;
+  if(!isAdmin||!bulkModoActivo||!bulkSeleccionados.size)return;
   bulkChangeCost.checked=true;bulkChangePrice.checked=false;bulkManual.checked=true;bulkCost.value='';bulkPrice.value='';
   document.getElementById('bulk-summary').textContent=`Se seleccionaron ${bulkSeleccionados.size} artículos. Los códigos, marcas, grupos y existencias no se modificarán.`;
   bulkActualizaModo();bulkModal.hidden=false;bulkCost.focus();
@@ -1531,7 +1548,7 @@ document.getElementById('bulk-save').addEventListener('click',()=>{
     // Guardado atómico respecto al estado en memoria: no sustituir el catálogo si falla localStorage.
     localStorage.setItem(KEY_PRODUCTS,JSON.stringify(actualizados));
     productos=actualizados;const cantidad=bulkPendientes.length;
-    bulkSeleccionados.clear();bulkCerrar();renderProducts();actualizarBusquedaRapida();
+    bulkCambiarModo(false);renderProducts();actualizarBusquedaRapida();
     alert(`Se actualizaron correctamente ${cantidad} artículos.`);
   }catch(err){bulkError.textContent='No se guardaron los cambios: '+(err.message||'error de almacenamiento');}
 });
@@ -1570,7 +1587,7 @@ function filtrarCatalogoRegistrado(){
 function renderProducts(){
   const existentes=new Set(productos.map(p=>String(p.codigo)));
   for(const codigo of bulkSeleccionados)if(!existentes.has(codigo))bulkSeleccionados.delete(codigo);
-  if(!isAdmin)bulkSeleccionados.clear();
+  if(!isAdmin){bulkSeleccionados.clear();bulkModoActivo=false;}
   productsList.innerHTML = '';
   rightProducts.innerHTML = '';
   actualizarSugerenciasClasificacion();
