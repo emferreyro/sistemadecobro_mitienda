@@ -560,6 +560,58 @@ body.neon .low-stock{
 #mitienda-install-btn { display:none; align-items:center; justify-content:center; white-space:nowrap; }
 @media screen and (pointer: coarse) { #mitienda-install-btn { display:inline-flex; } }
 </style>
+<style id="mi-tienda-tema-rosa-pastel">
+
+/* === TEMA ROSA PASTEL · Mi Tienda ===
+   Cuarto tema; sin modificar los estilos de Claro/Amarillo, Oscuro o Neón. */
+html.pink, body.pink {
+  --rojo:#db2777; --rojo-dark:#a91659; --amarillo:#f8c5de;
+  --blanco:#ffffff; --gris:#fce7f3; --texto:#622341;
+  --muted:#80536a; --border:#edb8d1;
+  --fondo:#fce7f3; --card:#ffffff; --borde:#edb8d1;
+  background:#fce7f3!important; color:#622341;
+}
+body.pink header, body.pink .mitienda-header {
+  background:#f8c5de!important; color:#622341!important;
+  border-color:#eaa5c5!important;
+}
+body.pink .panel, body.pink .card, body.pink .modal-box,
+body.pink .modal-content, body.pink .cash-card,
+body.pink .product-item, body.pink .product-card,
+body.pink .bulk-toolbar, body.pink #bulk-modal .bulk-card {
+  background:#fffafd!important; color:#622341!important;
+  border-color:#efc5d9!important;
+}
+body.pink input:not([type=checkbox]):not([type=radio]):not([type=file]),
+body.pink select, body.pink textarea {
+  background:#ffffff!important; color:#622341!important;
+  border-color:#e9b5cc!important;
+}
+body.pink input::placeholder, body.pink textarea::placeholder {color:#947184!important;opacity:1}
+body.pink input:focus, body.pink select:focus, body.pink textarea:focus {
+  outline-color:#db2777; border-color:#db2777!important;
+}
+body.pink label, body.pink .small, body.pink .brand-sub,
+body.pink .cash-label, body.pink .cash-footer {color:#80536a}
+body.pink .btn-rojo, body.pink button.btn-rojo,
+body.pink .btn-primary, body.pink button.primary {
+  background:#db2777!important; color:#fff!important; border-color:#c11f69!important;
+}
+body.pink .btn-amarillo, body.pink button.btn-amarillo {
+  background:#f6b8d4!important; color:#622341!important; border-color:#e9a0c2!important;
+}
+body.pink .btn-outline, body.pink button.btn-outline {
+  background:#fff7fb!important; color:#9b245c!important; border-color:#e9b5cc!important;
+}
+body.pink .btn-outline:hover {background:#fce7f3!important}
+body.pink table, body.pink th, body.pink td {border-color:#f0cddd}
+body.pink th {color:#8e315e;background:#fdeaf3}
+body.pink .product-item.bulk-selected {outline-color:#db2777!important}
+body.pink .bulk-toolbar {background:#fff1f8!important}
+body.pink .bulk-check {accent-color:#db2777}
+body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
+/* Alertas de estado mantienen colores semánticos para evitar confusiones. */
+</style>
 </head>
 <body>
 <div class="app">
@@ -2450,8 +2502,8 @@ const btnToggleTheme=document.getElementById('btnToggleTheme');
 const THEME_KEY='sistemacobro_theme_v2';
 function applyTheme(theme){
   // Soporta: 'light' | 'dark' | 'neon'
-  document.body.classList.remove('dark','neon');
-  document.documentElement.classList.remove('dark','neon');
+  document.body.classList.remove('dark','neon','pink');
+  document.documentElement.classList.remove('dark','neon','pink');
 
   if(theme==='dark'){
     document.body.classList.add('dark');
@@ -2459,12 +2511,15 @@ function applyTheme(theme){
   } else if(theme==='neon'){
     document.body.classList.add('neon');
     document.documentElement.classList.add('neon');
+  } else if(theme==='pink'){
+    document.body.classList.add('pink');
+    document.documentElement.classList.add('pink');
   }
   localStorage.setItem(THEME_KEY,theme);
 }
 function detectPreferredTheme(){
   const saved = localStorage.getItem(THEME_KEY);
-  if(saved === 'dark' || saved === 'light' || saved === 'neon') return saved;
+  if(saved === 'dark' || saved === 'light' || saved === 'neon' || saved === 'pink') return saved;
   return 'light'; // inicia en claro
 }
 
@@ -2632,9 +2687,9 @@ window.addEventListener('load', ()=>{
 });
 btnToggleTheme.addEventListener('click', ()=>{
   // Cicla: light -> dark -> neon -> light
-  const current = document.body.classList.contains('neon') ? 'neon'
-                : (document.body.classList.contains('dark') ? 'dark' : 'light');
-  const order = ['light','dark','neon'];
+  const current = document.body.classList.contains('pink') ? 'pink' : (document.body.classList.contains('neon') ? 'neon'
+                : (document.body.classList.contains('dark') ? 'dark' : 'light'));
+  const order = ['light','dark','neon','pink'];
   const next = order[(order.indexOf(current) + 1) % order.length];
   applyTheme(next);
 });
