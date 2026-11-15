@@ -612,6 +612,7 @@ body.pink .bulk-check {accent-color:#db2777}
 body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 /* Alertas de estado mantienen colores semánticos para evitar confusiones. */
 </style>
+<style>#panel-venta #pagoMixto[hidden], #panel-venta .pay-field[hidden]{display:none!important}</style>
 </head>
 <body>
 <div class="app">
@@ -717,9 +718,20 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
                         <option value="Efectivo">Efectivo</option>
                         <option value="Tarjeta">Tarjeta</option>
 <option value="Vales">Vales</option>
+<option value="Mixto">Mixto (2 métodos)</option>
                       </select>
                     </div>
-                    <div class="pay-field">
+                    <div id="pagoMixto" class="pay-field" hidden style="flex:1 1 260px;min-width:230px;max-width:360px">
+ <div style="font-size:12px;font-weight:700;margin-bottom:5px">Distribuir el pago</div>
+ <div style="display:grid;grid-template-columns:minmax(110px,1fr) minmax(85px,1fr);gap:6px">
+ <select id="metodoMixto1" aria-label="Primer método" style="min-width:0;padding:8px;border-radius:8px;border:1px solid #d2d5da"><option value="Vales">Vales</option><option value="Efectivo">Efectivo</option><option value="Tarjeta">Tarjeta</option></select>
+ <input id="importeMixto1" type="number" min="0" step="0.01" placeholder="Importe $" aria-label="Importe primer método" style="width:100%;min-width:0;box-sizing:border-box" />
+ <select id="metodoMixto2" aria-label="Segundo método" style="min-width:0;padding:8px;border-radius:8px;border:1px solid #d2d5da"><option value="Efectivo">Efectivo</option><option value="Tarjeta">Tarjeta</option><option value="Vales">Vales</option></select>
+ <input id="importeMixto2" type="number" min="0" step="0.01" placeholder="Importe $" aria-label="Importe segundo método" style="width:100%;min-width:0;box-sizing:border-box" />
+ </div>
+ <div id="estadoMixto" style="font-size:11px;margin-top:3px" aria-live="polite"></div>
+ </div>
+ <div class="pay-field">
                       <label for="pago" id="labelPago">Su pago $</label>
                       <input id="pago" type="number" step="0.01" min="0" placeholder="0.00" />
                     </div>
@@ -1232,6 +1244,7 @@ function actualizarCobrosHoy(){
   historial.forEach(v=>{
     const fecha=parseVentaDate(v);
     if(!fecha || fecha.getFullYear()!==hoy.getFullYear() || fecha.getMonth()!==hoy.getMonth() || fecha.getDate()!==hoy.getDate()) return;
+    if(Array.isArray(v.pagos)&&v.pagos.length){v.pagos.forEach(x=>{if(Object.hasOwn(importes,x.metodo))importes[x.metodo]+=Number(x.importe)||0;});return;}
     const metodo=v.metodoPago==='Tarjeta'?'Tarjeta':(v.metodoPago==='Vales'||v.metodoPago==='Vale'?'Vales':'Efectivo');
     importes[metodo]+=Number(v.total)||0;
   });
@@ -1254,7 +1267,7 @@ function actualizarCaja(totalHoy){
     const fecha = parseVentaDate(v);
     const ahora = new Date();
     if(!fecha || fecha.getFullYear()!==ahora.getFullYear() || fecha.getMonth()!==ahora.getMonth() || fecha.getDate()!==ahora.getDate()) return s;
-    return s + ((v.metodoPago === 'Tarjeta' || v.metodoPago === 'Vales' || v.metodoPago === 'Vale') ? 0 : (Number(v.total)||0));
+    return s + (Array.isArray(v.pagos)&&v.pagos.length ? v.pagos.filter(x=>x.metodo==='Efectivo').reduce((n,x)=>n+(Number(x.importe)||0),0) : ((v.metodoPago === 'Tarjeta' || v.metodoPago === 'Vales' || v.metodoPago === 'Vale') ? 0 : (Number(v.total)||0)));
   },0);
   const cierre = (Number(inicio)||0) + efectivoHoy + MiTiendaIntegridad.efectivoCerradoHoy(historial);
   closeEl.textContent = formatMXN(cierre);
@@ -1887,46 +1900,79 @@ if(inputBusqueda) inputBusqueda.value='';
   });
 }
 
-/* Payment & Change logic */
-function updatePaymentChange(){
-  const metodoSinCambio = metodoPagoInput.value === 'Tarjeta' || metodoPagoInput.value === 'Vales';
-  pagoInput.disabled = metodoSinCambio;
-  pagoInput.placeholder = metodoPagoInput.value === 'Vales' ? 'Cobro con vales' : (metodoSinCambio ? 'Cobro con tarjeta' : '0.00');
-  labelPago.textContent = metodoPagoInput.value === 'Vales' ? 'Importe en vales $' : (metodoSinCambio ? 'Importe en tarjeta $' : 'Su pago $');
-  if(metodoSinCambio){
-    pagoInput.value = currentTotal.toFixed(2);
-    cambioLabel.textContent = formatMXN(0);
-    cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
-    return;
+/* Payment & Change logic - venta simple y mixta */
+const panelMixto=document.getElementById('pagoMixto');
+const metodoMixto1=document.getElementById('metodoMixto1');
+const metodoMixto2=document.getElementById('metodoMixto2');
+const importeMixto1=document.getElementById('importeMixto1');
+const importeMixto2=document.getElementById('importeMixto2');
+const estadoMixto=document.getElementById('estadoMixto');
+const centavosPago=v=>Math.round((Number(v)||0)*100);
+function desgloseCobro(){
+  const total=centavosPago(currentTotal);
+  if(metodoPagoInput.value!=='Mixto'){
+    const metodo=metodoPagoInput.value;
+    const recibido=metodo==='Efectivo'?centavosPago(pagoInput.value):total;
+    return {valido:recibido>=total,metodoPago:metodo,pago:recibido/100,cambio:metodo==='Efectivo'?Math.max(0,recibido-total)/100:0,
+      pagos:[{metodo,importe:total/100,recibido:recibido/100}],faltante:Math.max(0,total-recibido)/100};
   }
-  const rawPago = String(pagoInput.value ?? '').trim();
-  if(rawPago === ''){
-    cambioLabel.textContent = formatMXN(0);
-    cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
-    return;
-  }
-  const pago = Math.max(0, Number(rawPago) || 0);
-  const diff = Number((pago - currentTotal).toFixed(2));
-  cambioLabel.textContent = formatMXN(Math.abs(diff));
-  cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
-  if(diff >= 0){ cambioLabel.classList.add('change-ok','blink-green'); }
-  else { cambioLabel.classList.add('change-low','blink-red'); }
+  const m1=metodoMixto1.value,m2=metodoMixto2.value;
+  const a=centavosPago(importeMixto1.value),b=centavosPago(importeMixto2.value);
+  const camposValidos=[importeMixto1,importeMixto2].every(el=>el.value.trim()!==''&&Number.isFinite(Number(el.value))&&Number(el.value)>=0);
+  const noEfectivo=(m1!=='Efectivo'?a:0)+(m2!=='Efectivo'?b:0);
+  const efectivo=(m1==='Efectivo'?a:0)+(m2==='Efectivo'?b:0);
+  const restante=total-noEfectivo;
+  const valido=camposValidos&&m1!==m2&&a>0&&b>0&&noEfectivo<=total&&a+b>=total&&(efectivo>0||a+b===total);
+  const cambio=efectivo>0?Math.max(0,a+b-total):0;
+  return {valido,metodoPago:'Mixto',pago:(a+b)/100,cambio:cambio/100,
+    pagos:[{metodo:m1,importe:(m1==='Efectivo'?Math.max(0,restante):a)/100,recibido:a/100},
+           {metodo:m2,importe:(m2==='Efectivo'?Math.max(0,restante):b)/100,recibido:b/100}],
+    faltante:Math.max(0,total-a-b)/100,motivo:m1===m2?'Selecciona dos métodos distintos.':
+      !camposValidos||a<=0||b<=0?'Ingresa ambos importes.':
+      noEfectivo>total?'Vales y tarjeta no pueden superar el total.':
+      a+b<total?'Faltan '+formatMXN((total-a-b)/100):
+      efectivo===0&&a+b!==total?'Sin efectivo no puede haber cambio.':''};
 }
-metodoPagoInput.addEventListener('change',()=>{
-  pagoInput.value = '';
-  updatePaymentChange();
-});
+function limpiarPagoMixto(){
+  metodoMixto1.value='Vales';metodoMixto2.value='Efectivo';
+  importeMixto1.value='';importeMixto2.value='';
+  panelMixto.hidden=true;
+}
+for(const el of [metodoMixto1,metodoMixto2,importeMixto1,importeMixto2]){
+  el.addEventListener(el.tagName==='SELECT'?'change':'input',updatePaymentChange);
+}
+
+function updatePaymentChange(){
+  const mixto=metodoPagoInput.value==='Mixto';
+  panelMixto.hidden=!mixto;
+  pagoInput.parentElement.hidden=mixto;
+  cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
+  if(mixto){
+    const d=desgloseCobro();
+    cambioLabel.textContent=formatMXN(d.cambio>0?d.cambio:d.faltante);
+    if(importeMixto1.value!==''||importeMixto2.value!=='') cambioLabel.classList.add(d.valido?'change-ok':'change-low');
+    estadoMixto.textContent=d.motivo||(d.valido?'Pago completo':'');
+    return;
+  }
+  const sinCambio=metodoPagoInput.value==='Tarjeta'||metodoPagoInput.value==='Vales';
+  pagoInput.disabled=sinCambio;
+  pagoInput.placeholder=sinCambio?'Cobro exacto':'0.00';
+  labelPago.textContent=metodoPagoInput.value==='Vales'?'Importe en vales $':(sinCambio?'Importe en tarjeta $':'Su pago $');
+  if(sinCambio){pagoInput.value=currentTotal.toFixed(2);cambioLabel.textContent=formatMXN(0);return;}
+  if(String(pagoInput.value).trim()===''){cambioLabel.textContent=formatMXN(0);return;}
+  const diff=centavosPago(pagoInput.value)-centavosPago(currentTotal);
+  cambioLabel.textContent=formatMXN(Math.abs(diff)/100);
+  cambioLabel.classList.add(diff>=0?'change-ok':'change-low');
+}
+metodoPagoInput.addEventListener('change',()=>{pagoInput.value='';updatePaymentChange();});
 pagoInput.addEventListener('input',updatePaymentChange);
 
 btnFinalizar.addEventListener('click', ()=> {
-  const metodoPago = metodoPagoInput.value;
-  const pago = metodoPago !== 'Efectivo' ? currentTotal : Math.max(0, Number(pagoInput.value) || 0);
-  if(carrito.length === 0){ alert('El carrito está vacío.'); return; }
-  if(metodoPago === 'Efectivo' && pago < currentTotal){
-    const faltante = Number((currentTotal - pago).toFixed(2));
-    alert('Pago insuficiente. Faltan ' + formatMXN(faltante));
-    return;
-  }
+  if(carrito.length === 0){alert('El carrito está vacío.');return;}
+  const cobro=desgloseCobro();
+  if(!cobro.valido){alert(cobro.motivo||('Pago insuficiente. Faltan '+formatMXN(cobro.faltante)));return;}
+  const metodoPago=cobro.metodoPago;
+  const pago=cobro.pago;
   for(const it of carrito){
     if(!esGranel(it))continue;
     const prod=productos.find(p=>p.codigo===it.codigo);
@@ -1961,7 +2007,7 @@ btnFinalizar.addEventListener('click', ()=> {
     fecha: now.toLocaleString(), fechaISO: now.toISOString(),
     total: Number(total.toFixed(2)), items:itemsVenta,
     metodoPago: metodoPago, pago:pago,
-    cambio: metodoPago !== 'Efectivo' ? 0 : Number((pago - total).toFixed(2))
+    cambio: cobro.cambio, pagos: cobro.pagos
   };
   try{
     MiTiendaIntegridad.guardarVenta({venta,productos:productosNuevos,historial,historyKey:KEY_HISTORY,productsKey:KEY_PRODUCTS,cartKey:KEY_CART});
@@ -1972,7 +2018,7 @@ btnFinalizar.addEventListener('click', ()=> {
   renderBusquedaRapida();
   renderCart();
   renderHistorial();
-  metodoPagoInput.value = 'Efectivo';
+  metodoPagoInput.value = 'Efectivo'; limpiarPagoMixto();
   pagoInput.value = '';
   updatePaymentChange();
   showPanel(panelHistorial);
@@ -1981,7 +2027,7 @@ btnFinalizar.addEventListener('click', ()=> {
 btnCancelar.addEventListener('click', ()=> {
   if(!confirm('¿Cancelar venta actual? Se borrará el carrito.')) return;
   carrito = []; saveCart(); renderCart();
-  metodoPagoInput.value = 'Efectivo';
+  metodoPagoInput.value = 'Efectivo'; limpiarPagoMixto();
   pagoInput.value = '';
   updatePaymentChange();
 });
@@ -2050,7 +2096,7 @@ function renderHistorial(){
       d.innerHTML = `<div><div style="font-weight:700">Venta #${v.id}</div><div class="small">${v.fecha}</div></div>
                      <div style="text-align:right">
                        <div style="font-weight:800;color:var(--rojo)">${formatMXN(v.total)}</div>
-                       <div class="small">${v.metodoPago === 'Tarjeta' ? '💳 Tarjeta' : ((v.metodoPago === 'Vales' || v.metodoPago === 'Vale') ? '🎟️ Vales' : '💵 Efectivo')}</div>
+                       <div class="small">${v.metodoPago === 'Mixto' ? '💵 Mixto' : v.metodoPago === 'Tarjeta' ? '💳 Tarjeta' : ((v.metodoPago === 'Vales' || v.metodoPago === 'Vale') ? '🎟️ Vales' : '💵 Efectivo')}</div>
                        <details style="margin-top:8px">
                          <summary class="small">Ver detalles</summary>
                          <table style="width:100%;margin-top:8px;border-collapse:collapse">
@@ -2249,7 +2295,8 @@ function armarTextoTicket(v){
 
   // TOTALES
   lineas.push(right('TOTAL: ', formatMXN(v.total)));
-  lineas.push('METODO DE PAGO: ' + (v.metodoPago === 'Tarjeta' ? 'TARJETA' : ((v.metodoPago === 'Vales' || v.metodoPago === 'Vale') ? 'VALES' : 'EFECTIVO')));
+  lineas.push('METODO DE PAGO: '+(v.metodoPago==='Mixto'?'MIXTO':v.metodoPago==='Tarjeta'?'TARJETA':v.metodoPago==='Vales'?'VALES':'EFECTIVO'));
+  if(v.metodoPago==='Mixto'&&Array.isArray(v.pagos)) v.pagos.forEach(x=>lineas.push(right(x.metodo.toUpperCase()+': ',formatMXN(x.importe))));
   if(typeof v.pago !== 'undefined'){
     lineas.push(right('PAGO: ', formatMXN(v.pago)));
   }
@@ -2307,7 +2354,7 @@ html,body{margin:0;padding:0;background:#fff;color:#111}
 async function exportHistorialCSV(){
   if(historial.length === 0){ alert('No hay historial para exportar.'); return; }
   let rows=[['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal','Tipo de venta','Gramos vendidos','Costo de mercancía','Método de pago','Pago recibido','Cambio']];
-  historial.forEach(v=>{ v.items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre,it.cantidad,it.precio,it.subtotal,esGranel(it)?'granel':'pieza',esGranel(it)?(Number(it.cantidad)*1000):'','',v.metodoPago||'Efectivo',v.pago??'',v.cambio??''])); });
+  historial.forEach(v=>{ v.items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre,it.cantidad,it.precio,it.subtotal,esGranel(it)?'granel':'pieza',esGranel(it)?(Number(it.cantidad)*1000):'','',(v.metodoPago==='Mixto'&&Array.isArray(v.pagos)?'Mixto: '+v.pagos.map(x=>x.metodo+' '+Number(x.importe).toFixed(2)).join(' + '):(v.metodoPago||'Efectivo')),v.pago??'',v.cambio??''])); });
   const csv = rows.map(r=> r.map(c=> '"' + String(c).replace(/"/g,'""') + '"').join(',') ).join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const ts = new Date(); const fname = 'Historial_'+ ts.getFullYear() + '-' + String(ts.getMonth()+1).padStart(2,'0') + '-' + String(ts.getDate()).padStart(2,'0') + '_' + String(ts.getHours()).padStart(2,'0') + '-' + String(ts.getMinutes()).padStart(2,'0') + '-' + String(ts.getSeconds()).padStart(2,'0') + '.csv';
