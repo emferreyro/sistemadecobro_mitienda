@@ -3,6 +3,26 @@
 
 <html lang="es">
 <head><script>document.documentElement.classList.add("licencia-pendiente");</script><style>html.licencia-pendiente body{visibility:hidden} html.licencia-rechazada body{visibility:hidden} html.licencia-rechazada #guardFullvAviso{visibility:visible}
+
+/* Edición múltiple del catálogo (solo FULLV). */
+#panel-productos .bulk-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:5px 0 10px;padding:8px 10px;border:1px solid #d5d7dd;border-radius:10px;background:#222;color:#f5f5f5}
+#panel-productos .bulk-toolbar[hidden],#panel-productos .bulk-check[hidden],#bulk-modal[hidden]{display:none!important}
+#panel-productos .bulk-check{flex:0 0 auto;width:21px;height:21px;cursor:pointer;accent-color:#c62828;margin:0 4px 0 0}
+#panel-productos .product-item.bulk-selected{outline:2px solid #e5b900;outline-offset:-2px}
+#panel-productos .bulk-toolbar .small{margin-right:auto}
+#bulk-modal{position:fixed;inset:0;z-index:12000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box}
+#bulk-modal .bulk-dialog{background:#242424;color:#f5f5f5;border:1px solid #555;border-radius:14px;padding:18px;width:100%;max-width:720px;max-height:94vh;overflow:auto;box-sizing:border-box;box-shadow:0 12px 38px #0005}
+#bulk-modal .bulk-fields{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}
+#bulk-modal .bulk-fields label{display:flex;flex-direction:column;gap:5px;flex:1 1 140px;font-weight:600;font-size:13px}
+#bulk-modal .bulk-fields input{width:100%;padding:10px;box-sizing:border-box;border-radius:8px;border:1px solid #999;background:#fff;color:#111;font-size:16px}
+#bulk-modal .bulk-options{display:flex;gap:10px 20px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:14px}
+#bulk-modal .bulk-preview{max-height:230px;overflow:auto;border:1px solid #ddd;border-radius:8px;margin:12px 0}
+#bulk-modal .bulk-preview table{width:100%;border-collapse:collapse;font-size:12px}
+#bulk-modal .bulk-preview th,#bulk-modal .bulk-preview td{padding:7px;border-bottom:1px solid #ddd;text-align:left}
+#bulk-modal .bulk-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px}
+#bulk-modal .bulk-error{color:#a31515;font-size:13px;font-weight:600}
+@media(max-width:600px){#panel-productos .product-item{flex-wrap:wrap}#bulk-modal .bulk-dialog{padding:12px}}
+
 /* Catálogo compacto y búsqueda independiente del buscador de ventas */
 #panel-productos .catalogo-busqueda{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 8px}
 #panel-productos .catalogo-busqueda input{box-sizing:border-box;flex:1 1 260px;min-width:0;max-width:100%;padding:9px 12px;border-radius:9px}
@@ -672,6 +692,7 @@ body.neon #granel-modal{
 <div class="small" style="width:100%">Precio = precio de venta por kg; costo y utilidad de granel se calculan por kg.</div>
 </div>
 
+<div class="small" id="bulk-version-label" style="margin:4px 0 8px;color:#e4bb33;font-weight:700;font-size:12px">✓ Edición múltiple de artículos integrada · FULLV 14-11-2026</div>
 <div class="catalogo-busqueda"><input id="buscar-catalogo" type="search" placeholder="🔎 Buscar artículo por nombre o código" aria-label="Buscar entre artículos registrados" autocomplete="off"/><span id="catalogo-resultado" class="catalogo-resultado" aria-live="polite"></span></div>
 <div class="right-controls" style="margin-bottom:8px">
 <button class="btn btn-amarillo btn-small" id="btn-low-stock" title="Ver artículos con inventario y menos de 5 piezas">⚠ Poco stock</button>
@@ -685,7 +706,40 @@ body.neon #granel-modal{
 <button class="btn btn-outline btn-small" id="btnImportProd" title="Restaurar todos los datos del inventario desde un respaldo JSON">📥 Cargar respaldo JSON</button>
 <input accept=".json,application/json" id="inputImportProd" style="display:none" type="file"/>
 </div>
+<div class="bulk-toolbar" id="bulk-toolbar" hidden>
+<label style="display:flex;align-items:center;gap:5px;font-weight:600;font-size:13px"><input id="bulk-select-visible" type="checkbox" style="width:19px;height:19px"/> Seleccionar todos los resultados visibles</label>
+<span id="bulk-count" class="small">0 seleccionados</span>
+<button type="button" class="btn btn-outline btn-small" id="bulk-clear">Limpiar selección</button>
+<button type="button" class="btn btn-rojo btn-small" id="bulk-open" disabled>Corregir costo / precio</button>
+</div>
 <div class="products-list" id="products-list"></div>
+</div>
+<!-- Modal de actualización múltiple: no modifica otros datos del producto -->
+<div id="bulk-modal" hidden role="dialog" aria-modal="true" aria-labelledby="bulk-title">
+<div class="bulk-dialog">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><strong id="bulk-title">Corregir costo / precio</strong><button type="button" class="btn btn-outline btn-small" id="bulk-close">✕ Cerrar</button></div>
+<p id="bulk-summary" class="small" style="margin:8px 0"></p>
+<div class="bulk-options">
+<label><input type="checkbox" id="bulk-change-cost" checked/> Modificar costo</label>
+<label><input type="checkbox" id="bulk-change-price"/> Modificar precio de venta</label>
+</div>
+<div class="bulk-options" style="margin-bottom:10px">
+<label><input type="radio" name="bulk-mode" id="bulk-manual" value="manual" checked/> Capturar valores manualmente</label>
+<label><input type="radio" name="bulk-mode" id="bulk-maintain" value="maintain"/> Mantener utilidad porcentual actual</label>
+</div>
+<div class="bulk-fields">
+<label>Nuevo costo ($)<input type="number" min="0" step="any" id="bulk-cost" placeholder="Costo nuevo"/></label>
+<label>Nuevo precio de venta ($)<input type="number" min="0.01" step="any" id="bulk-price" placeholder="Precio nuevo" disabled/></label>
+</div>
+<div id="bulk-mode-help" class="small">Solo se modificarán los campos marcados. Los importes manuales serán iguales para todos los artículos seleccionados.</div>
+<div class="bulk-actions"><button type="button" class="btn btn-outline btn-small" id="bulk-preview-button">Vista previa</button></div>
+<div id="bulk-error" class="bulk-error" role="alert" aria-live="polite"></div>
+<div id="bulk-preview-area" hidden>
+<p class="small">Revisa los valores anteriores y nuevos antes de confirmar. La modificación afecta únicamente a los artículos seleccionados.</p>
+<div class="bulk-preview" id="bulk-preview-table"></div>
+<div class="bulk-actions"><button type="button" class="btn btn-outline btn-small" id="bulk-cancel">Cancelar</button><button type="button" class="btn btn-rojo btn-small" id="bulk-save">Confirmar y guardar cambios</button></div>
+</div>
+</div>
 </div>
 <!-- HISTORIAL -->
 <div class="panel" id="panel-historial" style="display:none">
@@ -1355,6 +1409,133 @@ for(const [selector,nuevo] of [[prodMarca,prodMarcaNueva],[prodGrupo,prodGrupoNu
   selector.addEventListener('change',()=>{nuevo.style.display=selector.value==='__nueva__'?'block':'none';if(selector.value==='__nueva__')nuevo.focus();else nuevo.value='';});
   nuevo.addEventListener('input',()=>{const pos=nuevo.selectionStart; nuevo.value=nuevo.value.toLocaleUpperCase('es-MX');try{nuevo.setSelectionRange(pos,pos);}catch(e){}});
 }
+/* Edición múltiple: selección por código, independiente de los índices y del filtro visual. */
+const bulkSeleccionados = new Set();
+let bulkPendientes = null;
+const bulkToolbar=document.getElementById('bulk-toolbar');
+const bulkSelectVisible=document.getElementById('bulk-select-visible');
+const bulkCount=document.getElementById('bulk-count');
+const bulkOpen=document.getElementById('bulk-open');
+const bulkModal=document.getElementById('bulk-modal');
+const bulkChangeCost=document.getElementById('bulk-change-cost');
+const bulkChangePrice=document.getElementById('bulk-change-price');
+const bulkManual=document.getElementById('bulk-manual');
+const bulkMaintain=document.getElementById('bulk-maintain');
+const bulkCost=document.getElementById('bulk-cost');
+const bulkPrice=document.getElementById('bulk-price');
+const bulkError=document.getElementById('bulk-error');
+const bulkPreviewArea=document.getElementById('bulk-preview-area');
+const bulkPreviewTable=document.getElementById('bulk-preview-table');
+function bulkActualizaControles(){
+  const lista=[...productsList.querySelectorAll('.product-item')];
+  const visibles=lista.filter(el=>!el.hidden);
+  const seleccionadosVisibles=visibles.filter(el=>bulkSeleccionados.has(el.dataset.bulkCodigo));
+  bulkToolbar.hidden=!isAdmin;
+  bulkCount.textContent=`${bulkSeleccionados.size} seleccionados`;
+  bulkOpen.disabled=!isAdmin||bulkSeleccionados.size===0;
+  bulkSelectVisible.disabled=!isAdmin||visibles.length===0;
+  bulkSelectVisible.checked=visibles.length>0&&seleccionadosVisibles.length===visibles.length;
+  bulkSelectVisible.indeterminate=seleccionadosVisibles.length>0&&seleccionadosVisibles.length<visibles.length;
+  lista.forEach(el=>{
+    const si=bulkSeleccionados.has(el.dataset.bulkCodigo);
+    el.classList.toggle('bulk-selected',si);
+    const check=el.querySelector('.bulk-check');if(check)check.checked=si;
+  });
+}
+function bulkCerrar(){bulkModal.hidden=true;bulkPendientes=null;bulkPreviewArea.hidden=true;bulkError.textContent='';}
+function bulkActualizaModo(){
+  const conservar=bulkMaintain.checked;
+  if(conservar){bulkChangeCost.checked=true;bulkChangePrice.checked=true;}
+  bulkChangeCost.disabled=conservar;
+  bulkChangePrice.disabled=conservar;
+  bulkCost.disabled=!bulkChangeCost.checked;
+  bulkPrice.disabled=conservar||!bulkChangePrice.checked;
+  document.getElementById('bulk-mode-help').textContent=conservar
+    ? 'El precio se recalcula conservando la ganancia porcentual sobre el costo original de CADA producto. Se requiere costo original mayor que cero. Los precios se redondean a centavos.'
+    : 'Solo se modificarán los campos marcados. Los importes manuales serán iguales para todos los artículos seleccionados.';
+  bulkPendientes=null;bulkPreviewArea.hidden=true;bulkError.textContent='';
+}
+function bulkCalcular(){
+  if(!isAdmin)throw new Error('Esta función requiere Modo Admin.');
+  const lista=productos.filter(p=>bulkSeleccionados.has(String(p.codigo)));
+  if(!lista.length)throw new Error('Selecciona al menos un artículo.');
+  const mantener=bulkMaintain.checked;
+  const cambiarCosto=bulkChangeCost.checked;
+  const cambiarPrecio=bulkChangePrice.checked;
+  if(!cambiarCosto&&!cambiarPrecio)throw new Error('Marca costo, precio o ambos.');
+  const validar=(input,etiqueta,permitirCero)=>{
+    const texto=input.value.trim();const numero=Number(texto);
+    if(!texto||!Number.isFinite(numero)||numero<0||(!permitirCero&&numero<=0))throw new Error('Captura un '+etiqueta+' válido.');
+    return numero;
+  };
+  const costoNuevo=cambiarCosto?validar(bulkCost,'costo',true):null;
+  const precioNuevo=cambiarPrecio&&!mantener?validar(bulkPrice,'precio de venta',false):null;
+  const cambios=lista.map(p=>{
+    const costoAnterior=esGranel(p)?Number(p.costoKg??p.costo??0):Number(p.costo??0);
+    const precioAnterior=Number(p.precio);
+    if(!Number.isFinite(costoAnterior)||costoAnterior<0||!Number.isFinite(precioAnterior)||precioAnterior<=0){
+      throw new Error('Revisa costo y precio actuales de '+p.codigo+' ('+p.nombre+').');
+    }
+    if(mantener&&costoAnterior<=0)throw new Error('No se puede mantener utilidad en '+p.codigo+' ('+p.nombre+'): costo original en cero. Usa edición manual o desmarca ese producto.');
+    const costo=cambiarCosto?Math.round((costoNuevo+Number.EPSILON)*10000)/10000:costoAnterior;
+    const precio=mantener?Math.round((precioAnterior/costoAnterior*costo+Number.EPSILON)*100)/100:(cambiarPrecio?Math.round((precioNuevo+Number.EPSILON)*100)/100:precioAnterior);
+    if(!Number.isFinite(precio)||precio<=0)throw new Error('El nuevo precio no es válido para '+p.codigo+'.');
+    return {codigo:String(p.codigo),nombre:String(p.nombre||''),costoAnterior,precioAnterior,costo,precio,cambiarCosto,cambiarPrecio};
+  });
+  return cambios;
+}
+function bulkMostrarVista(){
+  bulkError.textContent='';bulkPreviewArea.hidden=true;bulkPendientes=null;
+  try{
+    const cambios=bulkCalcular();
+    const formato=(x)=>'$'+Number(x).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:4});
+    bulkPreviewTable.innerHTML='<table><thead><tr><th>Artículo</th><th>Costo anterior → nuevo</th><th>Precio anterior → nuevo</th></tr></thead><tbody>'+
+      cambios.map(c=>'<tr><td>'+escapeHtml(c.codigo)+' — '+escapeHtml(c.nombre)+'</td><td>'+formato(c.costoAnterior)+' → '+formato(c.costo)+'</td><td>'+formato(c.precioAnterior)+' → '+formato(c.precio)+'</td></tr>').join('')+'</tbody></table>';
+    bulkPendientes=cambios;bulkPreviewArea.hidden=false;
+  }catch(err){bulkError.textContent=err.message||'No se pueden calcular los cambios.';}
+}
+bulkSelectVisible.addEventListener('change',()=>{
+  const visibles=[...productsList.querySelectorAll('.product-item')].filter(el=>!el.hidden);
+  visibles.forEach(el=>bulkSelectVisible.checked?bulkSeleccionados.add(el.dataset.bulkCodigo):bulkSeleccionados.delete(el.dataset.bulkCodigo));
+  bulkActualizaControles();
+});
+document.getElementById('bulk-clear').addEventListener('click',()=>{bulkSeleccionados.clear();bulkActualizaControles();});
+bulkOpen.addEventListener('click',()=>{
+  if(!isAdmin||!bulkSeleccionados.size)return;
+  bulkChangeCost.checked=true;bulkChangePrice.checked=false;bulkManual.checked=true;bulkCost.value='';bulkPrice.value='';
+  document.getElementById('bulk-summary').textContent=`Se seleccionaron ${bulkSeleccionados.size} artículos. Los códigos, marcas, grupos y existencias no se modificarán.`;
+  bulkActualizaModo();bulkModal.hidden=false;bulkCost.focus();
+});
+[bulkChangeCost,bulkChangePrice,bulkManual,bulkMaintain].forEach(input=>input.addEventListener('change',bulkActualizaModo));
+[bulkCost,bulkPrice].forEach(input=>input.addEventListener('input',()=>{bulkPendientes=null;bulkPreviewArea.hidden=true;bulkError.textContent='';}));
+document.getElementById('bulk-preview-button').addEventListener('click',bulkMostrarVista);
+document.getElementById('bulk-close').addEventListener('click',bulkCerrar);
+document.getElementById('bulk-cancel').addEventListener('click',bulkCerrar);
+bulkModal.addEventListener('click',ev=>{if(ev.target===bulkModal)bulkCerrar();});
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&!bulkModal.hidden)bulkCerrar();});
+document.getElementById('bulk-save').addEventListener('click',()=>{
+  if(!bulkPendientes||!bulkPendientes.length)return;
+  try{
+    // Verifica nuevamente que la vista previa siga correspondiendo a los artículos actuales.
+    const calculados=bulkCalcular();
+    if(JSON.stringify(calculados)!==JSON.stringify(bulkPendientes))throw new Error('El catálogo cambió. Vuelve a generar la vista previa.');
+    if(!confirm(`Se modificarán el costo y/o precio de ${bulkPendientes.length} artículos. ¿Confirmas guardar los cambios?`))return;
+    const porCodigo=new Map(bulkPendientes.map(c=>[c.codigo,c]));
+    const actualizados=productos.map(p=>{
+      const c=porCodigo.get(String(p.codigo));if(!c)return p;
+      const nuevo={...p};
+      if(c.cambiarCosto){nuevo.costo=c.costo;if(esGranel(p))nuevo.costoKg=c.costo;}
+      if(c.cambiarPrecio)nuevo.precio=c.precio;
+      return nuevo;
+    });
+    // Guardado atómico respecto al estado en memoria: no sustituir el catálogo si falla localStorage.
+    localStorage.setItem(KEY_PRODUCTS,JSON.stringify(actualizados));
+    productos=actualizados;const cantidad=bulkPendientes.length;
+    bulkSeleccionados.clear();bulkCerrar();renderProducts();actualizarBusquedaRapida();
+    alert(`Se actualizaron correctamente ${cantidad} artículos.`);
+  }catch(err){bulkError.textContent='No se guardaron los cambios: '+(err.message||'error de almacenamiento');}
+});
+
 /* PRODUCTS UI */
 /* Filtro visual: nunca altera los índices originales usados por editar/eliminar. */
 function normalizarBusquedaCatalogo(texto){return String(texto??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-MX').trim();}
@@ -1383,18 +1564,23 @@ function filtrarCatalogoRegistrado(){
     aviso.textContent='No se encontraron artículos con esa búsqueda.';lista.appendChild(aviso);
   }
   if(contador)contador.textContent=palabras.length?`${visibles} de ${productos.length} artículos`:`${productos.length} artículos`;
+  bulkActualizaControles();
 }
 
 function renderProducts(){
+  const existentes=new Set(productos.map(p=>String(p.codigo)));
+  for(const codigo of bulkSeleccionados)if(!existentes.has(codigo))bulkSeleccionados.delete(codigo);
+  if(!isAdmin)bulkSeleccionados.clear();
   productsList.innerHTML = '';
   rightProducts.innerHTML = '';
   actualizarSugerenciasClasificacion();
   productos.forEach((p, idx) => {
     const div = document.createElement('div'); div.className='product-item';
     div.dataset.catalogoTexto = [p.codigo,p.nombre,p.marca,p.grupo].filter(Boolean).join(' ');
+    div.dataset.bulkCodigo=String(p.codigo);
     const adminBtns = isAdmin ? `<button data-idx="${idx}" class="btn btn-outline btn-small btn-edit">✏️</button>
       <button data-idx="${idx}" class="btn btn-outline btn-small btn-del">🗑️</button>` : '';
-    div.innerHTML = `<div><div style="font-weight:700">${p.codigo} — ${escapeHtml(p.nombre)}</div>${p.marca||p.grupo?`<div class="small" style="margin:3px 0">${p.marca?'Marca: '+escapeHtml(String(p.marca)): ''}${p.marca&&p.grupo?' · ':''}${p.grupo?'Grupo: '+escapeHtml(String(p.grupo)):''}</div>`:''}<div class="small product-meta"><span><span class="label">${esGranel(p)?"Precio/kg":"Precio"}:</span> <span class="val">${formatMXN(p.precio)}</span></span><span class="spacer"></span><span class="meta-right"><span><span class="label">${esGranel(p)?"Costo/kg":"Costo"}:</span> <span class="val">${formatMXN(esGranel(p)?(Number(p.costoKg)||0):(Number(p.costo)||0))}</span></span><span><span class="label">${esGranel(p)?"Utilidad/kg":"Utilidad"}:</span> <span class="val">${formatMXN((Number(p.precio)||0)-(esGranel(p)?(Number(p.costoKg)||0):(Number(p.costo)||0)))}</span></span></span></div></div>
+    div.innerHTML = `${isAdmin?'<input type="checkbox" class="bulk-check" aria-label="Seleccionar producto para edición múltiple" />':''}<div><div style="font-weight:700">${p.codigo} — ${escapeHtml(p.nombre)}</div>${p.marca||p.grupo?`<div class="small" style="margin:3px 0">${p.marca?'Marca: '+escapeHtml(String(p.marca)): ''}${p.marca&&p.grupo?' · ':''}${p.grupo?'Grupo: '+escapeHtml(String(p.grupo)):''}</div>`:''}<div class="small product-meta"><span><span class="label">${esGranel(p)?"Precio/kg":"Precio"}:</span> <span class="val">${formatMXN(p.precio)}</span></span><span class="spacer"></span><span class="meta-right"><span><span class="label">${esGranel(p)?"Costo/kg":"Costo"}:</span> <span class="val">${formatMXN(esGranel(p)?(Number(p.costoKg)||0):(Number(p.costo)||0))}</span></span><span><span class="label">${esGranel(p)?"Utilidad/kg":"Utilidad"}:</span> <span class="val">${formatMXN((Number(p.precio)||0)-(esGranel(p)?(Number(p.costoKg)||0):(Number(p.costo)||0)))}</span></span></span></div></div>
                      ${esGranel(p)?`<div class="small">⚖️ A granel · ${gramosInventario(p)===null?'Sin inventario registrado':(gramosInventario(p)/1000).toFixed(3)+' kg disponibles'}</div>`:''}
                      ${!esGranel(p)&&p.inventariado ? (()=>{ const s = (p.stock===null||p.stock===undefined) ? null : Number(p.stock); const warn = (s!==null && !isNaN(s) && s>=0 && s<5) ? ' <span class="low-stock">⚠ Poco stock</span>' : ''; return '<div class="small">📦 Inventario · Stock: ' + (s===null||isNaN(s) ? '—' : s) + warn + '</div>'; })() : ''}
                      <div style="display:flex;gap:8px;align-items:center">
@@ -1403,6 +1589,11 @@ function renderProducts(){
                      </div>`;
     productsList.appendChild(div);
   });
+  productsList.querySelectorAll('.bulk-check').forEach(check=>check.addEventListener('change',e=>{
+    const codigo=e.currentTarget.closest('.product-item').dataset.bulkCodigo;
+    if(e.currentTarget.checked)bulkSeleccionados.add(codigo);else bulkSeleccionados.delete(codigo);
+    bulkActualizaControles();
+  }));
   filtrarCatalogoRegistrado();
   actualizarBusquedaRapida();
 
