@@ -345,7 +345,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
         <div class="actions">
           <label for="paperSize" style="font-size:12px">Papel:</label>
           <select id="paperSize" class="print-select" title="Ancho del papel térmico"><option value="80">80 mm (recomendado)</option><option value="58">58 mm</option></select>
-          <button class="btn btn-outline btn-small" id="btnImprimir">🖨 Imprimir códigos</button>
+          <button class="btn btn-outline btn-small" id="btnImprimir">🖨 Imprimir lista (hoja)</button>
           <button class="btn btn-outline btn-small" id="btnBorrarTodo">🗑️ Borrar todo</button>
         </div>
       </div>
@@ -453,58 +453,97 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     }catch(e){ console.error('No se pudo dibujar el código:', e); }
   }
 
-  // Construye una etiqueta por artículo en vez de imprimir la tabla completa,
-  // cuya reducción horizontal provocaba barras demasiado finas.
-  function prepararImpresion(){
-    const records = getRecords();
-    if(!records.length){ setStatus('No hay códigos guardados para imprimir.'); return false; }
-    if(typeof JsBarcode !== 'function'){ setStatus('No se cargó la librería de códigos de barras.'); return false; }
+  // La impresora térmica puede tener 203 dpi o menos. Nunca escalar barras
+  // horizontalmente mediante CSS: la anchura se fija en el propio SVG.
+  function crearBarcodeImpresion(svg, code, maxMm, alturaMm){
+    const pxPorMm = 96 / 25.4;
+    // CODE128 puede cambiar de longitud según su contenido. Primero medimos.
+    JsBarcode(svg, code, {format:'CODE128', width:1, height:1, margin:0, displayValue:false});
+    const modulos = parseFloat(svg.getAttribute('width') || ''); // JsBarcode devuelve el ancho como '123px'
+    if(!Number.isFinite(modulos) || modulos <= 0) throw Error('No fue posible medir el código de barras');
+    // El mínimo aproximado de 0.25 mm es la referencia para ~2 puntos a 203 dpi.
+    const anchoMod = Math.min(1.5, (maxMm - 5) * pxPorMm / modulos);
+    JsBarcode(svg, code, {
+      format:'CODE128', width:anchoMod, height:alturaMm * pxPorMm,
+      margin:0, displayValue:false, background:'#fff', lineColor:'#000'
+    });
+    svg.style.width = ((modulos * anchoMod)/pxPorMm).toFixed(2) + 'mm';
+    svg.style.height = alturaMm + 'mm';
+    return anchoMod / pxPorMm;
+  }
+
+  function prepararImpresionUno(record){
+    const code = sanitizeCode(record.code);
+    if(!code){ setStatus('Este registro no tiene un código válido.'); return false; }
+    if(typeof JsBarcode !== 'function'){
+      setStatus('No se cargó la librería de códigos de barras. Comprueba internet.'); return false;
+    }
     const paper = $('paperSize').value;
+    const maxMm = paper === '58' ? 46 : 68;
     const area = $('printArea');
     area.replaceChildren();
-    area.className = paper === '58' ? 'roll58' : 'roll80';
-    const maxPx = paper === '58' ? 173 : 252; // 46/67 mm, sin márgenes de impresora
-    let incompatible = [];
-    records.forEach((r, i) => {
-      const code = sanitizeCode(r.code);
-      if(!code) return;
-      const label = document.createElement('section');
-      label.className = 'ticket-label';
-      const group = document.createElement('div');
-      group.className = 'ticket-group';
-      group.textContent = r.grupo || '';
-      const desc = document.createElement('div');
-      desc.className = 'ticket-description';
-      desc.textContent = r.descripcion || '';
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.classList.add('ticket-barcode');
-      const num = document.createElement('div');
-      num.className = 'ticket-number';
-      num.textContent = code;
-      label.append(group, desc, svg, num);
-      area.appendChild(label);
-      try {
-        // Obtiene el número real de módulos, y usa el ancho máximo posible
-        // sin reducir por CSS ni deformar la proporción del CODE128.
-        JsBarcode(svg, code, {format:'CODE128', width:1, height:68,
-          margin:0, displayValue:false, background:'#fff', lineColor:'#000'});
-        const modules = Number(svg.getAttribute('width'));
-        if(!Number.isFinite(modules) || modules > maxPx - 20){
-          incompatible.push(code);
-          return;
-        }
-        const moduleWidth = Math.min(1.5, (maxPx - 20) / modules);
-        JsBarcode(svg, code, {format:'CODE128', width:moduleWidth,
-          height:68, margin:10, marginLeft:10, marginRight:10,
-          marginTop:2, marginBottom:2, displayValue:false,
-          background:'#fff', lineColor:'#000'});
-      }catch(err){ console.error(err); incompatible.push(code); }
-    });
-    if(incompatible.length){
-      setStatus('⚠ Algunos códigos son demasiado largos para papel de '+paper+' mm sin hacer las barras ilegibles. Prueba 80 mm o acorta el código.');
-      area.replaceChildren();
-      return false;
+    area.className = 'ticket-print ' + (paper === '58' ? 'roll58' : 'roll80');
+    const label = document.createElement('section');
+    label.className='ticket-label';
+    const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.classList.add('ticket-barcode');
+    const desc=document.createElement('div');
+    desc.className='ticket-description';
+    desc.textContent=record.descripcion || '';
+    label.append(svg,desc);
+    area.appendChild(label);
+    try{
+      const moduloMm = crearBarcodeImpresion(svg,code,maxMm,17);
+      if(moduloMm < 0.25){
+        setStatus('⚠ Código muy largo para '+paper+' mm: se imprimirá solo este código, pero podría no leerse. Para una lectura fiable prueba 80 mm o un código más corto.');
+      } else {
+        setStatus('Listo para imprimir un código en papel de '+paper+' mm.');
+      }
+    }catch(e){ console.error('Error al preparar impresión individual:',e);setStatus('No se pudo preparar el código: '+(e.message||e));return false; }
+    return true;
+  }
+
+  function imprimirUno(id){
+    const record=getRecords().find(x=>String(x.id)===String(id));
+    if(!record){setStatus('No se encontró el registro.');return;}
+    if(prepararImpresionUno(record)) window.print();
+  }
+
+  // En papel normal imprimimos toda la lista y no usamos restricciones
+  // de los rollos de 58/80 mm.
+  function prepararImpresionLista(){
+    const records=getRecords();
+    if(!records.length){setStatus('No hay códigos guardados para imprimir.');return false;}
+    if(typeof JsBarcode !== 'function'){
+      setStatus('No se cargó la librería de códigos de barras. Comprueba internet.');return false;
     }
+    const area=$('printArea');
+    area.replaceChildren();
+    area.className='sheet-print';
+    const heading=document.createElement('h2');
+    heading.textContent='Mi Tienda — Lista de códigos';
+    area.appendChild(heading);
+    const table=document.createElement('table');
+    table.className='sheet-table';
+    const head=document.createElement('thead');
+    head.innerHTML='<tr><th>Grupo</th><th>Descripción</th><th>Código</th><th>Código de barras</th></tr>';
+    table.appendChild(head);
+    const body=document.createElement('tbody');
+    for(const r of records){
+      const code=sanitizeCode(r.code);
+      if(!code)continue;
+      const tr=document.createElement('tr');
+      for(const value of [r.grupo||'',r.descripcion||'',code]){
+        const td=document.createElement('td');td.textContent=value;tr.appendChild(td);
+      }
+      const td=document.createElement('td');
+      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      svg.classList.add('sheet-barcode');
+      try{JsBarcode(svg,code,{format:'CODE128',width:1,height:33,margin:4,displayValue:false,background:'#fff',lineColor:'#000'});}catch(e){console.error(e)}
+      td.appendChild(svg);tr.appendChild(td);body.appendChild(tr);
+    }
+    table.appendChild(body);area.appendChild(table);
+    setStatus('Lista preparada para impresora normal. Selecciona una impresora de hojas en el diálogo de impresión.');
     return true;
   }
 
@@ -565,6 +604,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
             <button class="btn btn-outline btn-small" data-act="edit" data-id="${escapeHtml(r.id)}">✏️</button>
             <button class="btn btn-outline btn-small" data-act="del" data-id="${escapeHtml(r.id)}">🗑️</button>
             <button class="btn btn-outline btn-small" data-act="send" data-id="${escapeHtml(r.id)}" title="Pasar a Productos">➕</button>
+            <button class="btn btn-outline btn-small" data-act="print" data-id="${escapeHtml(r.id)}" title="Imprimir solo este código en ticket">🖨️</button>
           </div>
         </td>
       `;
@@ -580,6 +620,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
         if(act === 'del') return delRecord(id);
         if(act === 'edit') return editRecord(id);
         if(act === 'send') return sendToProducts(id);
+        if(act === 'print') return imprimirUno(id);
       });
     });
   }
@@ -700,7 +741,7 @@ $('btnBorrarTodo').addEventListener('click', ()=>{
   });
 
   $('btnImprimir').addEventListener('click', ()=>{
-    if(prepararImpresion()) window.print();
+    if(prepararImpresionLista()) window.print();
   });
 
   // Export / Import
@@ -758,17 +799,26 @@ $('btnBorrarTodo').addEventListener('click', ()=>{
 
 <style>
 @media print{
-  @page{size:auto;margin:0}
+  @page{size:auto;margin:6mm}
   html,body{margin:0!important;padding:0!important;background:#fff!important;color:#000!important}
   body > header, body > main{display:none!important}
-  #printArea{display:block!important;box-sizing:border-box;margin:0;padding:0;background:#fff;color:#000;font-family:Arial,sans-serif}
-  #printArea.roll80{width:72mm;padding:2mm}
-  #printArea.roll58{width:50mm;padding:2mm}
-  .ticket-label{display:flex;align-items:center;flex-direction:column;text-align:center;break-inside:avoid;page-break-inside:avoid;padding:2mm 0 4mm;border-bottom:1px dashed #bbb;box-sizing:border-box}
-  .ticket-group{font-size:10pt;font-weight:700;overflow-wrap:anywhere}
-  .ticket-description{font-size:9pt;margin:1mm 0 2mm;overflow-wrap:anywhere}
-  .ticket-barcode{display:block;flex-shrink:0;max-width:none!important;background:#fff!important;shape-rendering:crispEdges}
-  .ticket-number{font-size:10pt;font-family:monospace;font-weight:700;letter-spacing:.3px;margin-top:1mm;overflow-wrap:anywhere}
+  #printArea{display:block!important;box-sizing:border-box;background:#fff;color:#000;font-family:Arial,sans-serif}
+  #printArea.ticket-print{margin:0;padding:0;max-width:100%;}
+  #printArea.ticket-print.roll80{width:72mm}
+  #printArea.ticket-print.roll58{width:50mm}
+  #printArea.ticket-print .ticket-label{display:flex;align-items:center;flex-direction:column;text-align:center;break-inside:avoid;page-break-inside:avoid;padding:1mm 0 2mm;box-sizing:border-box}
+  #printArea.ticket-print .ticket-description{font-size:7pt;line-height:1.15;margin-top:1mm;overflow-wrap:anywhere;max-width:95%;color:#000}
+  #printArea.ticket-print .ticket-barcode{display:block;flex-shrink:0;max-width:none!important;background:#fff!important;shape-rendering:crispEdges}
+  #printArea.sheet-print{width:100%;padding:0}
+  #printArea.sheet-print h2{font-size:15pt;margin:0 0 5mm}
+  #printArea.sheet-print .sheet-table{width:100%;border-collapse:collapse;font-size:9pt;table-layout:fixed}
+  #printArea.sheet-print .sheet-table th, #printArea.sheet-print .sheet-table td{border:1px solid #bbb;padding:2mm;vertical-align:middle;overflow-wrap:anywhere;color:#000}
+  #printArea.sheet-print .sheet-table th:nth-child(1){width:17%}
+  #printArea.sheet-print .sheet-table th:nth-child(2){width:30%}
+  #printArea.sheet-print .sheet-table th:nth-child(3){width:20%}
+  #printArea.sheet-print .sheet-table th:nth-child(4){width:33%}
+  #printArea.sheet-print .sheet-table tr{break-inside:avoid;page-break-inside:avoid}
+  #printArea.sheet-print .sheet-barcode{display:block;max-width:100%;height:auto;background:#fff}
 }
 @media screen{#printArea{display:none!important}}
 </style>
