@@ -117,7 +117,10 @@
     align-items:center;
   }
   .label{font-size:13px;color:var(--muted);margin:8px 0 6px}
-  #barcode{width:100%; height:18px}
+  #barcode{display:block;max-width:100%;height:auto;min-height:55px;background:#fff;border-radius:5px}
+  #tabla td svg{display:block;max-width:100%;height:auto;background:#fff}
+  .print-select{font-size:13px;padding:7px 8px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#111}
+  #printArea{display:none}
   #status{font-size:13px;color:var(--muted);margin-top:10px}
 
   table{width:100%;border-collapse:collapse;font-size:14px}
@@ -340,7 +343,9 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
         <div style="font-weight:900">Lista de códigos guardados (➕ = pasar a Productos)</div>
         <div class="actions">
-          <button class="btn btn-outline btn-small" id="btnImprimir">🖨 Imprimir lista</button>
+          <label for="paperSize" style="font-size:12px">Papel:</label>
+          <select id="paperSize" class="print-select" title="Ancho del papel térmico"><option value="80">80 mm (recomendado)</option><option value="58">58 mm</option></select>
+          <button class="btn btn-outline btn-small" id="btnImprimir">🖨 Imprimir códigos</button>
           <button class="btn btn-outline btn-small" id="btnBorrarTodo">🗑️ Borrar todo</button>
         </div>
       </div>
@@ -364,6 +369,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     </div>
   </div>
 </main>
+<div id="printArea" aria-hidden="true"></div>
 
 <script>
   const LS_KEY = 'mitienda_gencodigo_records_v2';
@@ -430,18 +436,76 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     return String(s||'').toUpperCase().replace(/\s+/g,'').replace(/[^A-Z0-9]/g,'');
   }
 
-  function drawBarcode(svgOrSelector, code, height=11){
+  // Barras de alto suficiente para lectores láser y márgenes blancos de seguridad.
+  // No alterar el contenido: todos los códigos siguen siendo CODE128.
+  function drawBarcode(svgOrSelector, code, height=55){
     try{
       const v = sanitizeCode(code);
-      if(!v){
-        const svg = (typeof svgOrSelector === 'string') ? document.querySelector(svgOrSelector) : svgOrSelector;
-        if(svg) while(svg.firstChild) svg.removeChild(svg.firstChild);
-        return;
-      }
-      JsBarcode(svgOrSelector, v, {format:'CODE128', height: height, margin:0, displayValue:false});
-    }catch(e){
-      console.error(e);
+      const svg = typeof svgOrSelector === 'string' ? document.querySelector(svgOrSelector) : svgOrSelector;
+      if(!svg) return;
+      if(!v){ svg.replaceChildren(); return; }
+      JsBarcode(svg, v, {
+        format:'CODE128', width:1.5, height,
+        margin:12, marginLeft:12, marginRight:12,
+        marginTop:8, marginBottom:8,
+        background:'#ffffff', lineColor:'#000000', displayValue:false
+      });
+    }catch(e){ console.error('No se pudo dibujar el código:', e); }
+  }
+
+  // Construye una etiqueta por artículo en vez de imprimir la tabla completa,
+  // cuya reducción horizontal provocaba barras demasiado finas.
+  function prepararImpresion(){
+    const records = getRecords();
+    if(!records.length){ setStatus('No hay códigos guardados para imprimir.'); return false; }
+    if(typeof JsBarcode !== 'function'){ setStatus('No se cargó la librería de códigos de barras.'); return false; }
+    const paper = $('paperSize').value;
+    const area = $('printArea');
+    area.replaceChildren();
+    area.className = paper === '58' ? 'roll58' : 'roll80';
+    const maxPx = paper === '58' ? 173 : 252; // 46/67 mm, sin márgenes de impresora
+    let incompatible = [];
+    records.forEach((r, i) => {
+      const code = sanitizeCode(r.code);
+      if(!code) return;
+      const label = document.createElement('section');
+      label.className = 'ticket-label';
+      const group = document.createElement('div');
+      group.className = 'ticket-group';
+      group.textContent = r.grupo || '';
+      const desc = document.createElement('div');
+      desc.className = 'ticket-description';
+      desc.textContent = r.descripcion || '';
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.classList.add('ticket-barcode');
+      const num = document.createElement('div');
+      num.className = 'ticket-number';
+      num.textContent = code;
+      label.append(group, desc, svg, num);
+      area.appendChild(label);
+      try {
+        // Obtiene el número real de módulos, y usa el ancho máximo posible
+        // sin reducir por CSS ni deformar la proporción del CODE128.
+        JsBarcode(svg, code, {format:'CODE128', width:1, height:68,
+          margin:0, displayValue:false, background:'#fff', lineColor:'#000'});
+        const modules = Number(svg.getAttribute('width'));
+        if(!Number.isFinite(modules) || modules > maxPx - 20){
+          incompatible.push(code);
+          return;
+        }
+        const moduleWidth = Math.min(1.5, (maxPx - 20) / modules);
+        JsBarcode(svg, code, {format:'CODE128', width:moduleWidth,
+          height:68, margin:10, marginLeft:10, marginRight:10,
+          marginTop:2, marginBottom:2, displayValue:false,
+          background:'#fff', lineColor:'#000'});
+      }catch(err){ console.error(err); incompatible.push(code); }
+    });
+    if(incompatible.length){
+      setStatus('⚠ Algunos códigos son demasiado largos para papel de '+paper+' mm sin hacer las barras ilegibles. Prueba 80 mm o acorta el código.');
+      area.replaceChildren();
+      return false;
     }
+    return true;
   }
 
   function getRecords(){
@@ -468,7 +532,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     const code = base + seq;
 
     $('codigo').value = code;
-    drawBarcode('#barcode', code, 11);
+    drawBarcode('#barcode', code, 55);
     setStatus('Sugerido.');
   }
 
@@ -477,7 +541,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     $('grupo').value = '';
     $('desc').value = '';
     $('codigo').value = '';
-    drawBarcode('#barcode', '', 11);
+    drawBarcode('#barcode', '', 55);
   }
 
   function renderList(){
@@ -506,7 +570,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
       `;
       tbody.appendChild(tr);
       const svg = document.getElementById(bid);
-      if(svg) drawBarcode(svg, r.code, 11);
+      if(svg) drawBarcode(svg, r.code, 45);
     }
 
     tbody.querySelectorAll('button[data-act]').forEach(b=>{
@@ -539,7 +603,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     $('grupo').value = r.grupo || '';
     $('desc').value = r.descripcion || '';
     $('codigo').value = r.code || '';
-    drawBarcode('#barcode', r.code || '', 11);
+    drawBarcode('#barcode', r.code || '', 55);
     setStatus('Editando… cambia y vuelve a Guardar.');
     window.scrollTo({top:0, behavior:'smooth'});
   }
@@ -581,7 +645,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
   $('btnGen').addEventListener('click', sugerir);
 
   $('codigo').addEventListener('input', ()=>{
-    drawBarcode('#barcode', $('codigo').value, 11);
+    drawBarcode('#barcode', $('codigo').value, 55);
   });
 
   $('btnSave').addEventListener('click', ()=>{
@@ -636,8 +700,7 @@ $('btnBorrarTodo').addEventListener('click', ()=>{
   });
 
   $('btnImprimir').addEventListener('click', ()=>{
-    // Imprime la lista completa
-    setTimeout(()=>window.print(), 50);
+    if(prepararImpresion()) window.print();
   });
 
   // Export / Import
@@ -695,12 +758,19 @@ $('btnBorrarTodo').addEventListener('click', ()=>{
 
 <style>
 @media print{
-  @page{ size:auto; margin:6mm; }
-  .mitienda-header, .header-actions, .row, #status, .actions, #btnImprimir, #btnBorrarTodo { display:none !important; }
-  body{ background:#fff !important; color:#000 !important; }
-  .card{ box-shadow:none !important; }
-  th{ font-size:11px }
+  @page{size:auto;margin:0}
+  html,body{margin:0!important;padding:0!important;background:#fff!important;color:#000!important}
+  body > header, body > main{display:none!important}
+  #printArea{display:block!important;box-sizing:border-box;margin:0;padding:0;background:#fff;color:#000;font-family:Arial,sans-serif}
+  #printArea.roll80{width:72mm;padding:2mm}
+  #printArea.roll58{width:50mm;padding:2mm}
+  .ticket-label{display:flex;align-items:center;flex-direction:column;text-align:center;break-inside:avoid;page-break-inside:avoid;padding:2mm 0 4mm;border-bottom:1px dashed #bbb;box-sizing:border-box}
+  .ticket-group{font-size:10pt;font-weight:700;overflow-wrap:anywhere}
+  .ticket-description{font-size:9pt;margin:1mm 0 2mm;overflow-wrap:anywhere}
+  .ticket-barcode{display:block;flex-shrink:0;max-width:none!important;background:#fff!important;shape-rendering:crispEdges}
+  .ticket-number{font-size:10pt;font-family:monospace;font-weight:700;letter-spacing:.3px;margin-top:1mm;overflow-wrap:anywhere}
 }
+@media screen{#printArea{display:none!important}}
 </style>
 </body>
 </html>
