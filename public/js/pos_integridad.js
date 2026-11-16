@@ -79,7 +79,9 @@ function registrarCierreCaja(historial){
  const hoy=fechaClave(new Date());
  const ventas=(historial||[]).filter(v=>{
    const d=fechaVenta(v);return d&&fechaClave(d)===hoy;
- }).map(v=>({id:v.id,efectivo:v.metodoPago==='Tarjeta'?0:(Number(v.total)||0)}));
+ }).map(v=>({id:v.id,efectivo:Array.isArray(v.pagos)&&v.pagos.length
+   ? v.pagos.filter(x=>x.metodo==='Efectivo').reduce((sum,x)=>sum+(Number(x.importe)||0),0)
+   : (v.metodoPago==='Tarjeta'||v.metodoPago==='Vales'||v.metodoPago==='Vale'?0:(Number(v.total)||0))}));
  if(!ventas.length)return;
  // Conserva los cierres del día anterior y hoy. Los periodos viejos no afectan caja actual.
  const ayer=fechaClave(new Date(Date.now()-86400000));
