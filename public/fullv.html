@@ -45,6 +45,19 @@
 #panel-productos .catalogo-agregar-celda{flex:0 0 auto!important;min-width:0!important}
 #panel-productos .catalogo-agregar-celda button{min-height:37px}
 @media(max-width:650px){#panel-productos .catalogo-form-principal #prod-nombre{flex-basis:200px}#panel-productos .mg-product-fields>div{max-width:none}}
+
+/* Administración de grupos y marcas en ventana flotante. */
+#clasif-admin-panel[hidden]{display:none!important}
+#clasif-admin-wrap{margin:7px 0 3px!important}
+#clasif-admin-toggle{font-size:12px!important;padding:5px 9px!important;font-weight:500!important;border-radius:7px!important;line-height:1.2!important}
+#clasif-admin-panel{position:fixed;inset:0;z-index:12500;background:rgba(0,0,0,.58);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box}
+#clasif-admin-dialog{width:min(950px,100%);max-height:90vh;overflow:auto;box-sizing:border-box;background:#fff;color:#111827;border-radius:13px;padding:18px;box-shadow:0 15px 45px #0006;border:1px solid #cbd5e1}
+#clasif-admin-dialog-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:9px}
+#clasif-admin-tables{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+#clasif-admin-tables section{min-width:0;overflow-x:auto}
+#clasif-admin-tables table{min-width:270px}
+#clasif-admin-dialog input{background:#fff;color:#111;border:1px solid #cbd5e1}
+@media(max-width:670px){#clasif-admin-dialog{padding:12px;max-height:94vh}#clasif-admin-tables{grid-template-columns:minmax(0,1fr)}}
 </style><script src="js/fp.min.js">
 // Inventario progresivo: solo FULLV registra (descuenta) stock; MiTienda solo refleja
 window.INVENTARIO_ACTIVO = true;
@@ -758,6 +771,9 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 <div class="small" style="width:100%">Precio y costo se calculan por kg o por L según la unidad seleccionada.</div>
 </div>
 
+<div id="clasif-admin-wrap" style="display:none">
+<button type="button" class="btn btn-outline btn-small" id="clasif-admin-toggle" aria-haspopup="dialog" aria-expanded="false">✏️ Grupos y marcas</button>
+</div>
 <div class="catalogo-busqueda"><input id="buscar-catalogo" type="search" placeholder="🔎 Buscar artículo por nombre o código" aria-label="Buscar entre artículos registrados" autocomplete="off"/><span id="catalogo-resultado" class="catalogo-resultado" aria-live="polite"></span></div>
 <div class="right-controls" style="margin-bottom:8px">
 <button class="btn btn-amarillo btn-small" id="btn-low-stock" title="Ver artículos con inventario y menos de 5 piezas">⚠ Poco stock</button>
@@ -778,11 +794,11 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 <button type="button" class="btn btn-outline btn-small" id="bulk-clear">Limpiar selección</button>
 <button type="button" class="btn btn-rojo btn-small" id="bulk-open" disabled>Corregir costo / precio</button>
 </div>
-<div id="clasif-admin-wrap" style="display:none;margin:12px 0">
-<button type="button" class="btn btn-outline btn-small" id="clasif-admin-toggle" aria-expanded="false">✏️ Administrar grupos y marcas</button>
-<div id="clasif-admin-panel" hidden style="margin-top:10px;padding:12px;border:1px solid #cbd5e1;border-radius:10px">
+<div id="clasif-admin-panel" hidden role="dialog" aria-modal="true" aria-labelledby="clasif-admin-title">
+<div id="clasif-admin-dialog">
+<div id="clasif-admin-dialog-header"><strong id="clasif-admin-title">Administrar grupos y marcas</strong><button type="button" class="btn btn-outline btn-small" id="clasif-admin-close">✕ Cerrar</button></div>
 <div class="small" style="margin-bottom:10px">Edita un nombre en la tabla y pulsa Guardar. El cambio se aplicará a todos los productos que tengan esa marca o grupo. Las listas aparecen en orden alfabético.</div>
-<div id="clasif-admin-tables" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px"></div>
+<div id="clasif-admin-tables"></div>
 </div>
 </div>
 <div class="products-list" id="products-list"></div>
@@ -1495,11 +1511,30 @@ const clasifAdminWrap = document.getElementById('clasif-admin-wrap');
 const clasifAdminToggle = document.getElementById('clasif-admin-toggle');
 const clasifAdminPanel = document.getElementById('clasif-admin-panel');
 const clasifAdminTables = document.getElementById('clasif-admin-tables');
+const clasifAdminClose = document.getElementById('clasif-admin-close');
+function cerrarAdministracionClasificaciones(){
+  clasifAdminPanel.hidden=true;
+  clasifAdminToggle.setAttribute('aria-expanded','false');
+  if(isAdmin && document.getElementById('panel-productos').style.display!=='none')clasifAdminToggle.focus();
+}
 clasifAdminToggle.addEventListener('click',()=>{
   if(!isAdmin)return;
-  clasifAdminPanel.hidden=!clasifAdminPanel.hidden;
-  clasifAdminToggle.setAttribute('aria-expanded',String(!clasifAdminPanel.hidden));
-  if(!clasifAdminPanel.hidden)renderAdministracionClasificaciones();
+  clasifAdminPanel.hidden=false;
+  clasifAdminToggle.setAttribute('aria-expanded','true');
+  renderAdministracionClasificaciones();
+  clasifAdminClose.focus();
+});
+clasifAdminClose.addEventListener('click',cerrarAdministracionClasificaciones);
+clasifAdminPanel.addEventListener('click',evento=>{if(evento.target===clasifAdminPanel)cerrarAdministracionClasificaciones();});
+document.addEventListener('keydown',evento=>{
+  if(clasifAdminPanel.hidden)return;
+  if(evento.key==='Escape'){evento.preventDefault();cerrarAdministracionClasificaciones();}
+  if(evento.key==='Tab'){
+    const elementos=[...clasifAdminPanel.querySelectorAll('button:not([disabled]),input:not([disabled])')].filter(el=>el.getClientRects().length);
+    if(!elementos.length)return;
+    if(evento.shiftKey&&document.activeElement===elementos[0]){evento.preventDefault();elementos[elementos.length-1].focus();}
+    else if(!evento.shiftKey&&document.activeElement===elementos[elementos.length-1]){evento.preventDefault();elementos[0].focus();}
+  }
 });
 function renderAdministracionClasificaciones(){
   if(!isAdmin || clasifAdminPanel.hidden)return;
