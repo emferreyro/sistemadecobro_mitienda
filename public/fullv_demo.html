@@ -355,6 +355,11 @@ body.neon th{ color: rgba(232,244,255,0.80); }
 
 /* Edición múltiple del catálogo (solo FULLV). */
 #panel-productos .bulk-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:5px 0 10px;padding:8px 10px;border:1px solid #d5d7dd;border-radius:10px;background:#222;color:#f5f5f5}
+/* Tema blanco/amarillo: barra clara y controles legibles. */
+body:not(.dark):not(.neon):not(.pink) #panel-productos .bulk-toolbar{background:#fffdf0;color:#253044;border-color:#e4dba6}
+body:not(.dark):not(.neon):not(.pink) #panel-productos .bulk-toolbar label,
+body:not(.dark):not(.neon):not(.pink) #panel-productos .bulk-toolbar .small{color:#253044}
+body:not(.dark):not(.neon):not(.pink) #panel-productos .bulk-toolbar .btn-outline{background:#fff;color:#253044;border-color:#b8bec8}
 #panel-productos .bulk-toolbar[hidden],#bulk-modal[hidden]{display:none!important}
 #panel-productos:not(.bulk-mode-active) .bulk-check{display:none!important}
 #panel-productos .bulk-check{flex:0 0 auto;width:21px;height:21px;cursor:pointer;accent-color:#c62828;margin:0 4px 0 0}
