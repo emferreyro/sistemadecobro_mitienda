@@ -775,10 +775,10 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
             <button id="btn-add-prod" class="btn btn-rojo">Agregar</button>
           </div>
 
-          <div class="granel-control"><label for="prod-tipo">Tipo de venta</label><select id="prod-tipo"><option value="pieza">Por pieza</option><option value="granel">A granel</option></select><span id="total-productos-registrados" class="total-productos-registrados" aria-live="polite">Artículos registrados: <strong>0</strong></span></div>
+          <div class="granel-control"><label for="prod-tipo">Tipo de venta</label><select id="prod-tipo"><option value="pieza">Por pieza</option><option value="granel">A granel</option></select><label for="prod-unidad-granel">Unidad granel</label><select id="prod-unidad-granel" disabled><option value="kg">kg</option><option value="L">L</option></select><span id="total-productos-registrados" class="total-productos-registrados" aria-live="polite">Artículos registrados: <strong>0</strong></span></div>
           <div class="catalogo-busqueda"><input id="buscar-catalogo" type="search" placeholder="🔎 Buscar artículo por nombre o código" aria-label="Buscar entre artículos registrados" autocomplete="off"/><span id="catalogo-resultado" class="catalogo-resultado" aria-live="polite"></span></div>
           <div id="granel-campos" class="granel-campos">
-            <label>Unidad de venta <select id="prod-unidad-granel"><option value="kg">Kilogramos (kg)</option><option value="L">Litros (L)</option></select></label>
+
 
 
 
@@ -1031,9 +1031,10 @@ function unidadMenorGranel(p){return unidadGranel(p)==='L'?'ml':'g';}
 function formatoGranel(cantidad,p){return Number(cantidad).toLocaleString('es-MX',{maximumFractionDigits:3})+' '+unidadGranel(p);}
 function gramosInventario(p){if(!p || p.stockGramos==null || p.stockGramos==='')return null;const n=Number(p.stockGramos);return Number.isFinite(n)?Math.max(0,Math.round(n)):null;}
 function formatoPeso(kg){return Number(kg).toLocaleString('es-MX',{maximumFractionDigits:3})+' kg';}
-function actualizarCamposGranel(){granelCampos.classList.toggle('activo',prodTipo.value === 'granel');prodPrecio.placeholder=prodTipo.value==='granel'?'Precio por '+prodUnidadGranel.value:'Precio';}
+function actualizarCamposGranel(){const aGranel=prodTipo.value==='granel';granelCampos.classList.toggle('activo',aGranel);prodUnidadGranel.disabled=!aGranel;prodPrecio.placeholder=aGranel?'Precio por '+prodUnidadGranel.value:'Precio';}
 prodTipo.addEventListener('change',actualizarCamposGranel);
 prodUnidadGranel.addEventListener('change',actualizarCamposGranel);
+actualizarCamposGranel();
 void 0 && prodPesoCostal.addEventListener('input',()=>{const peso=Number(prodPesoCostal.value),costo=Number(prodCostoCostal.value);if(peso>0&&costo>0)prodCostoKg.value=(costo/peso).toFixed(4);});
 void 0 && prodCostoCostal.addEventListener('input',()=>{const peso=Number(prodPesoCostal.value),costo=Number(prodCostoCostal.value);if(peso>0&&costo>0)prodCostoKg.value=(costo/peso).toFixed(4);});
 const btnAddProd = document.getElementById('btn-add-prod');
@@ -1605,7 +1606,8 @@ function checkProductLimitOnOpen(){
   if(prodCodigo) prodCodigo.disabled = false;
   if(prodNombre) prodNombre.disabled = false;
   if(prodPrecio) prodPrecio.disabled = false;
-  [prodTipo,prodUnidadGranel,prodCostoKg,prodStockKg,prodPesoCostal,prodCostoCostal].forEach(e=>{if(e)e.disabled=false;});
+  [prodTipo,prodCostoKg,prodStockKg,prodPesoCostal,prodCostoCostal].forEach(e=>{if(e)e.disabled=false;});
+  actualizarCamposGranel();
   actualizarControlesProteccionCatalogo();
 }
 
