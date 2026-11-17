@@ -613,6 +613,57 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 /* Alertas de estado mantienen colores semánticos para evitar confusiones. */
 </style>
 <style>#panel-venta #pagoMixto[hidden], #panel-venta .pay-field[hidden]{display:none!important}</style>
+<style id="catalogo-proteccion-temas">
+/* Paleta exclusiva de bloqueo/desbloqueo del catálogo (sin cambiar su lógica). */
+#proteccion-catalogo {
+  --proteccion-fondo: #ffffff;
+  --proteccion-texto: #1f2937;
+  --proteccion-borde: #d1d5db;
+  --proteccion-boton: #fffdf3;
+  --proteccion-hover: #fff3c2;
+  --proteccion-deshabilitado: #6b7280;
+}
+body.dark #proteccion-catalogo {
+  --proteccion-fondo: #242424;
+  --proteccion-texto: #f5f5f5;
+  --proteccion-borde: #666666;
+  --proteccion-boton: #303030;
+  --proteccion-hover: #414141;
+  --proteccion-deshabilitado: #adadad;
+}
+body.neon #proteccion-catalogo {
+  --proteccion-fondo: #0a1626;
+  --proteccion-texto: #e8f4ff;
+  --proteccion-borde: rgba(45,212,255,.38);
+  --proteccion-boton: #102338;
+  --proteccion-hover: #18344d;
+  --proteccion-deshabilitado: #a9c3d6;
+}
+body.pink #proteccion-catalogo {
+  --proteccion-fondo: #fffafd;
+  --proteccion-texto: #622341;
+  --proteccion-borde: #e9b5cc;
+  --proteccion-boton: #fff2f8;
+  --proteccion-hover: #fce7f3;
+  --proteccion-deshabilitado: #94627c;
+}
+#proteccion-catalogo > button,
+#proteccion-catalogo #catalogo-opciones button {
+  background: var(--proteccion-boton) !important;
+  color: var(--proteccion-texto) !important;
+  border: 1px solid var(--proteccion-borde) !important;
+}
+#proteccion-catalogo > button:hover:not(:disabled),
+#proteccion-catalogo #catalogo-opciones button:hover:not(:disabled) {
+  background: var(--proteccion-hover) !important;
+}
+#proteccion-catalogo button:disabled {opacity:.55;color:var(--proteccion-deshabilitado) !important;}
+#proteccion-catalogo #catalogo-opciones {
+  background:var(--proteccion-fondo) !important;
+  color:var(--proteccion-texto) !important;
+  border:1px solid var(--proteccion-borde) !important;
+}
+</style>
 </head>
 <body>
 <div class="app">
