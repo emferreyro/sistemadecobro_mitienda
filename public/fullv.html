@@ -3562,6 +3562,64 @@ function mostrarPocoStock(){
 
   card.appendChild(header);
   card.appendChild(body);
+
+  // Acciones del reporte: no cambian los productos ni sus existencias.
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(128,128,128,.28);';
+  actions.innerHTML = '<button type="button" id="imprimirPocoStock" style="padding:8px 12px;border:1px solid #a1a1aa;border-radius:9px;background:#fff;color:#18181b;cursor:pointer;font-weight:600">🖨 Imprimir</button>' +
+                      '<button type="button" id="excelPocoStock" style="padding:8px 12px;border:1px solid #15803d;border-radius:9px;background:#15803d;color:#fff;cursor:pointer;font-weight:600">⬇ Exportar a Excel (CSV)</button>';
+  card.appendChild(actions);
+
+  function fechaReporte(){
+    return new Date().toLocaleString('es-MX');
+  }
+  function csvCell(value){
+    return '"' + String(value == null ? '' : value).replace(/"/g, '""').replace(/\r?\n/g, ' ') + '"';
+  }
+  function exportarPocoStock(){
+    const rows = [
+      ['Reporte de artículos con poco stock'],
+      ['Fecha', fechaReporte()],
+      ['Código', 'Producto', 'Existencia']
+    ];
+    low.forEach(p => rows.push([p.codigo ?? '', p.nombre ?? '', p.stock ?? '']));
+    // BOM UTF-8 y separador explícito para Excel configurado en español.
+    const csv = '\uFEFFsep=;\r\n' + rows.map(r => r.map(csvCell).join(';')).join('\r\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'poco_stock_' + new Date().toISOString().slice(0,10) + '.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  function imprimirPocoStock(){
+    const esc = value => String(value == null ? '' : value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    const rows = low.map(p => '<tr><td>' + esc(p.codigo) + '</td><td>' + esc(p.nombre) + '</td><td class="number">' + esc(p.stock) + '</td></tr>').join('');
+    const content = '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Artículos con poco stock</title>' +
+      '<style>body{font:13px Arial,sans-serif;color:#111;margin:24px}h1{font-size:20px;margin:0 0 8px}p{margin:0 0 16px;color:#444}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:7px 9px;text-align:left}th{background:#eee}.number{text-align:right}@media print{@page{margin:14mm}body{margin:0}}</style></head><body>' +
+      '<h1>Artículos con poco stock</h1><p>Fecha: ' + esc(fechaReporte()) + ' | Artículos: ' + low.length + '</p>' +
+      '<table><thead><tr><th>Código</th><th>Producto</th><th>Existencia</th></tr></thead><tbody>' + (rows || '<tr><td colspan="3">No hay artículos con poco stock</td></tr>') + '</tbody></table></body></html>';
+    // Imprime desde un marco temporal para no sacar al cajero de su pantalla del POS.
+    const frame = document.createElement('iframe');
+    frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
+    frame.setAttribute('title','Impresión de poco stock');
+    document.body.appendChild(frame);
+    const doc = frame.contentDocument;
+    doc.open();
+    doc.write(content);
+    doc.close();
+    const cleanup = () => { if(frame.parentNode) frame.remove(); };
+    frame.contentWindow.addEventListener('afterprint', cleanup, {once:true});
+    setTimeout(() => {
+      try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+      catch(err){ cleanup(); console.error('No se pudo imprimir la lista de poco stock:', err); alert('No se pudo iniciar la impresión.'); }
+    }, 100);
+  }
+  actions.querySelector('#imprimirPocoStock').addEventListener('click', imprimirPocoStock);
+  actions.querySelector('#excelPocoStock').addEventListener('click', exportarPocoStock);
   overlay.appendChild(card);
   document.body.appendChild(overlay);
 
