@@ -406,6 +406,8 @@ body.neon th{ color: rgba(232,244,255,0.80); }
 #clasif-admin-tables section{min-width:0;overflow-x:auto}
 #clasif-admin-tables table{min-width:270px}
 #clasif-admin-dialog input{background:#fff;color:#111;border:1px solid #cbd5e1}
+#clasif-admin-actions{display:flex;justify-content:flex-end;gap:8px;align-items:center;padding-top:12px;margin-top:12px;border-top:1px solid #cbd5e1;background:#fff;position:sticky;bottom:-18px}
+#clasif-admin-save:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:670px){#clasif-admin-dialog{padding:12px;max-height:94vh}#clasif-admin-tables{grid-template-columns:minmax(0,1fr)}}
 </style>
 
@@ -928,8 +930,9 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 <div id="clasif-admin-panel" hidden role="dialog" aria-modal="true" aria-labelledby="clasif-admin-title">
 <div id="clasif-admin-dialog">
 <div id="clasif-admin-dialog-header"><strong id="clasif-admin-title">Administrar grupos y marcas</strong><button type="button" class="btn btn-outline btn-small" id="clasif-admin-close">✕ Cerrar</button></div>
-<div class="small" style="margin-bottom:10px">Edita un nombre en la tabla y pulsa Guardar. El cambio se aplicará a todos los productos que tengan esa marca o grupo. Las listas aparecen en orden alfabético.</div>
+<div class="small" style="margin-bottom:10px">Edita los nombres que necesites y pulsa Guardar cambios al final. Los cambios se aplicarán a todos los productos relacionados. Las listas aparecen en orden alfabético.</div>
 <div id="clasif-admin-tables"></div>
+<div id="clasif-admin-actions"><button type="button" class="btn btn-rojo btn-small" id="clasif-admin-save" disabled>Guardar cambios</button></div>
 </div>
 </div>
 <div class="products-list" id="products-list"></div>
@@ -1644,7 +1647,17 @@ const clasifAdminToggle = document.getElementById('clasif-admin-toggle');
 const clasifAdminPanel = document.getElementById('clasif-admin-panel');
 const clasifAdminTables = document.getElementById('clasif-admin-tables');
 const clasifAdminClose = document.getElementById('clasif-admin-close');
+const clasifAdminSave = document.getElementById('clasif-admin-save');
+function cambiosPendientesClasificaciones(){
+  return [...clasifAdminTables.querySelectorAll('input[data-clasif-clave]')]
+    .map(input=>({clave:input.dataset.clasifClave, anterior:input.dataset.clasifAnterior, nuevo:normalizarClasificacion(input.value), input}))
+    .filter(c=>c.nuevo!==c.anterior);
+}
+function actualizarGuardarClasificaciones(){
+  clasifAdminSave.disabled=!isAdmin||cambiosPendientesClasificaciones().length===0;
+}
 function cerrarAdministracionClasificaciones(){
+  if(cambiosPendientesClasificaciones().length && !confirm('Hay cambios sin guardar en grupos o marcas. ¿Descartarlos?'))return;
   clasifAdminPanel.hidden=true;
   clasifAdminToggle.setAttribute('aria-expanded','false');
   if(isAdmin && document.getElementById('panel-productos').style.display!=='none')clasifAdminToggle.focus();
@@ -1668,6 +1681,40 @@ document.addEventListener('keydown',evento=>{
     else if(!evento.shiftKey&&document.activeElement===elementos[elementos.length-1]){evento.preventDefault();elementos[0].focus();}
   }
 });
+clasifAdminTables.addEventListener('input',actualizarGuardarClasificaciones);
+clasifAdminSave.addEventListener('click',()=>{
+  if(!isAdmin)return;
+  const cambios=cambiosPendientesClasificaciones();
+  if(!cambios.length)return;
+  for(const cambio of cambios){
+    if(!cambio.nuevo){alert('Los nombres no pueden quedar vacíos.');cambio.input.focus();return;}
+  }
+  // La clasificación original de cada producto se evalúa UNA vez.
+  // Esto evita efectos en cadena cuando se intercambian dos nombres.
+  const porClave={grupo:new Map(),marca:new Map()};
+  cambios.forEach(c=>porClave[c.clave].set(claveClasificacion(c.anterior),c.nuevo));
+  const afectados=productos.filter(p=>['grupo','marca'].some(clave=>porClave[clave].has(claveClasificacion(p[clave])))).length;
+  const nuevosExistentes=cambios.filter(c=>opcionesClasificacion(c.clave).some(v=>claveClasificacion(v)===claveClasificacion(c.nuevo)&&claveClasificacion(v)!==claveClasificacion(c.anterior))).length;
+  let mensaje=`¿Guardar ${cambios.length} cambio(s) de grupos y marcas?\nSe actualizarán ${afectados} artículo(s).`;
+  if(nuevosExistentes)mensaje+='\n\nAlgunos nombres ya existen; los productos correspondientes quedarán agrupados bajo el mismo nombre.';
+  if(!confirm(mensaje))return;
+  const respaldo=productos.map(p=>({grupo:p.grupo,marca:p.marca}));
+  productos.forEach(p=>{
+    for(const clave of ['grupo','marca']){
+      const nuevo=porClave[clave].get(claveClasificacion(p[clave]));
+      if(nuevo!==undefined)p[clave]=nuevo;
+    }
+  });
+  try{saveProducts();}
+  catch(error){
+    productos.forEach((p,i)=>{p.grupo=respaldo[i].grupo;p.marca=respaldo[i].marca;});
+    alert('No se pudieron guardar los cambios. Verifica el espacio de almacenamiento e inténtalo de nuevo.');
+    return;
+  }
+  renderProducts();
+  renderAdministracionClasificaciones();
+  alert('Se guardaron los cambios de grupos y marcas correctamente.');
+});
 function renderAdministracionClasificaciones(){
   if(!isAdmin || clasifAdminPanel.hidden)return;
   clasifAdminTables.replaceChildren();
@@ -1676,7 +1723,7 @@ function renderAdministracionClasificaciones(){
     const heading=document.createElement('strong');heading.textContent=titulo+' (A–Z)';section.appendChild(heading);
     const tabla=document.createElement('table');tabla.style.cssText='width:100%;border-collapse:collapse;margin-top:7px';
     const cabecera=document.createElement('tr');
-    for(const nombre of [titulo.slice(0,-1),'Artículos','Acción']){
+    for(const nombre of [titulo.slice(0,-1),'Artículos']){
       const th=document.createElement('th');th.textContent=nombre;th.style.cssText='text-align:left;padding:6px 4px;border-bottom:1px solid #cbd5e1;font-size:12px';cabecera.appendChild(th);
     }
     tabla.appendChild(cabecera);
@@ -1685,28 +1732,15 @@ function renderAdministracionClasificaciones(){
     opciones.forEach(valor=>{
       const tr=document.createElement('tr');
       const tdNombre=document.createElement('td');tdNombre.style.padding='5px 4px';
-      const input=document.createElement('input');input.type='text';input.value=valor;input.setAttribute('aria-label','Editar '+clave+' '+valor);
+      const input=document.createElement('input');input.type='text';input.value=valor;input.dataset.clasifClave=clave;input.dataset.clasifAnterior=valor;input.setAttribute('aria-label','Editar '+clave+' '+valor);
       input.style.cssText='box-sizing:border-box;width:100%;min-width:90px;padding:6px;border-radius:6px';
       tdNombre.appendChild(input);tr.appendChild(tdNombre);
       const tdCuenta=document.createElement('td');tdCuenta.textContent=String(productos.filter(p=>claveClasificacion(p[clave])===claveClasificacion(valor)).length);tdCuenta.style.padding='5px';tr.appendChild(tdCuenta);
-      const tdBoton=document.createElement('td');tdBoton.style.padding='5px 4px';
-      const boton=document.createElement('button');boton.type='button';boton.className='btn btn-outline btn-small';boton.textContent='Guardar';
-      boton.addEventListener('click',()=>{
-        if(!isAdmin)return;
-        const nuevo=normalizarClasificacion(input.value);
-        if(!nuevo){alert('El nombre no puede quedar vacío.');input.focus();return;}
-        if(nuevo===valor)return;
-        const cantidad=productos.filter(p=>claveClasificacion(p[clave])===claveClasificacion(valor)).length;
-        const yaExiste=opcionesClasificacion(clave).some(v=>claveClasificacion(v)===claveClasificacion(nuevo)&&claveClasificacion(v)!==claveClasificacion(valor));
-        const mensaje=`¿Cambiar ${clave} "${valor}" por "${nuevo}" en ${cantidad} artículo(s)?`+(yaExiste?'\n\nEl nombre nuevo ya existe: ambos quedarán agrupados bajo ese nombre.':'');
-        if(!confirm(mensaje))return;
-        productos.forEach(p=>{if(claveClasificacion(p[clave])===claveClasificacion(valor))p[clave]=nuevo;});
-        saveProducts();renderProducts();
-      });
-      tdBoton.appendChild(boton);tr.appendChild(tdBoton);tabla.appendChild(tr);
+      tabla.appendChild(tr);
     });
     section.appendChild(tabla);clasifAdminTables.appendChild(section);
   }
+  actualizarGuardarClasificaciones();
 }
 
 /* Edición múltiple: selección por código, independiente de los índices y del filtro visual. */
