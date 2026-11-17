@@ -1609,17 +1609,27 @@ function checkProductLimitOnOpen(){
     if(prodPrecio) prodPrecio.disabled = false;
     [prodTipo,prodCostoKg,prodStockKg,prodPesoCostal,prodCostoCostal].forEach(e=>e.disabled=false);
   }
-  if(sinPermiso){
-    [btnAddProd,prodCodigo,prodNombre,prodPrecio,prodTipo].forEach(e=>{if(e)e.disabled=true;});
-  }
+  // Permitir preparar un registro aun cuando el catálogo esté protegido.
+  // La contraseña se valida al guardar; el límite gratuito se sigue aplicando arriba.
   actualizarControlesProteccionCatalogo();
 }
 
-btnAddProd.addEventListener('click', ()=>{
-  // Segunda validación antes de guardar: no basta con deshabilitar visualmente los campos.
+btnAddProd.addEventListener('click', async ()=>{
+  // Capturar es libre; guardar requiere autorización cuando el catálogo está protegido.
   if(!catalogoPuedeEditar()){
-    alert('Catálogo protegido. Desbloquéalo para agregar o modificar productos y precios.');
-    checkProductLimitOnOpen();return;
+    const clave=prompt('Introduce la contraseña del catálogo para guardar el producto:');
+    if(clave===null)return;
+    try{
+      if(!await verificarClaveCatalogo(clave)){
+        alert('Contraseña del catálogo incorrecta. No se guardó el producto.');
+        return;
+      }
+      catalogoDesbloqueado=true;
+      actualizarControlesProteccionCatalogo();
+    }catch(e){
+      alert('No fue posible comprobar la contraseña: '+e.message);
+      return;
+    }
   }
   const codigo = (prodCodigo.value || '').toString().trim();
   const nombre = normalizarNombreProducto(prodNombre.value);
