@@ -778,6 +778,13 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 <button type="button" class="btn btn-outline btn-small" id="bulk-clear">Limpiar selección</button>
 <button type="button" class="btn btn-rojo btn-small" id="bulk-open" disabled>Corregir costo / precio</button>
 </div>
+<div id="clasif-admin-wrap" style="display:none;margin:12px 0">
+<button type="button" class="btn btn-outline btn-small" id="clasif-admin-toggle" aria-expanded="false">✏️ Administrar grupos y marcas</button>
+<div id="clasif-admin-panel" hidden style="margin-top:10px;padding:12px;border:1px solid #cbd5e1;border-radius:10px">
+<div class="small" style="margin-bottom:10px">Edita un nombre en la tabla y pulsa Guardar. El cambio se aplicará a todos los productos que tengan esa marca o grupo. Las listas aparecen en orden alfabético.</div>
+<div id="clasif-admin-tables" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px"></div>
+</div>
+</div>
 <div class="products-list" id="products-list"></div>
 </div>
 <!-- Modal de actualización múltiple: no modifica otros datos del producto -->
@@ -1481,6 +1488,60 @@ for(const [selector,nuevo] of [[prodMarca,prodMarcaNueva],[prodGrupo,prodGrupoNu
   selector.addEventListener('change',()=>{nuevo.style.display=selector.value==='__nueva__'?'block':'none';if(selector.value==='__nueva__')nuevo.focus();else nuevo.value='';});
   nuevo.addEventListener('input',()=>{const pos=nuevo.selectionStart; nuevo.value=nuevo.value.toLocaleUpperCase('es-MX');try{nuevo.setSelectionRange(pos,pos);}catch(e){}});
 }
+
+/* Administración de clasificaciones: los nombres se derivan del catálogo y
+   los cambios se aplican a todos los productos que usan ese valor. */
+const clasifAdminWrap = document.getElementById('clasif-admin-wrap');
+const clasifAdminToggle = document.getElementById('clasif-admin-toggle');
+const clasifAdminPanel = document.getElementById('clasif-admin-panel');
+const clasifAdminTables = document.getElementById('clasif-admin-tables');
+clasifAdminToggle.addEventListener('click',()=>{
+  if(!isAdmin)return;
+  clasifAdminPanel.hidden=!clasifAdminPanel.hidden;
+  clasifAdminToggle.setAttribute('aria-expanded',String(!clasifAdminPanel.hidden));
+  if(!clasifAdminPanel.hidden)renderAdministracionClasificaciones();
+});
+function renderAdministracionClasificaciones(){
+  if(!isAdmin || clasifAdminPanel.hidden)return;
+  clasifAdminTables.replaceChildren();
+  for(const [clave,titulo] of [['grupo','Grupos'],['marca','Marcas']]){
+    const section=document.createElement('section');
+    const heading=document.createElement('strong');heading.textContent=titulo+' (A–Z)';section.appendChild(heading);
+    const tabla=document.createElement('table');tabla.style.cssText='width:100%;border-collapse:collapse;margin-top:7px';
+    const cabecera=document.createElement('tr');
+    for(const nombre of [titulo.slice(0,-1),'Artículos','Acción']){
+      const th=document.createElement('th');th.textContent=nombre;th.style.cssText='text-align:left;padding:6px 4px;border-bottom:1px solid #cbd5e1;font-size:12px';cabecera.appendChild(th);
+    }
+    tabla.appendChild(cabecera);
+    const opciones=opcionesClasificacion(clave);
+    if(!opciones.length){const p=document.createElement('p');p.className='small';p.textContent='Todavía no hay '+titulo.toLowerCase()+' registradas.';section.appendChild(p);}
+    opciones.forEach(valor=>{
+      const tr=document.createElement('tr');
+      const tdNombre=document.createElement('td');tdNombre.style.padding='5px 4px';
+      const input=document.createElement('input');input.type='text';input.value=valor;input.setAttribute('aria-label','Editar '+clave+' '+valor);
+      input.style.cssText='box-sizing:border-box;width:100%;min-width:90px;padding:6px;border-radius:6px';
+      tdNombre.appendChild(input);tr.appendChild(tdNombre);
+      const tdCuenta=document.createElement('td');tdCuenta.textContent=String(productos.filter(p=>claveClasificacion(p[clave])===claveClasificacion(valor)).length);tdCuenta.style.padding='5px';tr.appendChild(tdCuenta);
+      const tdBoton=document.createElement('td');tdBoton.style.padding='5px 4px';
+      const boton=document.createElement('button');boton.type='button';boton.className='btn btn-outline btn-small';boton.textContent='Guardar';
+      boton.addEventListener('click',()=>{
+        if(!isAdmin)return;
+        const nuevo=normalizarClasificacion(input.value);
+        if(!nuevo){alert('El nombre no puede quedar vacío.');input.focus();return;}
+        if(nuevo===valor)return;
+        const cantidad=productos.filter(p=>claveClasificacion(p[clave])===claveClasificacion(valor)).length;
+        const yaExiste=opcionesClasificacion(clave).some(v=>claveClasificacion(v)===claveClasificacion(nuevo)&&claveClasificacion(v)!==claveClasificacion(valor));
+        const mensaje=`¿Cambiar ${clave} "${valor}" por "${nuevo}" en ${cantidad} artículo(s)?`+(yaExiste?'\n\nEl nombre nuevo ya existe: ambos quedarán agrupados bajo ese nombre.':'');
+        if(!confirm(mensaje))return;
+        productos.forEach(p=>{if(claveClasificacion(p[clave])===claveClasificacion(valor))p[clave]=nuevo;});
+        saveProducts();renderProducts();
+      });
+      tdBoton.appendChild(boton);tr.appendChild(tdBoton);tabla.appendChild(tr);
+    });
+    section.appendChild(tabla);clasifAdminTables.appendChild(section);
+  }
+}
+
 /* Edición múltiple: selección por código, independiente de los índices y del filtro visual. */
 const bulkSeleccionados = new Set();
 let bulkPendientes = null;
@@ -1662,6 +1723,9 @@ function renderProducts(){
   productsList.innerHTML = '';
   rightProducts.innerHTML = '';
   actualizarSugerenciasClasificacion();
+  clasifAdminWrap.style.display=isAdmin?'block':'none';
+  if(!isAdmin){clasifAdminPanel.hidden=true;clasifAdminToggle.setAttribute('aria-expanded','false');}
+  renderAdministracionClasificaciones();
   productos.forEach((p, idx) => {
     const div = document.createElement('div'); div.className='product-item';
     div.dataset.catalogoTexto = [p.codigo,p.nombre,p.marca,p.grupo].filter(Boolean).join(' ');
