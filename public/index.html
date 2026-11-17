@@ -1590,27 +1590,22 @@ function checkProductLimitOnOpen(){
   const indiceEdicion = Number(prodCodigo.dataset.editIndex);
   const editandoProducto = typeof prodCodigo.dataset.editIndex !== 'undefined' &&
     Number.isInteger(indiceEdicion) && indiceEdicion >= 0 && indiceEdicion < limiteProductosActual() && !!productos[indiceEdicion];
-  const sinPermiso=!catalogoPuedeEditar();
-  if(sinPermiso && typeof prodCodigo.dataset.editIndex !== 'undefined') limpiarFormularioProducto();
+  if(!catalogoPuedeEditar() && typeof prodCodigo.dataset.editIndex !== 'undefined') limpiarFormularioProducto();
   if(productos.length >= limiteProductosActual() && !editandoProducto){
     const div = document.createElement('div');
     div.className = 'notice-limit';
     div.textContent = LIMIT_MESSAGE;
     productsWarningArea.appendChild(div);
-    if(btnAddProd) btnAddProd.disabled = true;
-    if(prodCodigo) prodCodigo.disabled = true;
-    if(prodNombre) prodNombre.disabled = true;
-    if(prodPrecio) prodPrecio.disabled = true;
-    [prodTipo,prodCostoKg,prodStockKg,prodPesoCostal,prodCostoCostal].forEach(e=>e.disabled=true);
-  } else {
-    if(btnAddProd) btnAddProd.disabled = false;
-    if(prodCodigo) prodCodigo.disabled = false;
-    if(prodNombre) prodNombre.disabled = false;
-    if(prodPrecio) prodPrecio.disabled = false;
-    [prodTipo,prodCostoKg,prodStockKg,prodPesoCostal,prodCostoCostal].forEach(e=>e.disabled=false);
   }
-  // Permitir preparar un registro aun cuando el catálogo esté protegido.
-  // La contraseña se valida al guardar; el límite gratuito se sigue aplicando arriba.
+  // El formulario permanece disponible para capturar y elegir tipo de venta,
+  // aun si se llegó al límite gratuito. La restricción de 50 registros y
+  // de edición de los primeros 50 se comprueba al pulsar Agregar.
+  // Si hay protección, también se solicita la contraseña antes de guardar.
+  if(btnAddProd) btnAddProd.disabled = false;
+  if(prodCodigo) prodCodigo.disabled = false;
+  if(prodNombre) prodNombre.disabled = false;
+  if(prodPrecio) prodPrecio.disabled = false;
+  [prodTipo,prodUnidadGranel,prodCostoKg,prodStockKg,prodPesoCostal,prodCostoCostal].forEach(e=>{if(e)e.disabled=false;});
   actualizarControlesProteccionCatalogo();
 }
 
@@ -1645,7 +1640,6 @@ btnAddProd.addEventListener('click', async ()=>{
   if(!codigo || !nombre || precio <= 0){ alert('Completa código, nombre y precio válidos'); return; }
   if(typeof prodCodigo.dataset.editIndex === 'undefined' && productos.length >= limiteProductosActual()){
     alert(LIMIT_MESSAGE);
-    if(btnAddProd) btnAddProd.disabled = true;
     return;
   }
   const editIndex = prodCodigo.dataset.editIndex;
