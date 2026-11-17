@@ -778,11 +778,12 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
           <div class="granel-control"><label for="prod-tipo">Tipo de venta</label><select id="prod-tipo"><option value="pieza">Por pieza</option><option value="granel">A granel</option></select><span id="total-productos-registrados" class="total-productos-registrados" aria-live="polite">Artículos registrados: <strong>0</strong></span></div>
           <div class="catalogo-busqueda"><input id="buscar-catalogo" type="search" placeholder="🔎 Buscar artículo por nombre o código" aria-label="Buscar entre artículos registrados" autocomplete="off"/><span id="catalogo-resultado" class="catalogo-resultado" aria-live="polite"></span></div>
           <div id="granel-campos" class="granel-campos">
+            <label>Unidad de venta <select id="prod-unidad-granel"><option value="kg">Kilogramos (kg)</option><option value="L">Litros (L)</option></select></label>
 
 
 
 
-            <span class="small">El campo Precio es el precio de venta por kilogramo. El control de costos, utilidades e inventario corresponde a la versión completa.</span>
+            <span class="small">El campo Precio es el precio de venta por kg o por L, según la unidad seleccionada. El control de costos, utilidades e inventario corresponde a la versión completa.</span>
           </div>
 
           <div class="products-list" id="products-list"></div>
@@ -1019,15 +1020,20 @@ const prodNombre = document.getElementById('prod-nombre');
 const prodPrecio = document.getElementById('prod-precio');
 const prodTipo = document.getElementById('prod-tipo');
 const granelCampos = document.getElementById('granel-campos');
+const prodUnidadGranel=document.getElementById('prod-unidad-granel');
 const prodCostoKg = {value:'',disabled:true};
 const prodStockKg = {value:'',disabled:true};
 const prodPesoCostal = {value:'',disabled:true};
 const prodCostoCostal = {value:'',disabled:true};
 function esGranel(p){return !!p && p.tipoVenta === 'granel';}
+function unidadGranel(p){return p && p.unidadGranel==='L'?'L':'kg';}
+function unidadMenorGranel(p){return unidadGranel(p)==='L'?'ml':'g';}
+function formatoGranel(cantidad,p){return Number(cantidad).toLocaleString('es-MX',{maximumFractionDigits:3})+' '+unidadGranel(p);}
 function gramosInventario(p){if(!p || p.stockGramos==null || p.stockGramos==='')return null;const n=Number(p.stockGramos);return Number.isFinite(n)?Math.max(0,Math.round(n)):null;}
 function formatoPeso(kg){return Number(kg).toLocaleString('es-MX',{maximumFractionDigits:3})+' kg';}
-function actualizarCamposGranel(){granelCampos.classList.toggle('activo',prodTipo.value === 'granel');prodPrecio.placeholder=prodTipo.value==='granel'?'Precio por kg':'Precio';}
+function actualizarCamposGranel(){granelCampos.classList.toggle('activo',prodTipo.value === 'granel');prodPrecio.placeholder=prodTipo.value==='granel'?'Precio por '+prodUnidadGranel.value:'Precio';}
 prodTipo.addEventListener('change',actualizarCamposGranel);
+prodUnidadGranel.addEventListener('change',actualizarCamposGranel);
 void 0 && prodPesoCostal.addEventListener('input',()=>{const peso=Number(prodPesoCostal.value),costo=Number(prodCostoCostal.value);if(peso>0&&costo>0)prodCostoKg.value=(costo/peso).toFixed(4);});
 void 0 && prodCostoCostal.addEventListener('input',()=>{const peso=Number(prodPesoCostal.value),costo=Number(prodCostoCostal.value);if(peso>0&&costo>0)prodCostoKg.value=(costo/peso).toFixed(4);});
 const btnAddProd = document.getElementById('btn-add-prod');
@@ -1092,7 +1098,7 @@ function renderBusquedaRapida(){
     const small = document.createElement('div');
     small.className = 'product-item';
     small.innerHTML = `<div><strong>${escapeHtml(String(p.codigo))}</strong> ${escapeHtml(p.nombre)}
-      <div class="small">${formatMXN(p.precio)}${esGranel(p)?' / kg':''}</div></div>
+      <div class="small">${formatMXN(p.precio)}${esGranel(p)?' / '+unidadGranel(p):''}</div></div>
       <button data-codigo="${escapeHtml(String(p.codigo))}" class="btn btn-rojo btn-small">Agregar</button>`;
     rightProducts.appendChild(small);
   });
@@ -1293,7 +1299,7 @@ function renderCart(){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${item.codigo || ''}</td>
-      <td>${escapeHtml(item.nombre)}${esGranel(item)?'<div class="small">A granel · kg</div>':''}</td>
+      <td>${escapeHtml(item.nombre)}${esGranel(item)?'<div class="small">A granel · '+unidadGranel(item)+'</div>':''}</td>
       <td>
         <input type="number" min="${esGranel(item)?'0.001':'1'}" step="${esGranel(item)?'0.001':'1'}" value="${item.cantidad}" data-codigo="${item.codigo}"
           style="width:64px;padding:6px;border-radius:6px;border:1px solid #e6e7ea" class="inp-cant" />
@@ -1397,7 +1403,7 @@ function renderProducts(){
     if(licenciaFullvActiva){
       if(esGranel(p)){
         const gramos = gramosInventario(p);
-        detalleInventario = `<div class="small">⚖️ A granel · ${gramos===null?'Sin inventario registrado':(gramos/1000).toFixed(3)+' kg disponibles'}</div>`;
+        detalleInventario = `<div class="small">⚖️ A granel · ${gramos===null?'Sin inventario registrado':(gramos/1000).toFixed(3)+' '+unidadGranel(p)+' disponibles'}</div>`;
       }else if(p.inventariado){
         const stock = p.stock==null || p.stock==='' ? null : Number(p.stock);
         const valido = stock!==null && Number.isFinite(stock) && stock>=0;
@@ -1405,7 +1411,7 @@ function renderProducts(){
         detalleInventario = `<div class="small">📦 Inventario · Stock: ${valido?stock:'—'}${aviso}</div>`;
       }
     }
-    div.innerHTML = `<div><div style="font-weight:700">${escapeHtml(String(p.codigo))} — ${escapeHtml(p.nombre)}</div><div class="small">${esGranel(p)?'A granel · Precio/kg: '+formatMXN(p.precio):'Por pieza · Precio: '+formatMXN(p.precio)}</div>${detalleInventario}</div>
+    div.innerHTML = `<div><div style="font-weight:700">${escapeHtml(String(p.codigo))} — ${escapeHtml(p.nombre)}</div><div class="small">${esGranel(p)?'A granel · Precio/'+unidadGranel(p)+': '+formatMXN(p.precio):'Por pieza · Precio: '+formatMXN(p.precio)}</div>${detalleInventario}</div>
                      <div style="display:flex;gap:8px;align-items:center">
                        ${adminBtns}
                        <button data-codigo="${p.codigo}" class="btn btn-rojo btn-add-to-cart">Agregar</button>
@@ -1433,7 +1439,7 @@ function renderProducts(){
     }
     const p = productos[i];
     prodCodigo.value = p.codigo; prodNombre.value = p.nombre; prodPrecio.value = p.precio;
-    prodTipo.value=esGranel(p)?'granel':'pieza';
+    prodTipo.value=esGranel(p)?'granel':'pieza';prodUnidadGranel.value=unidadGranel(p);
 
 
 
@@ -1624,7 +1630,7 @@ btnAddProd.addEventListener('click', ()=>{
   const pesoCostal=Number(prodPesoCostal.value)||0;
   const costoCostal=Number(prodCostoCostal.value)||0;
 
-  const nuevo={codigo,nombre,precio,tipoVenta};
+  const nuevo={codigo,nombre,precio,tipoVenta,unidadGranel:tipoVenta==='granel'?prodUnidadGranel.value:'kg'};
   // El tipo y precio se editan en FREE, pero costos/stock se administran exclusivamente en FULLV.
   if(!codigo || !nombre || precio <= 0){ alert('Completa código, nombre y precio válidos'); return; }
   if(typeof prodCodigo.dataset.editIndex === 'undefined' && productos.length >= limiteProductosActual()){
@@ -1666,7 +1672,7 @@ btnAddProd.addEventListener('click', ()=>{
   } catch (e) {
     console.warn('Audio no disponible:', e);
   }
-  prodCodigo.value=''; prodNombre.value=''; prodPrecio.value='';prodTipo.value='pieza';[prodCostoKg,prodStockKg,prodPesoCostal,prodCostoCostal].forEach(e=>e.value='');actualizarCamposGranel(); prodCodigo.focus();
+  prodCodigo.value=''; prodNombre.value=''; prodPrecio.value='';prodTipo.value='pieza';prodUnidadGranel.value='kg';[prodCostoKg,prodStockKg,prodPesoCostal,prodCostoCostal].forEach(e=>e.value='');actualizarCamposGranel(); prodCodigo.focus();
   checkProductLimitOnOpen();
 });
 
@@ -1681,33 +1687,35 @@ function abrirModalGranel(prod){
   const box=document.createElement('div');box.className='modal-box granel-modal';
   box.innerHTML=`<div class="histHeaderRow"><strong>⚖️ Venta a granel</strong><button class="btn btn-outline" id="granel-cerrar">Cerrar</button></div>
   <div style="font-weight:700;margin-bottom:6px">${escapeHtml(prod.nombre)}</div>
-  <div class="small">Precio por kg: ${formatMXN(prod.precio)}</div>
+  <div class="small">Precio por ${unidadGranel(prod)}: ${formatMXN(prod.precio)}</div>
   <label for="granel-modo" style="margin-top:12px">Modalidad</label><select id="granel-modo" style="width:100%"><option value="peso">Por peso</option><option value="importe">Por importe $</option></select>
   <div style="display:flex;gap:8px;margin-top:12px"><div style="flex:1"><label id="granel-label">Cantidad</label><input id="granel-numero" type="number" min="0" step="any" inputmode="decimal" value="350"></div><div style="width:115px"><label>Unidad</label><select id="granel-unidad" style="width:100%"><option value="g">Gramos</option><option value="kg">Kilogramos</option></select></div></div>
   <div class="granel-resumen" id="granel-resumen"></div>
   <button class="btn btn-rojo" id="granel-agregar" style="width:100%">Agregar a venta</button>`;
   modal.appendChild(box);document.body.appendChild(modal);
+  const opciones=box.querySelector('#granel-unidad');if(unidadGranel(prod)==='L'){box.querySelector('#granel-modo option[value="peso"]').textContent='Por volumen';}if(unidadGranel(prod)==='L')opciones.innerHTML='<option value="L">Litros</option><option value="ml">Mililitros</option>';
   const modo=box.querySelector('#granel-modo'),numero=box.querySelector('#granel-numero'),unidad=box.querySelector('#granel-unidad'),resumen=box.querySelector('#granel-resumen'),agregar=box.querySelector('#granel-agregar');
   box.querySelector('#granel-cerrar').onclick=()=>modal.remove();
   let gramos=0,importe=0;
   function calcular(){
     const n=Number(numero.value),esPeso=modo.value==='peso';
-    gramos=esPeso?Math.round(n*(unidad.value==='kg'?1000:1)):Math.floor((n/Number(prod.precio))*1000+1e-9);
+    gramos=esPeso?Math.round(n*(unidad.value===unidadGranel(prod)?1000:1)):Math.floor((n/Number(prod.precio))*1000+1e-9);
     importe=esPeso?redondearGranel50(gramos/1000*Number(prod.precio)):Number(n.toFixed(2));
     const disponible=gramosInventario(prod);
     const enCarrito=carrito.filter(i=>i.codigo===prod.codigo && esGranel(i)).reduce((s,i)=>s+Math.round(i.cantidad*1000),0);
     const valido=Number.isFinite(n)&&n>0&&Number.isFinite(gramos)&&gramos>0&&Number.isFinite(importe)&&importe>0&&(disponible===null||gramos+enCarrito<=disponible);
-    resumen.innerHTML=`<div>Peso: <strong>${formatoPeso(gramos/1000)}</strong> (${gramos.toLocaleString('es-MX')} g)</div><div>Total: <strong>${formatMXN(importe)}</strong></div>${valido?'':'<div style="color:#d32f2f">Cantidad inválida o inventario insuficiente</div>'}`;
+    resumen.innerHTML=`<div>${unidadGranel(prod)==='L'?'Volumen':'Peso'}: <strong>${formatoGranel(gramos/1000,prod)}</strong> (${gramos.toLocaleString('es-MX')} ${unidadMenorGranel(prod)})</div><div>Total: <strong>${formatMXN(importe)}</strong></div>${valido?'':'<div style="color:#d32f2f">Cantidad inválida o inventario insuficiente</div>'}`;
     agregar.disabled=!valido;
   }
-  modo.onchange=()=>{const p=modo.value==='peso';unidad.disabled=!p;box.querySelector('#granel-label').textContent=p?'Cantidad':'Importe solicitado $';numero.value=p?'350':'20';calcular();};
+  modo.onchange=()=>{const p=modo.value==='peso';unidad.disabled=!p;box.querySelector('#granel-label').textContent=p?'Cantidad':'Importe solicitado $';numero.value=p?(unidadGranel(prod)==='L'?'1':'350'):'20';calcular();};
   numero.oninput=calcular;unidad.onchange=calcular;
+  if(unidadGranel(prod)==='L')numero.value='1';
   agregar.onclick=()=>{
     calcular();if(agregar.disabled)return;
     const kg=gramos/1000;
     const previo=carrito.find(i=>i.codigo===prod.codigo && esGranel(i));
-    if(previo){previo.cantidad=Number((previo.cantidad+kg).toFixed(3));previo.subtotal=Number((previo.subtotal+importe).toFixed(2));}
-    else carrito.push({codigo:prod.codigo,nombre:prod.nombre,precio:prod.precio,cantidad:kg,subtotal:importe,manual:false,tipoVenta:'granel'});
+    if(previo){previo.unidadGranel=unidadGranel(prod);previo.cantidad=Number((previo.cantidad+kg).toFixed(3));previo.subtotal=Number((previo.subtotal+importe).toFixed(2));}
+    else carrito.push({codigo:prod.codigo,nombre:prod.nombre,precio:prod.precio,cantidad:kg,subtotal:importe,manual:false,tipoVenta:'granel',unidadGranel:unidadGranel(prod)});
     saveCart();renderCart();modal.remove();showPanel(panelVenta);
   };
   calcular();setTimeout(()=>numero.focus(),0);
@@ -1818,7 +1826,7 @@ function mostrarSugerencias(){
     nombre.textContent = p.nombre;
     const meta = document.createElement('div');
     meta.className='sugerencia-meta';
-    meta.textContent = `${p.codigo} · ${formatMXN(p.precio)}${esGranel(p)?' / kg':''}`;
+    meta.textContent = `${p.codigo} · ${formatMXN(p.precio)}${esGranel(p)?' / '+unidadGranel(p):''}`;
     opcion.append(nombre,meta);
     opcion.addEventListener('mousedown',e=>e.preventDefault());
     opcion.addEventListener('click',()=>seleccionarSugerencia(i));
@@ -1989,6 +1997,7 @@ btnFinalizar.addEventListener('click', ()=> {
     const prod=productosNuevos.find(p=>String(p.codigo)===String(it.codigo));
     if(!prod)continue;
     if(esGranel(it) && esGranel(prod)){
+      it.unidadGranel=unidadGranel(it.unidadGranel ? it : prod);
       const disponible=gramosInventario(prod);
       if(disponible!==null){
         it.inventariado=true;it.stockAntes=disponible/1000;
@@ -2109,7 +2118,7 @@ function renderHistorial(){
                                  <tr>
                                    <td style="padding:6px 4px">${it.codigo}</td>
                                    <td style="padding:6px 4px">${escapeHtml(it.nombre)}</td>
-                                   <td style="padding:6px 4px">${esGranel(it)?formatoPeso(it.cantidad):it.cantidad}</td>
+                                   <td style="padding:6px 4px">${esGranel(it)?formatoGranel(it.cantidad,it):it.cantidad}</td>
                                    <td style="padding:6px 4px">${formatMXN(it.precio)}</td>
                                    <td style="padding:6px 4px">${formatMXN(it.subtotal)}</td>
                                  </tr>
@@ -2266,7 +2275,7 @@ function armarTextoTicket(v){
       const subtotal = it && it.subtotal != null ? it.subtotal : cant * precio;
 
       // Cantidad en columna propia: nunca depende de la 'x' ni se pierde al recortar.
-      const cantidadTexto = (esGranel(it)?formatoPeso(cant):String(cant)).padStart(3, ' ');
+      const cantidadTexto = (esGranel(it)?formatoGranel(cant,it):String(cant)).padStart(3, ' ');
       const prefijo = cantidadTexto + '   ';
       const maxNombre = WIDTH - prefijo.length;
       const palabras = nombre.trim().split(/\s+/).filter(Boolean);
@@ -2353,8 +2362,8 @@ html,body{margin:0;padding:0;background:#fff;color:#111}
 /* EXPORT CSV */
 async function exportHistorialCSV(){
   if(historial.length === 0){ alert('No hay historial para exportar.'); return; }
-  let rows=[['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal','Tipo de venta','Gramos vendidos','Costo de mercancía','Método de pago','Pago recibido','Cambio']];
-  historial.forEach(v=>{ v.items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre,it.cantidad,it.precio,it.subtotal,esGranel(it)?'granel':'pieza',esGranel(it)?(Number(it.cantidad)*1000):'','',(v.metodoPago==='Mixto'&&Array.isArray(v.pagos)?'Mixto: '+v.pagos.map(x=>x.metodo+' '+Number(x.importe).toFixed(2)).join(' + '):(v.metodoPago||'Efectivo')),v.pago??'',v.cambio??''])); });
+  let rows=[['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal','Tipo de venta','Unidad de venta','Cantidad menor vendida','Unidad menor','Costo de mercancía','Método de pago','Pago recibido','Cambio']];
+  historial.forEach(v=>{ v.items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre,it.cantidad,it.precio,it.subtotal,esGranel(it)?'granel':'pieza',esGranel(it)?unidadGranel(it):'pza',esGranel(it)?(Number(it.cantidad)*1000):'',esGranel(it)?unidadMenorGranel(it):'', '',(v.metodoPago==='Mixto'&&Array.isArray(v.pagos)?'Mixto: '+v.pagos.map(x=>x.metodo+' '+Number(x.importe).toFixed(2)).join(' + '):(v.metodoPago||'Efectivo')),v.pago??'',v.cambio??''])); });
   const csv = rows.map(r=> r.map(c=> '"' + String(c).replace(/"/g,'""') + '"').join(',') ).join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const ts = new Date(); const fname = 'Historial_'+ ts.getFullYear() + '-' + String(ts.getMonth()+1).padStart(2,'0') + '-' + String(ts.getDate()).padStart(2,'0') + '_' + String(ts.getHours()).padStart(2,'0') + '-' + String(ts.getMinutes()).padStart(2,'0') + '-' + String(ts.getSeconds()).padStart(2,'0') + '.csv';

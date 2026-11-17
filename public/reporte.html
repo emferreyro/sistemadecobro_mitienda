@@ -395,9 +395,9 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
       <div style="flex:1 1 155px"><label for="filterGrupo">Grupo</label><select id="filterGrupo"><option value="">Todos los grupos</option></select></div>
     </div>
     <div style="margin-top:10px"><label for="filterTipo">Tipo de venta</label><select id="filterTipo">
-      <option value="">Todas las ventas</option><option value="pieza">Por pieza</option><option value="granel">A granel (kg)</option><option value="sin-clasificar">Sin clasificar (históricos)</option>
+      <option value="">Todas las ventas</option><option value="pieza">Por pieza</option><option value="granel">A granel (kg / L)</option><option value="sin-clasificar">Sin clasificar (históricos)</option>
     </select></div>
-    <div class="hint" style="margin-top:7px">Al aplicar filtros, los importes muestran solo los artículos coincidentes, no el ticket completo. Las cantidades en piezas y kg se muestran por separado.</div>
+    <div class="hint" style="margin-top:7px">Al aplicar filtros, los importes muestran solo los artículos coincidentes, no el ticket completo. Las cantidades en piezas, kg y L se muestran por separado.</div>
 
     <div class="row" style="margin-top:8px">
       <label style="display:flex;gap:8px;align-items:center">
@@ -938,7 +938,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
         continue;
       }
 
-      const key = (r.codigo ? String(r.codigo) : ("NAME:" + stripAccents(r.nombre))) + '|' + (r.tipoVenta||'sin-clasificar');
+      const key = (r.codigo ? String(r.codigo) : ("NAME:" + stripAccents(r.nombre))) + '|' + (r.tipoVenta||'sin-clasificar') + '|' + (r.unidad||'');
       filtered.push({...r, dt:d, label:r.nombre, key});
     }
 
@@ -999,7 +999,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
       const code = (r.codigo ?? "").toString().trim();
       if(!code || code.startsWith("M-")) continue;
 
-      const key = code+'|'+(r.tipoVenta||'sin-clasificar'); // no sumar kg con piezas
+      const key = code+'|'+(r.tipoVenta||'sin-clasificar')+'|'+(r.unidad||''); // no mezclar kg, L y piezas
       if(!pmap.has(key)){
         pmap.set(key,{ item:r.nombre, code, tipoVenta:r.tipoVenta||'sin-clasificar',unidad:r.unidad||(r.tipoVenta==='granel'?'kg':'pza'),pieces:0, ventas:new Set(), revenue:0, totalCost:0,costKnown:true, costUnit:null });
       }
@@ -1117,7 +1117,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
           subtotal: safeNum(it.subtotal),
           marca:String(it.marca??'').trim(),grupo:String(it.grupo??'').trim(),
           tipoVenta:it.tipoVenta==='granel'?'granel':it.tipoVenta==='pieza'?'pieza':'',
-          unidad:it.unidad||(it.tipoVenta==='granel'?'kg':it.tipoVenta==='pieza'?'pza':''),
+          unidad:it.unidad||(it.unidadGranel==='L'?'L':it.tipoVenta==='granel'?'kg':it.tipoVenta==='pieza'?'pza':''),
           costoUnitario:it.costoUnitario??null,
           dt: (fechaISO ? new Date(fechaISO) : null)
         });
