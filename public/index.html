@@ -1651,6 +1651,13 @@ function checkProductLimitOnOpen(){
     div.className = 'notice-limit';
     div.textContent = LIMIT_MESSAGE;
     productsWarningArea.appendChild(div);
+    // Acceso temporal de comprobación: navegar dentro de la PWA (no abre Chrome).
+    // No concede licencia ni cambia los límites; permite diagnosticar la identidad real.
+    const enlaceLicencia = document.createElement('a');
+    enlaceLicencia.href = './finger.html';
+    enlaceLicencia.textContent = 'Comprobar licencia de esta PWA';
+    enlaceLicencia.style.cssText = 'display:inline-block;margin:8px 0 10px;padding:10px 14px;border-radius:8px;background:#1768b0;color:#fff;font-weight:600;text-decoration:none;';
+    productsWarningArea.appendChild(enlaceLicencia);
   }
   // El formulario permanece disponible para capturar y elegir tipo de venta,
   // aun si se llegó al límite gratuito. La restricción de 50 registros y
