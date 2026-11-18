@@ -969,9 +969,15 @@ function actualizarEstadoLicenciaIndex(permitida){
   const primeraComprobacion = !licenciaFullvComprobada;
   licenciaFullvComprobada = true;
   licenciaFullvActiva = !!permitida;
-  if((primeraComprobacion || anterior !== licenciaFullvActiva) && typeof renderProducts === 'function'){
-    renderProducts();
-    checkProductLimitOnOpen();
+  if(primeraComprobacion || anterior !== licenciaFullvActiva){
+    // Actualizar el aviso antes de volver a dibujar el catálogo: si un producto
+    // provoca un error visual, no debe quedar un aviso gratuito desactualizado.
+    try { checkProductLimitOnOpen(); }
+    catch(e) { console.warn('No se pudo actualizar el aviso de licencia:', e); }
+    if(typeof renderProducts === 'function'){
+      try { renderProducts(); }
+      catch(e) { console.error('La licencia fue verificada, pero falló la visualización del catálogo:', e); }
+    }
   }
 }
 async function comprobarLicenciaFullvEnIndex(){
@@ -1026,6 +1032,9 @@ async function comprobarLicenciaFullvEnIndex(){
     }
   }finally{comprobacionLicenciaEnCurso = false;}
 }
+// Iniciar la comprobación sin depender de que terminen todas las tareas del
+// evento load: un fallo en otro panel no debe dejar el catálogo en modo gratuito.
+comprobarLicenciaFullvEnIndex().catch(e => console.warn('Verificación inicial de licencia:', e));
 // La revocación online se refleja aun sin entrar a fullv.
 setInterval(() => {comprobarLicenciaFullvEnIndex().catch(console.warn);},15*60*1000);
 window.addEventListener('online',()=>comprobarLicenciaFullvEnIndex().catch(console.warn));
