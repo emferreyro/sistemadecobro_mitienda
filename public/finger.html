@@ -3,39 +3,54 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Diagnóstico Fingerprint — Mi Tienda</title>
-<script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4/dist/fp.min.js"></script>
+<title>Diagnóstico de licencia — Mi Tienda WEB</title>
+<script src="./js/fp.min.js"></script>
 <style>
-*{box-sizing:border-box}body{margin:0;padding:24px 15px;font-family:system-ui,Arial,sans-serif;background:#edf5ff;color:#213044}main{max-width:650px;margin:auto}h1{font-size:1.5rem;color:#1264a3}section{background:white;border-radius:12px;padding:18px;margin:16px 0;box-shadow:0 2px 10px #22334416}h2{font-size:1.05rem;margin:0 0 12px}.value{word-break:break-all;font-family:monospace;font-size:1.08rem;font-weight:700;padding:12px;background:#f2f5f8;border-radius:7px;user-select:all}button{border:0;border-radius:8px;background:#1264a3;color:white;padding:12px 16px;font-size:1rem;margin-top:12px;cursor:pointer}button:disabled{opacity:.5}p{line-height:1.45}small{color:#586879}#comparison{font-weight:600}</style>
+*{box-sizing:border-box}body{margin:0;padding:20px 14px;font-family:system-ui,Arial,sans-serif;background:#edf5ff;color:#213044}main{max-width:680px;margin:auto}h1{font-size:1.5rem;color:#1264a3}section{background:#fff;border-radius:12px;padding:18px;margin:15px 0;box-shadow:0 2px 10px #22334416}h2{font-size:1.05rem;margin:0 0 12px}.value{word-break:break-all;font-family:monospace;font-size:1rem;font-weight:700;padding:12px;background:#f2f5f8;border-radius:7px;user-select:all}button,a.button{display:inline-block;border:0;border-radius:8px;background:#1264a3;color:white;padding:12px 16px;font-size:1rem;margin-top:12px;text-decoration:none;cursor:pointer}button:disabled{opacity:.5}p{line-height:1.5}small{color:#586879}.good{color:#187246}.bad{color:#b3261e}
+</style>
 </head>
 <body><main>
-<h1>Identificador del dispositivo — Mi Tienda</h1>
-<p>Esta página compara el fingerprint calculado por Chrome con el que Mi Tienda dejó guardado. No borra ni cambia los datos guardados.</p>
-<section><h2>Fingerprint calculado ahora (FingerprintJS v4)</h2><div id="current" class="value">Calculando…</div><button id="copyCurrent" disabled>Copiar fingerprint actual</button></section>
-<section><h2>Fingerprint almacenado por Mi Tienda</h2><div id="stored" class="value">Consultando…</div><button id="copyStored" disabled>Copiar fingerprint guardado</button></section>
-<section><h2>Comparación</h2><p id="comparison">Comprobando…</p><button id="refresh">Volver a calcular</button></section>
-<p><small>Nota: una instalación web independiente o un navegador diferente puede usar otro almacenamiento y producir un identificador distinto. El valor calculado aquí solo coincidirá con el de la aplicación si usa el mismo algoritmo y configuración.</small></p>
+<h1>Diagnóstico de autorización — Mi Tienda WEB</h1>
+<p>Abre esta página <strong>desde el mismo entorno (PWA o navegador) donde usas Mi Tienda</strong>. Utiliza exactamente la biblioteca FingerprintJS local que utiliza <code>index.html</code> y comprueba la autorización publicada.</p>
+<section><h2>Fingerprint actual de este entorno</h2><div id="current" class="value">Calculando…</div><button id="copyCurrent" disabled>Copiar fingerprint</button></section>
+<section><h2>Licencia almacenada en este entorno</h2><div id="stored" class="value">Consultando…</div></section>
+<section><h2>Resultado de autorizados.json</h2><p id="status">Comprobando…</p><p id="detail"></p><button id="refresh">Volver a comprobar</button></section>
+<p><small>La autorización depende del fingerprint exacto y de un vencimiento vigente. No se modifica ni elimina información local. Para activar una nueva instalación, utiliza el fingerprint que se muestra aquí y publica el cambio en autorizados.json. Si la PWA y Chrome muestran identificadores distintos, autoriza el entorno que vas a utilizar.</small></p>
+<a class="button" href="./index.html">Volver a Mi Tienda</a>
 </main>
 <script>
-let current='', stored='';
 const $=id=>document.getElementById(id);
+let current='';
+function fin(fecha){return typeof fecha==='string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha)?Date.parse(fecha+'T23:59:59.999'):NaN;}
 async function calculate(){
   $('current').textContent='Calculando…';$('copyCurrent').disabled=true;
-  stored=localStorage.getItem('miTiendaFingerprint')||'';
-  $('stored').textContent=stored||'No hay un fingerprint guardado en este almacenamiento.';
-  $('copyStored').disabled=!stored;
+  $('status').textContent='Comprobando…';$('detail').textContent='';
+  let saved=null;
+  try{saved=JSON.parse(localStorage.getItem('mitienda_licencia_fullv_v2')||'null');}catch(_){/* Sin licencia válida en storage */}
+  $('stored').textContent=saved?.id ? 'Fingerprint guardado: '+saved.id+' | Vencimiento: '+(saved.vencimiento||'no especificado') : 'No hay licencia local guardada.';
   try{
-    if(typeof FingerprintJS==='undefined')throw new Error('No se cargó FingerprintJS. Comprueba la conexión a internet.');
-    const agent=await FingerprintJS.load();
-    const result=await agent.get();
-    current=result.visitorId;
-    $('current').textContent=current;
-    $('copyCurrent').disabled=false;
-    $('comparison').textContent=stored?(current===stored?'Los dos identificadores coinciden.':'Los identificadores son diferentes.'):'No existe un identificador almacenado para comparar.';
-  }catch(e){current='';$('current').textContent='Error al calcular: '+e.message;$('comparison').textContent='No se pudo comparar.';}
+    if(typeof FingerprintJS==='undefined')throw new Error('No se cargó js/fp.min.js');
+    current=(await (await FingerprintJS.load()).get()).visitorId||'';
+    if(!current)throw new Error('No fue posible obtener el identificador');
+    $('current').textContent=current;$('copyCurrent').disabled=false;
+  }catch(e){current='';$('current').textContent='Error: '+e.message;$('status').textContent='No se pudo obtener el fingerprint de esta instalación.';return;}
+  try{
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),6500);
+    let response;
+    try{response=await fetch('./autorizados.json?v='+Date.now(),{cache:'no-store',credentials:'same-origin',signal:controller.signal});}
+    finally{clearTimeout(timeout);}
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    const data=await response.json();
+    if(!Array.isArray(data.autorizados))throw new Error('El archivo no contiene una lista autorizados válida');
+    const record=data.autorizados.find(x=>x&&x.id===current);
+    const valid=!!record && record.revocado!==true && record.activo!==false && Number.isFinite(fin(record.vencimiento)) && fin(record.vencimiento)>=Date.now();
+    $('status').textContent=valid?'AUTORIZADO: fingerprint coincidente y licencia vigente.':record?'NO AUTORIZADO: registro revocado, inactivo o vencido.':'NO AUTORIZADO: el fingerprint actual no aparece en el archivo publicado.';
+    $('status').className=valid?'good':'bad';
+    $('detail').textContent=record?'Vencimiento publicado: '+(record.vencimiento||'no definido') : 'Revisa que el fingerprint de esta PWA coincida exactamente con el registrado en GitHub y que el cambio esté desplegado en Vercel.';
+  }catch(e){$('status').textContent='No fue posible consultar autorizados.json por red.';$('status').className='bad';$('detail').textContent=e.message+'; no se puede confirmar la autorización online.';}
 }
-$('copyCurrent').addEventListener('click',()=>{if(current)navigator.clipboard.writeText(current).catch(()=>alert('Mantén pulsado el código para copiarlo.'));});
-$('copyStored').addEventListener('click',()=>{if(stored)navigator.clipboard.writeText(stored).catch(()=>alert('Mantén pulsado el código para copiarlo.'));});
+$('copyCurrent').addEventListener('click',async()=>{if(!current)return;try{await navigator.clipboard.writeText(current);}catch(_){alert('Mantén presionado el identificador para copiarlo.');}});
 $('refresh').addEventListener('click',calculate);
 calculate();
 </script></body></html>

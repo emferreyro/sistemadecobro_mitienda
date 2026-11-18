@@ -950,6 +950,7 @@ const MAX_PRODUCTS = 50;
 // La autorización se comparte con guardFullv.js mediante la misma clave local.
 const LICENCIA_FULLV_KEY = 'mitienda_licencia_fullv_v2';
 let licenciaFullvActiva = false;
+let licenciaFullvComprobada = false;
 let licenciaFullvFingerprint = '';
 let comprobacionLicenciaEnCurso = false;
 const limiteProductosActual = () => licenciaFullvActiva ? Infinity : MAX_PRODUCTS;
@@ -965,8 +966,10 @@ function licenciaLocalVigente(lic, fingerprint){
 }
 function actualizarEstadoLicenciaIndex(permitida){
   const anterior = licenciaFullvActiva;
+  const primeraComprobacion = !licenciaFullvComprobada;
+  licenciaFullvComprobada = true;
   licenciaFullvActiva = !!permitida;
-  if(anterior !== licenciaFullvActiva && typeof renderProducts === 'function'){
+  if((primeraComprobacion || anterior !== licenciaFullvActiva) && typeof renderProducts === 'function'){
     renderProducts();
     checkProductLimitOnOpen();
   }
@@ -1643,7 +1646,7 @@ function checkProductLimitOnOpen(){
   const editandoProducto = typeof prodCodigo.dataset.editIndex !== 'undefined' &&
     Number.isInteger(indiceEdicion) && indiceEdicion >= 0 && indiceEdicion < limiteProductosActual() && !!productos[indiceEdicion];
   if(!catalogoPuedeEditar() && typeof prodCodigo.dataset.editIndex !== 'undefined') limpiarFormularioProducto();
-  if(productos.length >= limiteProductosActual() && !editandoProducto){
+  if(licenciaFullvComprobada && productos.length >= limiteProductosActual() && !editandoProducto){
     const div = document.createElement('div');
     div.className = 'notice-limit';
     div.textContent = LIMIT_MESSAGE;
