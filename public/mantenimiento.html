@@ -2,9 +2,14 @@
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f5e131"><title>Mi Tienda · Diagnóstico técnico</title>
 <style>
 :root{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#182230;background:#f3f5f8}*{box-sizing:border-box}body{margin:0}header{background:#f5e131;padding:16px 20px;border-bottom:3px solid #d4c21f}header h1{font-size:21px;margin:0}header p{margin:4px 0 0}main{max-width:1120px;margin:auto;padding:20px}.panel{background:white;border:1px solid #dce2e8;border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:0 2px 10px #12213a0b}h2{font-size:18px;margin:0 0 12px}p{line-height:1.5}button{border:0;border-radius:9px;padding:11px 15px;font-weight:700;font-size:14px;cursor:pointer;background:#243b57;color:white}button.neutral{background:#e9edf2;color:#172b42}button:disabled{opacity:.45;cursor:not-allowed}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px}.stat{background:#f6f8fb;border-radius:10px;padding:15px}.stat strong{display:block;font-size:22px}.muted{color:#566778;font-size:13px}.warn{background:#fff5e6;border-left:4px solid #d98718;padding:12px;border-radius:5px}.ok{background:#eaf8ed;border-left:4px solid #2e9244;padding:12px;border-radius:5px}.error{background:#fff0f0;border-left:4px solid #d22;padding:12px;border-radius:5px}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:10px;border-bottom:1px solid #e5e9ef;overflow-wrap:anywhere}th{background:#f6f8fb}td:last-child,th:last-child{text-align:right}.table-wrap{overflow-x:auto}code{overflow-wrap:anywhere}.bar{height:11px;background:#e4e9ee;border-radius:8px;overflow:hidden}.bar span{display:block;height:100%;background:#d28b22;width:0;max-width:100%}footer{font-size:12px;color:#526173;margin:15px 0} @media(max-width:600px){main{padding:10px}.panel{padding:13px}header h1{font-size:18px}th,td{padding:7px}}
-</style></head><body>
+</style><script src="./js/fp.min.js"></script></head><body>
 <header><h1>Mi Tienda · Diagnóstico técnico</h1><p>Consulta de almacenamiento local · Sin funciones de borrado ni modificación</p></header>
 <main><section class="panel"><div class="row"><button id="scan">Generar diagnóstico</button><button id="volver" class="neutral">Volver a Mi Tienda</button></div><p class="muted">Analiza únicamente el almacenamiento del dominio y perfil actual. No mide la caché offline ni representa la cuota real del navegador.</p><div id="resumen"></div><div id="detalle"></div><div id="error" aria-live="polite"></div></section>
+<section class="panel" aria-labelledby="lic-title"><h2 id="lic-title">Identificación y licencia de este dispositivo</h2>
+<p class="muted">El fingerprint se obtiene en este mismo entorno (PWA o navegador). La autorización se consulta en el archivo publicado, sin modificar registros.</p>
+<div id="lic-datos" aria-live="polite">Consultando identificación y autorización…</div>
+<div class="row" style="margin-top:12px"><button id="lic-refresh" type="button">Comprobar licencia</button><button id="lic-copy" type="button" class="neutral" disabled>Copiar fingerprint</button></div>
+</section>
 <section class="panel"><h2>Observaciones y recomendaciones</h2><div id="recomendaciones" class="muted">Genera un diagnóstico para visualizar recomendaciones específicas.</div><p class="warn"><strong>Importante:</strong> Esta herramienta no borra, comprime ni modifica información. Si detectas una imagen de logo muy grande, conserva primero un respaldo de tus datos y revisa el procedimiento técnico para optimizarla. No borres los datos del sitio desde el navegador.</p></section>
 <footer>Mi Tienda · Herramienta para soporte técnico.</footer></main>
 <script>
@@ -26,9 +31,57 @@ avisos.push('<p><strong>Comparación:</strong> si la PWA y el navegador muestran
 function diagnosticar(){try{const d=obtener();const p=d.items.find(x=>x.key===KEY_PRODUCTS),h=d.items.find(x=>x.key===KEY_HISTORY),pct=100*d.total/(4*1024*1024);$('resumen').innerHTML='<div class="stats"><div class="stat"><strong>'+kb(d.total)+'</strong><span class="muted">LocalStorage estimado</span></div><div class="stat"><strong>'+fmt(pct)+'%</strong><span class="muted">Referencia de 4 MiB</span></div><div class="stat"><strong>'+esc(p?.registros??'—')+'</strong><span class="muted">Productos</span></div><div class="stat"><strong>'+esc(h?.registros??'—')+'</strong><span class="muted">Ventas</span></div></div><p class="muted">El umbral de 4 MiB pertenece a la protección anterior de Mi Tienda, no necesariamente al límite del navegador.</p><div class="bar"><span style="width:'+Math.min(100,pct)+'%"></span></div>';
 $('detalle').innerHTML='<h2 style="margin-top:20px">Detalle por clave</h2><div class="table-wrap"><table><thead><tr><th>Clave</th><th>Categoría</th><th>Registros</th><th>Tamaño estimado</th></tr></thead><tbody>'+d.items.map(x=>'<tr><td><code>'+esc(x.key)+'</code></td><td>'+esc(x.categoria)+'</td><td>'+esc(x.registros??'—')+'</td><td>'+kb(x.bytes)+'</td></tr>').join('')+'</tbody></table></div>';
 $('error').textContent='';recomendar(d);}catch(e){$('error').innerHTML='<p class="error">No se pudo generar el diagnóstico: '+esc(e.message)+'</p>';}}
+let fingerActual='';
+function finLicencia(fecha){return typeof fecha==='string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha)?Date.parse(fecha+'T23:59:59.999'):NaN;}
+function campoLic(nombre,valor){return '<div style="margin:8px 0"><strong>'+esc(nombre)+':</strong> <span style="overflow-wrap:anywhere">'+esc(valor)+'</span></div>';}
+async function comprobarLicencia(){
+ const zona=$('lic-datos'),boton=$('lic-refresh');
+ boton.disabled=true;$('lic-copy').disabled=true;fingerActual='';
+ zona.innerHTML='<p class="muted">Calculando fingerprint y consultando autorizados.json…</p>';
+ try{
+  if(typeof FingerprintJS==='undefined')throw new Error('No se pudo cargar la biblioteca local de fingerprint.');
+  const identificador=(await (await FingerprintJS.load()).get()).visitorId||'';
+  if(!identificador)throw new Error('No fue posible calcular el fingerprint.');
+  fingerActual=identificador;$('lic-copy').disabled=false;
+  let local=null;
+  try{local=JSON.parse(localStorage.getItem('mitienda_licencia_fullv_v2')||'null');}catch(_){/* Dato local no interpretable */}
+  const licenciaLocal=local?.id ? (local.id===identificador?'Guardada para este dispositivo':'Guardada con otro fingerprint'):'No hay licencia local guardada';
+  zona.innerHTML=campoLic('Fingerprint',identificador)+campoLic('Licencia local',licenciaLocal)+campoLic('Estado publicado','Consultando…');
+  const controlador=new AbortController(),temporizador=setTimeout(()=>controlador.abort(),6500);
+  let respuesta;
+  try{respuesta=await fetch('./autorizados.json?v='+Date.now(),{cache:'no-store',credentials:'same-origin',signal:controlador.signal});}
+  finally{clearTimeout(temporizador);}
+  if(!respuesta.ok)throw new Error('HTTP '+respuesta.status);
+  const datos=await respuesta.json();
+  if(!Array.isArray(datos.autorizados))throw new Error('Formato inválido de autorizados.json');
+  const registro=datos.autorizados.find(r=>r&&r.id===identificador);
+  let estado,clase='warn';
+  if(!registro){estado='NO AUTORIZADO: identificador no registrado';clase='warn';}
+  else if(registro.revocado===true){estado='NO AUTORIZADO: licencia revocada';clase='error';}
+  else if(registro.activo===false){estado='NO AUTORIZADO: licencia inactiva';clase='error';}
+  else if(!Number.isFinite(finLicencia(registro.vencimiento))){estado='NO AUTORIZADO: fecha de vencimiento inválida';clase='error';}
+  else if(finLicencia(registro.vencimiento)<Date.now()){estado='NO AUTORIZADO: licencia vencida';clase='error';}
+  else{estado='AUTORIZADO: licencia vigente';clase='ok';}
+  zona.innerHTML=campoLic('Fingerprint',identificador)+campoLic('Licencia local',licenciaLocal)+
+   (registro?campoLic('Cliente',registro.cliente||'No especificado')+campoLic('Usuario',registro.user||'No especificado')+
+   campoLic('Vencimiento',registro.vencimiento||'No definido')+
+   campoLic('Revocación',registro.revocado===true?'Sí':'No'):'')+
+   '<p class="'+clase+'"><strong>Estado publicado:</strong> '+esc(estado)+'</p>';
+ }catch(e){
+  zona.innerHTML=(fingerActual?campoLic('Fingerprint',fingerActual):'')+
+   '<p class="error"><strong>No fue posible completar la comprobación:</strong> '+esc(e.message)+
+   '. No se puede confirmar el estado publicado en este momento.</p>';
+ }finally{boton.disabled=false;}
+}
+$('lic-refresh').addEventListener('click',comprobarLicencia);
+$('lic-copy').addEventListener('click',async()=>{
+ if(!fingerActual)return;
+ try{await navigator.clipboard.writeText(fingerActual);}catch(_){alert('Mantén presionado el fingerprint mostrado para copiarlo.');}
+});
 $('scan').addEventListener('click',diagnosticar);
 $('volver').addEventListener('click',()=>location.assign('./index.html'));
 
 diagnosticar();
+comprobarLicencia();
 })();
 </script></body></html>
