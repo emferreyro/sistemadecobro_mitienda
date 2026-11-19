@@ -2522,7 +2522,6 @@ function renderHistorial(){
     return;
   }
   historial.forEach(v=>{
-    if(v.metodoPago==='Consumo interno')return;
     const d = document.createElement('div'); d.className = 'history-item';
     d.innerHTML = `<div><div style="font-weight:700">${v.metodoPago==='Consumo interno'?'Consumo interno':'Venta'} #${v.id}</div><div class="small">${v.fecha}</div></div>
                    <div style="text-align:right"><div style="font-weight:800;color:var(--rojo)">${formatMXN(v.total)}</div><div class="small">Pago: ${v.metodoPago === 'Consumo interno' ? 'Consumo interno' : v.metodoPago === 'Mixto' ? 'Mixto' : v.metodoPago === 'Tarjeta' ? 'Tarjeta' : ((v.metodoPago === 'Vales' || v.metodoPago === 'Vale') ? 'Vales' : 'Efectivo')}</div>

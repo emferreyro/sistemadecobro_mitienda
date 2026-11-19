@@ -2197,7 +2197,6 @@ function renderHistorial(){
     historyList.appendChild(p);
   } else {
     historial.forEach(v=>{
-    if(v.metodoPago==='Consumo interno')return;
       const d = document.createElement('div');
       d.className = 'history-item';
       d.innerHTML = `<div><div style="font-weight:700">${v.metodoPago==='Consumo interno'?'Consumo interno':'Venta'} #${v.id}</div><div class="small">${v.fecha}</div></div>
