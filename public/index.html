@@ -954,6 +954,8 @@ let licenciaFullvActiva = false;
 let licenciaFullvComprobada = false;
 let licenciaFullvFingerprint = '';
 let comprobacionLicenciaEnCurso = false;
+// No confundir una comprobación pendiente con una licencia rechazada.
+let licenciaFullvUltimoError = '';
 const limiteProductosActual = () => licenciaFullvActiva ? Infinity : MAX_PRODUCTS;
 function fechaFinLicencia(fecha){
   if(typeof fecha !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return NaN;
@@ -994,10 +996,9 @@ async function comprobarLicenciaFullvEnIndex(){
     }
     let local = null;
     try { local = JSON.parse(localStorage.getItem(LICENCIA_FULLV_KEY) || 'null'); }catch(e){}
-    if(local && licenciaFullvFingerprint && local.id !== licenciaFullvFingerprint){
-      localStorage.removeItem(LICENCIA_FULLV_KEY);
-      local = null;
-    }
+    // Un fingerprint temporalmente distinto nunca debe destruir una licencia guardada.
+    // Mientras no coincida, no concede acceso; se revalida al recuperar la identidad/red.
+    const localCoincidente = local && licenciaFullvFingerprint && local.id === licenciaFullvFingerprint ? local : null;
     let autorizados = null;
     const controlador = new AbortController();
     const tiempo = setTimeout(() => controlador.abort(), 6500);
@@ -1017,20 +1018,27 @@ async function comprobarLicenciaFullvEnIndex(){
       if(valida){
         try{localStorage.setItem(LICENCIA_FULLV_KEY,JSON.stringify({version:2,id:entrada.id,
           user:entrada.user||'admin',vencimiento:entrada.vencimiento,
-          ultimoUso:Math.max(Date.now(),local?.ultimoUso||0),ultimaRevisionOnline:Date.now()}));}catch(e){}
-      }else{
+          ultimoUso:Math.max(Date.now(),localCoincidente?.ultimoUso||0),ultimaRevisionOnline:Date.now()}));}catch(e){}
+      }else if(licenciaFullvFingerprint && localCoincidente){
+        // Revocación confirmada online solo para la identidad comprobada.
         try{localStorage.removeItem(LICENCIA_FULLV_KEY);}catch(e){}
       }
+      licenciaFullvUltimoError = valida ? '' : 'El fingerprint de esta instalación no tiene autorización vigente en el JSON consultado.';
       actualizarEstadoLicenciaIndex(valida);
     }else{
       // Sin red, solo una autorización previamente registrada, vigente y del MISMO fingerprint.
-      const valida = licenciaLocalVigente(local,licenciaFullvFingerprint);
+      const valida = licenciaLocalVigente(localCoincidente,licenciaFullvFingerprint);
       if(valida){
-        try{localStorage.setItem(LICENCIA_FULLV_KEY,JSON.stringify({...local,
-          ultimoUso:Math.max(Date.now(),local.ultimoUso||0)}));}catch(e){}
+        try{localStorage.setItem(LICENCIA_FULLV_KEY,JSON.stringify({...localCoincidente,
+          ultimoUso:Math.max(Date.now(),localCoincidente.ultimoUso||0)}));}catch(e){}
       }
+      licenciaFullvUltimoError = valida ? '' : 'Sin conexión para verificar y sin licencia local coincidente vigente.';
       actualizarEstadoLicenciaIndex(valida);
     }
+  }catch(e){
+    licenciaFullvUltimoError = 'Error al comprobar licencia: '+e.message;
+    console.warn(licenciaFullvUltimoError);
+    actualizarEstadoLicenciaIndex(false);
   }finally{comprobacionLicenciaEnCurso = false;}
 }
 // Iniciar la comprobación sin depender de que terminen todas las tareas del
@@ -1510,7 +1518,8 @@ function renderProducts(){
 
   document.querySelectorAll('.btn-edit').forEach(b=> b.addEventListener('click', e=> {
     const i = Number(e.currentTarget.getAttribute('data-idx'));
-    if(!Number.isInteger(i) || i < 0 || i >= limiteProductosActual() || !productos[i]){
+    if(!licenciaFullvComprobada){alert('Se está comprobando la autorización.');return;}
+  if(!Number.isInteger(i) || i < 0 || i >= limiteProductosActual() || !productos[i]){
       alert('Desde esta versión solo se pueden editar los primeros 50 artículos.');
       return;
     }
@@ -1672,10 +1681,16 @@ function checkProductLimitOnOpen(){
   const editandoProducto = typeof prodCodigo.dataset.editIndex !== 'undefined' &&
     Number.isInteger(indiceEdicion) && indiceEdicion >= 0 && indiceEdicion < limiteProductosActual() && !!productos[indiceEdicion];
   if(!catalogoPuedeEditar() && typeof prodCodigo.dataset.editIndex !== 'undefined') limpiarFormularioProducto();
+  if(!licenciaFullvComprobada){
+    const aviso = document.createElement('div');
+    aviso.className = 'notice-limit';
+    aviso.textContent = 'Comprobando autorización de esta instalación…';
+    productsWarningArea.appendChild(aviso);
+  }
   if(licenciaFullvComprobada && productos.length >= limiteProductosActual() && !editandoProducto){
     const div = document.createElement('div');
     div.className = 'notice-limit';
-    div.textContent = LIMIT_MESSAGE;
+    div.textContent = LIMIT_MESSAGE + (licenciaFullvUltimoError ? ' Estado de licencia: '+licenciaFullvUltimoError : '');
     productsWarningArea.appendChild(div);
     // Acceso temporal de comprobación: navegar dentro de la PWA (no abre Chrome).
     // No concede licencia ni cambia los límites; permite diagnosticar la identidad real.
@@ -1727,6 +1742,7 @@ btnAddProd.addEventListener('click', async ()=>{
   const nuevo={codigo,nombre,precio,tipoVenta,unidadGranel:tipoVenta==='granel'?prodUnidadGranel.value:'kg'};
   // El tipo y precio se editan en FREE, pero costos/stock se administran exclusivamente en FULLV.
   if(!codigo || !nombre || precio <= 0){ alert('Completa código, nombre y precio válidos'); return; }
+  if(!licenciaFullvComprobada){alert('Se está comprobando la autorización. Vuelve a intentarlo al terminar.');return;}
   if(typeof prodCodigo.dataset.editIndex === 'undefined' && productos.length >= limiteProductosActual()){
     alert(LIMIT_MESSAGE);
     return;
