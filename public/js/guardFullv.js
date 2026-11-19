@@ -6,7 +6,7 @@
 (() => {
   'use strict';
   const STORAGE_KEY = 'mitienda_licencia_fullv_v2';
-  const GUARD_VERSION = 'revocacion-diagnostico-v3';
+  const GUARD_VERSION = 'revocacion-diagnostico-v4';
   const DEBUG = new URLSearchParams(location.search).has('diagnostico');
   const CHECK_INTERVAL_MS = 15 * 60 * 1000;
   const FETCH_TIMEOUT_MS = 6500;
@@ -88,7 +88,7 @@
   function showDenied(reason) {
     active = false;
     report({resultado:'BLOQUEADO: '+reason});
-    deleteSaved();
+    // No destruir la licencia local ante fallos transitorios de red o fingerprint.
     document.documentElement.classList.remove('licencia-pendiente');
     document.documentElement.classList.add('licencia-rechazada');
     const render = () => {
@@ -119,9 +119,8 @@
       if (startup) lastFingerprint = await getFingerprint();
       report({fingerprint:lastFingerprint||'(no disponible)',fuente:'comprobando...'});
       // Si el fingerprint está disponible, debe concordar con la licencia guardada.
-      if (saved && lastFingerprint && saved.id !== lastFingerprint) {
-        deleteSaved();
-      }
+      // Una discrepancia temporal no debe borrar la autorización persistida.
+      // No se usa para acceso hasta recuperar el mismo fingerprint.
       const matchingSaved = saved && (!lastFingerprint || saved.id === lastFingerprint) ? saved : null;
       let records = null;
       try { records = await remoteList(); report({fuente:'autorizados.json consultado por red'}); }
@@ -134,6 +133,7 @@
         // La eliminación del JSON, revocado:true o vencimiento pasado cancelan la licencia.
         if (!entry || entry.revocado === true || entry.activo === false ||
             !Number.isFinite(dateToEnd(entry.vencimiento)) || dateToEnd(entry.vencimiento) < Date.now()) {
+          if (matchingSaved && identity === matchingSaved.id) deleteSaved();
           showDenied('La licencia no está autorizada, fue revocada o llegó a su vencimiento. Contacta a soporte para renovarla.');
           return;
         }
