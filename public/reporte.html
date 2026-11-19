@@ -574,6 +574,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     if(v==='tarjeta' || v==='credito' || v==='debito') return 'Tarjeta';
     if(v==='vales' || v==='vale') return 'Vales';
     if(v==='mixto' || v.startsWith('mixto:')) return 'Mixto';
+    if(v==='consumo interno') return 'Consumo interno';
     return 'Efectivo'; // Compatibilidad: ventas antiguas sin método.
   }
   // Los importes de pagos[].importe son NETOS: efectivo recibido menos el cambio.
@@ -916,6 +917,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     const M_TOTAL = { amount: 0, records: 0 };
 
     for(const rawRow of RAW){
+      if(normalizarMetodoPago(rawRow.metodoPago)==='Consumo interno') continue; // Movimientos de inventario, no ventas.
       const r=getRowClassifications(rawRow);
       const d = r.dt ?? parseMXDateTime(r.fechaRaw) ?? (r.fechaISO ? new Date(r.fechaISO) : null);
       if(!d || isNaN(d.getTime())) continue;

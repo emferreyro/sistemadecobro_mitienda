@@ -770,6 +770,7 @@ body.pink #proteccion-catalogo {
                         <option value="Tarjeta">Tarjeta</option>
 <option value="Vales">Vales</option>
 <option value="Mixto">Mixto (2 métodos)</option>
+<option value="Consumo interno">Consumo interno</option>
                       </select>
                     </div>
                     <div id="pagoMixto" class="pay-field" hidden style="flex:1 1 260px;min-width:230px;max-width:360px">
@@ -1143,6 +1144,7 @@ function normalizarNombreProducto(valor){
 function unidadesVendidasPorCodigo(){
   const cantidades = new Map();
   historial.forEach(venta => {
+    if(venta.metodoPago==='Consumo interno')return;
     if(!Array.isArray(venta.items)) return;
     venta.items.forEach(item => {
       if(item.manual || item.codigo == null) return;
@@ -1312,6 +1314,7 @@ function actualizarCobrosHoy(){
   const hoy=new Date();
   const importes={Efectivo:0,Tarjeta:0,Vales:0};
   historial.forEach(v=>{
+    if(v.metodoPago==='Consumo interno')return;
     const fecha=parseVentaDate(v);
     if(!fecha || fecha.getFullYear()!==hoy.getFullYear() || fecha.getMonth()!==hoy.getMonth() || fecha.getDate()!==hoy.getDate()) return;
     if(Array.isArray(v.pagos)&&v.pagos.length){v.pagos.forEach(x=>{if(Object.hasOwn(importes,x.metodo))importes[x.metodo]+=Number(x.importe)||0;});return;}
@@ -1334,6 +1337,7 @@ function actualizarCaja(totalHoy){
   input.value = (Number(inicio)||0).toFixed(2).replace(/\.00$/,'');
   // La caja física recibe sólo ventas en efectivo; ventas antiguas sin método se consideran efectivo.
   const efectivoHoy = historial.reduce((s,v)=>{
+    if(v.metodoPago==='Consumo interno')return s;
     const fecha = parseVentaDate(v);
     const ahora = new Date();
     if(!fecha || fecha.getFullYear()!==ahora.getFullYear() || fecha.getMonth()!==ahora.getMonth() || fecha.getDate()!==ahora.getDate()) return s;
@@ -1357,6 +1361,19 @@ function showPanel(panel){
 }
 
 /* CART UI */
+// Consumo interno: valoración al costo del catálogo, sin alterar precios de venta.
+function esConsumoInterno(){ return metodoPagoInput.value === 'Consumo interno'; }
+function costoUnitarioInterno(it){
+  const p=productos.find(x=>String(x.codigo)===String(it.codigo));
+  const raw=p ? (esGranel(it)||esGranel(p) ? (p.costoKg??p.costo) : p.costo) : 0;
+  const n=Number(raw);
+  return Number.isFinite(n)&&n>=0?n:0;
+}
+function valorItemActual(it){
+  if(!esConsumoInterno())return {precio:Number(it.precio)||0,subtotal:Number(it.subtotal)||0};
+  const precio=costoUnitarioInterno(it);
+  return {precio,subtotal:Number((precio*(Number(it.cantidad)||0)).toFixed(2))};
+}
 function renderCart(){
   cartBody.innerHTML = '';
   carrito.forEach(item => {
@@ -1368,8 +1385,8 @@ function renderCart(){
         <input type="number" min="${esGranel(item)?'0.001':'1'}" step="${esGranel(item)?'0.001':'1'}" value="${item.cantidad}" data-codigo="${item.codigo}"
           style="width:64px;padding:6px;border-radius:6px;border:1px solid #e6e7ea" class="inp-cant" />
       </td>
-      <td>${formatMXN(item.precio)}</td>
-      <td>${formatMXN(item.subtotal)}</td>
+      <td>${formatMXN(valorItemActual(item).precio)}</td>
+      <td>${formatMXN(valorItemActual(item).subtotal)}</td>
       <td><button data-codigo="${item.codigo}" class="btn btn-outline btn-small btn-remove">Quitar</button></td>
     `;
     cartBody.appendChild(tr);
@@ -1380,7 +1397,7 @@ function renderCart(){
   cartCount.textContent = totalArticulos;
 
   // Total en pesos
-  currentTotal = carrito.reduce((s,it) => s + (Number(it.subtotal) || 0), 0);
+  currentTotal = Number(carrito.reduce((s,it)=>s+valorItemActual(it).subtotal,0).toFixed(2));
   totalLabel.textContent = formatMXN(currentTotal);
 
   // Recalcular cambio
@@ -1994,6 +2011,7 @@ const estadoMixto=document.getElementById('estadoMixto');
 const centavosPago=v=>Math.round((Number(v)||0)*100);
 function desgloseCobro(){
   const total=centavosPago(currentTotal);
+  if(esConsumoInterno()) return {valido:true,metodoPago:'Consumo interno',pago:0,cambio:0,pagos:[],faltante:0};
   if(metodoPagoInput.value!=='Mixto'){
     const metodo=metodoPagoInput.value;
     const recibido=metodo==='Efectivo'?centavosPago(pagoInput.value):total;
@@ -2027,9 +2045,10 @@ for(const el of [metodoMixto1,metodoMixto2,importeMixto1,importeMixto2]){
 }
 
 function updatePaymentChange(){
+  const interno=esConsumoInterno();
   const mixto=metodoPagoInput.value==='Mixto';
   panelMixto.hidden=!mixto;
-  pagoInput.parentElement.hidden=mixto;
+  pagoInput.parentElement.hidden=mixto||interno;
   cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
   if(mixto){
     const d=desgloseCobro();
@@ -2038,6 +2057,7 @@ function updatePaymentChange(){
     estadoMixto.textContent=d.motivo||(d.valido?'Pago completo':'');
     return;
   }
+  if(interno){pagoInput.value='';pagoInput.disabled=true;labelPago.textContent='Sin cobro';cambioLabel.textContent=formatMXN(0);return;}
   const sinCambio=metodoPagoInput.value==='Tarjeta'||metodoPagoInput.value==='Vales';
   pagoInput.disabled=sinCambio;
   pagoInput.placeholder=sinCambio?'Cobro exacto':'0.00';
@@ -2048,11 +2068,12 @@ function updatePaymentChange(){
   cambioLabel.textContent=formatMXN(Math.abs(diff)/100);
   cambioLabel.classList.add(diff>=0?'change-ok':'change-low');
 }
-metodoPagoInput.addEventListener('change',()=>{pagoInput.value='';updatePaymentChange();});
+metodoPagoInput.addEventListener('change',()=>{pagoInput.value='';renderCart();});
 pagoInput.addEventListener('input',updatePaymentChange);
 
 btnFinalizar.addEventListener('click', ()=> {
   if(carrito.length === 0){alert('El carrito está vacío.');return;}
+  if(esConsumoInterno()&&!confirm('¿Registrar consumo interno por '+formatMXN(currentTotal)+'? Se descontarán los productos del inventario y no se registrará ningún cobro.'))return;
   const cobro=desgloseCobro();
   if(!cobro.valido){alert(cobro.motivo||('Pago insuficiente. Faltan '+formatMXN(cobro.faltante)));return;}
   const metodoPago=cobro.metodoPago;
@@ -2067,7 +2088,7 @@ btnFinalizar.addEventListener('click', ()=> {
   const total = currentTotal;
   const now = new Date();
   const productosNuevos=productos.map(p=>({...p}));
-  const itemsVenta=carrito.map(it=>({...it}));
+  const itemsVenta=carrito.map(it=>({...it,...(esConsumoInterno()?valorItemActual(it):{}),costoUnitario:it.manual?null:costoUnitarioInterno(it)}));
   // Misma lógica que Fullv: registrar existencia de artículos por pieza y a granel.
   for(const it of itemsVenta){
     const prod=productosNuevos.find(p=>String(p.codigo)===String(it.codigo));
@@ -2176,12 +2197,13 @@ function renderHistorial(){
     historyList.appendChild(p);
   } else {
     historial.forEach(v=>{
+    if(v.metodoPago==='Consumo interno')return;
       const d = document.createElement('div');
       d.className = 'history-item';
-      d.innerHTML = `<div><div style="font-weight:700">Venta #${v.id}</div><div class="small">${v.fecha}</div></div>
+      d.innerHTML = `<div><div style="font-weight:700">${v.metodoPago==='Consumo interno'?'Consumo interno':'Venta'} #${v.id}</div><div class="small">${v.fecha}</div></div>
                      <div style="text-align:right">
                        <div style="font-weight:800;color:var(--rojo)">${formatMXN(v.total)}</div>
-                       <div class="small">${v.metodoPago === 'Mixto' ? '💵 Mixto' : v.metodoPago === 'Tarjeta' ? '💳 Tarjeta' : ((v.metodoPago === 'Vales' || v.metodoPago === 'Vale') ? '🎟️ Vales' : '💵 Efectivo')}</div>
+                       <div class="small">${v.metodoPago === 'Consumo interno' ? '📦 Consumo interno' : v.metodoPago === 'Mixto' ? '💵 Mixto' : v.metodoPago === 'Tarjeta' ? '💳 Tarjeta' : ((v.metodoPago === 'Vales' || v.metodoPago === 'Vale') ? '🎟️ Vales' : '💵 Efectivo')}</div>
                        <details style="margin-top:8px">
                          <summary class="small">Ver detalles</summary>
                          <table style="width:100%;margin-top:8px;border-collapse:collapse">
@@ -2267,6 +2289,7 @@ function actualizarResumenHistorial(){
   let totalMes = 0;
 
   historial.forEach(v => {
+    if(v.metodoPago==='Consumo interno')return;
     const totalVenta = Number(v.total) || 0;
     totalGeneral += totalVenta;
 
@@ -2380,7 +2403,7 @@ function armarTextoTicket(v){
 
   // TOTALES
   lineas.push(right('TOTAL: ', formatMXN(v.total)));
-  lineas.push('METODO DE PAGO: '+(v.metodoPago==='Mixto'?'MIXTO':v.metodoPago==='Tarjeta'?'TARJETA':v.metodoPago==='Vales'?'VALES':'EFECTIVO'));
+  lineas.push('METODO DE PAGO: '+(v.metodoPago==='Consumo interno'?'CONSUMO INTERNO':v.metodoPago==='Mixto'?'MIXTO':v.metodoPago==='Tarjeta'?'TARJETA':v.metodoPago==='Vales'?'VALES':'EFECTIVO'));
   if(v.metodoPago==='Mixto'&&Array.isArray(v.pagos)) v.pagos.forEach(x=>lineas.push(right(x.metodo.toUpperCase()+': ',formatMXN(x.importe))));
   if(typeof v.pago !== 'undefined'){
     lineas.push(right('PAGO: ', formatMXN(v.pago)));
