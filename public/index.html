@@ -954,6 +954,9 @@ let licenciaFullvActiva = false;
 let licenciaFullvComprobada = false;
 let licenciaFullvFingerprint = '';
 let comprobacionLicenciaEnCurso = false;
+let reintentoLicenciaTimer = null;
+let reintentosLicenciaInicio = 0;
+const MAX_REINTENTOS_LICENCIA_INICIO = 5;
 // No confundir una comprobación pendiente con una licencia rechazada.
 let licenciaFullvUltimoError = '';
 const limiteProductosActual = () => licenciaFullvActiva ? Infinity : MAX_PRODUCTS;
@@ -967,11 +970,28 @@ function licenciaLocalVigente(lic, fingerprint){
     Number.isFinite(fechaFinLicencia(lic.vencimiento)) && fechaFinLicencia(lic.vencimiento) >= ahora &&
     !(typeof lic.ultimoUso === 'number' && ahora + 5*60*1000 < lic.ultimoUso);
 }
+function programarReintentoLicenciaIndex(){
+  if(licenciaFullvActiva || reintentoLicenciaTimer !== null ||
+     reintentosLicenciaInicio >= MAX_REINTENTOS_LICENCIA_INICIO) return;
+  // Una discrepancia de huella durante el primer arranque de Android/PWA puede
+  // ser transitoria. Reintentar en silencio, sin abrir acceso no autorizado.
+  const espera = [700, 1600, 3000, 5000, 8000][reintentosLicenciaInicio++];
+  reintentoLicenciaTimer = setTimeout(() => {
+    reintentoLicenciaTimer = null;
+    comprobarLicenciaFullvEnIndex().catch(e => console.warn('Reintento de licencia:',e));
+  }, espera);
+}
+function cancelarReintentosLicenciaIndex(){
+  if(reintentoLicenciaTimer !== null) clearTimeout(reintentoLicenciaTimer);
+  reintentoLicenciaTimer = null;
+  reintentosLicenciaInicio = 0;
+}
 function actualizarEstadoLicenciaIndex(permitida){
   const anterior = licenciaFullvActiva;
   const primeraComprobacion = !licenciaFullvComprobada;
   licenciaFullvComprobada = true;
   licenciaFullvActiva = !!permitida;
+  if(licenciaFullvActiva) cancelarReintentosLicenciaIndex();
   if(primeraComprobacion || anterior !== licenciaFullvActiva){
     // Actualizar el aviso antes de volver a dibujar el catálogo: si un producto
     // provoca un error visual, no debe quedar un aviso gratuito desactualizado.
@@ -988,11 +1008,15 @@ async function comprobarLicenciaFullvEnIndex(){
   comprobacionLicenciaEnCurso = true;
   try {
     // No usar simplemente una bandera de localStorage: requiere fingerprint concordante.
-    if(!licenciaFullvFingerprint){
-      try {
-        if(typeof FingerprintJS !== 'undefined') licenciaFullvFingerprint =
-          (await (await FingerprintJS.load()).get()).visitorId || '';
-      }catch(e){console.warn('Fingerprint no disponible en index:',e);}
+    // Obtener una nueva lectura en cada comprobación: no fijar durante toda la
+    // sesión un fingerprint transitorio tomado al encender la PWA.
+    try {
+      if(typeof FingerprintJS !== 'undefined') licenciaFullvFingerprint =
+        (await (await FingerprintJS.load()).get()).visitorId || '';
+      else licenciaFullvFingerprint = '';
+    }catch(e){
+      licenciaFullvFingerprint = '';
+      console.warn('Fingerprint no disponible en index:',e);
     }
     let local = null;
     try { local = JSON.parse(localStorage.getItem(LICENCIA_FULLV_KEY) || 'null'); }catch(e){}
@@ -1025,6 +1049,7 @@ async function comprobarLicenciaFullvEnIndex(){
       }
       licenciaFullvUltimoError = valida ? '' : 'El fingerprint de esta instalación no tiene autorización vigente en el JSON consultado.';
       actualizarEstadoLicenciaIndex(valida);
+      if(!valida) programarReintentoLicenciaIndex();
     }else{
       // Sin red, solo una autorización previamente registrada, vigente y del MISMO fingerprint.
       const valida = licenciaLocalVigente(localCoincidente,licenciaFullvFingerprint);
@@ -1034,11 +1059,13 @@ async function comprobarLicenciaFullvEnIndex(){
       }
       licenciaFullvUltimoError = valida ? '' : 'Sin conexión para verificar y sin licencia local coincidente vigente.';
       actualizarEstadoLicenciaIndex(valida);
+      if(!valida) programarReintentoLicenciaIndex();
     }
   }catch(e){
     licenciaFullvUltimoError = 'Error al comprobar licencia: '+e.message;
     console.warn(licenciaFullvUltimoError);
     actualizarEstadoLicenciaIndex(false);
+    programarReintentoLicenciaIndex();
   }finally{comprobacionLicenciaEnCurso = false;}
 }
 // Iniciar la comprobación sin depender de que terminen todas las tareas del
