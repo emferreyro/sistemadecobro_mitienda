@@ -78,6 +78,7 @@ function efectivoCerradoHoy(historial,fecha=fechaClave(new Date())){
 function registrarCierreCaja(historial){
  const hoy=fechaClave(new Date());
  const ventas=(historial||[]).filter(v=>{
+   if(v.metodoPago==='Consumo interno')return false;
    const d=fechaVenta(v);return d&&fechaClave(d)===hoy;
  }).map(v=>({id:v.id,efectivo:Array.isArray(v.pagos)&&v.pagos.length
    ? v.pagos.filter(x=>x.metodo==='Efectivo').reduce((sum,x)=>sum+(Number(x.importe)||0),0)
