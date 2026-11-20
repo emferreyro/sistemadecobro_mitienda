@@ -427,6 +427,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
       <div class="summary-mini"><div class="summary-mini-label">Total de ventas acumuladas</div><div class="summary-mini-value" id="kSales">—</div></div>
       <div class="summary-mini"><div class="summary-mini-label">Utilidad estimada</div><div class="summary-mini-value" id="kProfit">—</div></div>
       <div class="summary-mini"><div class="summary-mini-label">Cobros con tarjeta</div><div class="summary-mini-value" id="kCard">—</div></div>
+      <div class="summary-mini"><div class="summary-mini-label">Cargo Banco (adicional a productos)</div><div class="summary-mini-value" id="kBanco">—</div></div>
       <div class="summary-mini"><div class="summary-mini-label">Cobros en efectivo</div><div class="summary-mini-value" id="kCash">—</div></div>
       <div class="summary-mini"><div class="summary-mini-label">Cobros con vales</div><div class="summary-mini-value" id="kVouchers">—</div></div>
       <div class="summary-mini"><div class="summary-mini-label">Registros sin códigos</div><div class="summary-mini-value" id="kMPieces">—</div></div>
@@ -693,6 +694,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     $("kSales").textContent = "—";
     $("kCash").textContent = "—";
     $("kCard").textContent = "—";
+    $("kBanco").textContent = "—";
     $("kVouchers").textContent = "—";
     $("kProfit").textContent = "—";
     $("kTx").textContent = "—";
@@ -1037,16 +1039,26 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     REPORT_SALES_TOTAL = totalSales;
     $("kSales").textContent = money(totalSales);
     const cobros = {Efectivo:0, Tarjeta:0, Vales:0};
-    // Prorratear el reparto de cada venta entre sus artículos para respetar los filtros
-    // de fecha, marca, grupo, tipo y M-, sin duplicar pagos en cada renglón.
+    let cargosBanco=0;
+    // El cargo bancario NO es venta de mercancía ni utilidad de producto.
+    // Se prorratea por los artículos del filtro sin contarlo varias veces por venta.
     for(const r of filtered){
       const pagos=pagosNetosDeFila(r);
-      const total=Number(r.total)||0;
-      if(total<=0) continue;
+      const cargo=Math.max(0,Number(r.cargoBanco)||0);
+      const base=(Number(r.subtotalProductos)||((Number(r.total)||0)-cargo));
+      if(base<=0) continue;
+      const factor=r.subtotal/base;
       for(const pago of pagos){
-        cobros[pago.metodo] += r.subtotal * (pago.importe/total);
+        const parteProducto=Math.max(0,pago.importe-(pago.metodo==='Tarjeta'?cargo:0));
+        cobros[pago.metodo] += factor*parteProducto;
+      }
+      if(cargo>0){
+        const parteCargo=cargo*factor;
+        cargosBanco+=parteCargo;
+        cobros.Tarjeta+=parteCargo;
       }
     }
+    $("kBanco").textContent=money(cargosBanco);
     const granel = filtered.filter(r=>r.tipoVenta==='granel');
     $('kBulkRecords').textContent=granel.length.toLocaleString('es-MX');
     $('kBulkAmount').textContent=money(granel.reduce((s,r)=>s+r.subtotal,0));
@@ -1110,6 +1122,9 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
           fechaRaw,
           fechaISO,
           total,
+          subtotalProductos:safeNum(v.subtotalProductos??(total-(Number(v.cargoBanco)||0))),
+          cargoBanco:safeNum(v.cargoBanco),
+          cargoBancoPorcentaje:safeNum(v.cargoBancoPorcentaje),
           metodoPago: normalizarMetodoPago(v.metodoPago),
           pagos: Array.isArray(v.pagos)?v.pagos.map(x=>({metodo:x.metodo,importe:Number(x.importe)||0})):null,
           codigo: (it.codigo ?? "").toString().trim(),
@@ -1193,6 +1208,9 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
           ventaId:fileId+String(r[idx["Venta ID"]]??""),
           fechaRaw:r[idx["Fecha"]],
           total:safeNum(r[idx["Total"]]),
+          cargoBanco:idx["Cargo Banco $"]===undefined?0:safeNum(r[idx["Cargo Banco $"]]),
+          cargoBancoPorcentaje:idx["Cargo Banco (%)"]===undefined?0:safeNum(r[idx["Cargo Banco (%)"]]),
+          subtotalProductos:idx["Subtotal productos"]===undefined?null:safeNum(r[idx["Subtotal productos"]]),
           codigo:(r[idx["Código"]]||"").trim(),
           nombre:(r[idx["Nombre"]]||"").trim(),
           cant:safeNum(r[idx["Cant"]]),

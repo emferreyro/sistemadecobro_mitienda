@@ -851,6 +851,13 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 <option value="Consumo interno">Consumo interno</option>
 </select>
 </div>
+                    <div id="cargoBancoPanel" class="pay-field" hidden style="min-width:150px;max-width:200px">
+                      <label for="cargoBancoPct">Cargo serv. banco (%)</label>
+                      <input id="cargoBancoPct" type="number" min="0" max="100" step="0.01" inputmode="decimal" placeholder="0 (opcional)" style="width:100%;box-sizing:border-box" />
+                    </div>
+                    <div id="cargoBancoResumen" class="pay-field" hidden style="min-width:145px">
+                      <label>Cargo Banco</label><div id="cargoBancoMonto" style="font-weight:700;min-height:28px">$0.00</div>
+                    </div>
 <div id="pagoMixto" class="pay-field" hidden style="flex:1 1 260px;min-width:230px;max-width:360px">
  <div style="font-size:12px;font-weight:700;margin-bottom:5px">Distribuir el pago</div>
  <div style="display:grid;grid-template-columns:minmax(110px,1fr) minmax(85px,1fr);gap:6px">
@@ -2309,31 +2316,55 @@ const importeMixto1=document.getElementById('importeMixto1');
 const importeMixto2=document.getElementById('importeMixto2');
 const estadoMixto=document.getElementById('estadoMixto');
 const centavosPago=v=>Math.round((Number(v)||0)*100);
+const cargoBancoPanel=document.getElementById('cargoBancoPanel');
+const cargoBancoPct=document.getElementById('cargoBancoPct');
+const cargoBancoResumen=document.getElementById('cargoBancoResumen');
+const cargoBancoMonto=document.getElementById('cargoBancoMonto');
+function porcentajeBanco(){
+  const texto=cargoBancoPct.value.trim();
+  const pct=texto===''?0:Number(texto);
+  return Number.isFinite(pct)&&pct>=0&&pct<=100?pct:null;
+}
+function metodosConTarjeta(){
+  return metodoPagoInput.value==='Tarjeta'||(metodoPagoInput.value==='Mixto'&&(metodoMixto1.value==='Tarjeta'||metodoMixto2.value==='Tarjeta'));
+}
 function desgloseCobro(){
-  const total=centavosPago(currentTotal);
-  if(esConsumoInterno()) return {valido:true,metodoPago:'Consumo interno',pago:0,cambio:0,pagos:[],faltante:0};
+  const base=centavosPago(currentTotal);
+  if(esConsumoInterno()) return {valido:true,metodoPago:'Consumo interno',pago:0,cambio:0,pagos:[],faltante:0,cargoBanco:0,porcentajeBanco:0,total:base/100};
+  const pct=metodosConTarjeta()?porcentajeBanco():0;
+  if(pct===null)return {valido:false,motivo:'El Cargo serv. banco debe estar entre 0 y 100%.',cargoBanco:0,total:base/100};
   if(metodoPagoInput.value!=='Mixto'){
     const metodo=metodoPagoInput.value;
+    const cargo=metodo==='Tarjeta'?Math.round(base*pct/100):0;
+    const total=base+cargo;
     const recibido=metodo==='Efectivo'?centavosPago(pagoInput.value):total;
     return {valido:recibido>=total,metodoPago:metodo,pago:recibido/100,cambio:metodo==='Efectivo'?Math.max(0,recibido-total)/100:0,
-      pagos:[{metodo,importe:total/100,recibido:recibido/100}],faltante:Math.max(0,total-recibido)/100};
+      pagos:[{metodo,importe:total/100,recibido:recibido/100}],faltante:Math.max(0,total-recibido)/100,
+      cargoBanco:cargo/100,porcentajeBanco:pct,total:total/100};
   }
   const m1=metodoMixto1.value,m2=metodoMixto2.value;
+  // Los importes ingresados en mixto distribuyen el valor ORIGINAL de productos.
+  // Solo al importe de tarjeta se agrega su propio cargo bancario.
   const a=centavosPago(importeMixto1.value),b=centavosPago(importeMixto2.value);
   const camposValidos=[importeMixto1,importeMixto2].every(el=>el.value.trim()!==''&&Number.isFinite(Number(el.value))&&Number(el.value)>=0);
   const noEfectivo=(m1!=='Efectivo'?a:0)+(m2!=='Efectivo'?b:0);
   const efectivo=(m1==='Efectivo'?a:0)+(m2==='Efectivo'?b:0);
-  const restante=total-noEfectivo;
-  const valido=camposValidos&&m1!==m2&&a>0&&b>0&&noEfectivo<=total&&a+b>=total&&(efectivo>0||a+b===total);
-  const cambio=efectivo>0?Math.max(0,a+b-total):0;
-  return {valido,metodoPago:'Mixto',pago:(a+b)/100,cambio:cambio/100,
-    pagos:[{metodo:m1,importe:(m1==='Efectivo'?Math.max(0,restante):a)/100,recibido:a/100},
-           {metodo:m2,importe:(m2==='Efectivo'?Math.max(0,restante):b)/100,recibido:b/100}],
-    faltante:Math.max(0,total-a-b)/100,motivo:m1===m2?'Selecciona dos métodos distintos.':
+  const restante=base-noEfectivo;
+  const cargo=Math.round(((m1==='Tarjeta'?a:0)+(m2==='Tarjeta'?b:0))*pct/100);
+  const total=base+cargo;
+  const valido=camposValidos&&m1!==m2&&a>0&&b>0&&noEfectivo<=base&&a+b>=base&&(efectivo>0||a+b===base);
+  const cambio=efectivo>0?Math.max(0,a+b-base):0;
+  const pago1=(m1==='Efectivo'?Math.max(0,restante):a)+(m1==='Tarjeta'?cargo:0);
+  const pago2=(m2==='Efectivo'?Math.max(0,restante):b)+(m2==='Tarjeta'?cargo:0);
+  return {valido,metodoPago:'Mixto',pago:(a+b+cargo)/100,cambio:cambio/100,
+    pagos:[{metodo:m1,importe:pago1/100,recibido:(a+(m1==='Tarjeta'?cargo:0))/100},
+           {metodo:m2,importe:pago2/100,recibido:(b+(m2==='Tarjeta'?cargo:0))/100}],
+    cargoBanco:cargo/100,porcentajeBanco:pct,total:total/100,
+    faltante:Math.max(0,base-a-b)/100,motivo:m1===m2?'Selecciona dos métodos distintos.':
       !camposValidos||a<=0||b<=0?'Ingresa ambos importes.':
-      noEfectivo>total?'Vales y tarjeta no pueden superar el total.':
-      a+b<total?'Faltan '+formatMXN((total-a-b)/100):
-      efectivo===0&&a+b!==total?'Sin efectivo no puede haber cambio.':''};
+      noEfectivo>base?'Vales y tarjeta no pueden superar el importe de productos.':
+      a+b<base?'Faltan '+formatMXN((base-a-b)/100):
+      efectivo===0&&a+b!==base?'Sin efectivo no puede haber cambio.':''};
 }
 function limpiarPagoMixto(){
   metodoMixto1.value='Vales';metodoMixto2.value='Efectivo';
@@ -2347,6 +2378,12 @@ for(const el of [metodoMixto1,metodoMixto2,importeMixto1,importeMixto2]){
 function updatePaymentChange(){
   const interno=esConsumoInterno();
   const mixto=metodoPagoInput.value==='Mixto';
+  const tarjeta=metodosConTarjeta();
+  cargoBancoPanel.hidden=!tarjeta;
+  cargoBancoResumen.hidden=!tarjeta;
+  const cobroActual=desgloseCobro();
+  cargoBancoMonto.textContent=formatMXN(cobroActual.cargoBanco||0);
+  totalLabel.textContent=formatMXN(cobroActual.total??currentTotal);
   panelMixto.hidden=!mixto;
   pagoInput.parentElement.hidden=mixto||interno;
   cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
@@ -2362,13 +2399,14 @@ function updatePaymentChange(){
   pagoInput.disabled=sinCambio;
   pagoInput.placeholder=sinCambio?'Cobro exacto':'0.00';
   labelPago.textContent=metodoPagoInput.value==='Vales'?'Importe en vales $':(sinCambio?'Importe en tarjeta $':'Su pago $');
-  if(sinCambio){pagoInput.value=currentTotal.toFixed(2);cambioLabel.textContent=formatMXN(0);return;}
+  if(sinCambio){pagoInput.value=(cobroActual.total??currentTotal).toFixed(2);cambioLabel.textContent=formatMXN(0);return;}
   if(String(pagoInput.value).trim()===''){cambioLabel.textContent=formatMXN(0);return;}
   const diff=centavosPago(pagoInput.value)-centavosPago(currentTotal);
   cambioLabel.textContent=formatMXN(Math.abs(diff)/100);
   cambioLabel.classList.add(diff>=0?'change-ok':'change-low');
 }
-metodoPagoInput.addEventListener('change',()=>{pagoInput.value='';renderCart();});
+metodoPagoInput.addEventListener('change',()=>{pagoInput.value='';cargoBancoPct.value='';renderCart();});
+cargoBancoPct.addEventListener('input',updatePaymentChange);
 pagoInput.addEventListener('input',updatePaymentChange);
 
 btnFinalizar.addEventListener('click', ()=> {
@@ -2378,7 +2416,7 @@ btnFinalizar.addEventListener('click', ()=> {
   if(!cobro.valido){alert(cobro.motivo||('Pago insuficiente. Faltan '+formatMXN(cobro.faltante)));return;}
   const metodoPago=cobro.metodoPago;
   const pago=cobro.pago;
-  const total = currentTotal;
+  const total = cobro.total;
   for(const it of carrito){const p=productos.find(x=>x.codigo===it.codigo);if(esGranel(it)&&esGranel(p)&&gramosInventario(p)!==null&&Math.round(Number(it.cantidad)*1000)>gramosInventario(p)){alert('No hay existencia suficiente para '+p.nombre);return;}}
   // La referencia preventiva de 4 MiB genera un aviso, pero no bloquea el cobro.
   // === Inventario progresivo (fase 1): permitir venta pero generar alertas en historial ===
@@ -2434,6 +2472,7 @@ const ahora = new Date();
     id: MiTiendaIntegridad.siguienteId(historial),
     fecha: ahora.toLocaleString(),
     fechaISO: ahora.toISOString(),
+    subtotalProductos:Number(currentTotal.toFixed(2)), cargoBancoPorcentaje:cobro.porcentajeBanco, cargoBanco:cobro.cargoBanco,
     total: Number(total.toFixed(2)),
     items: itemsVenta,
     warnings: warnings,
@@ -2452,7 +2491,7 @@ const ahora = new Date();
   
   initCashBox();
 pagoInput.value = '';
-  if(metodoPagoInput) metodoPagoInput.value = 'Efectivo'; limpiarPagoMixto();
+  if(metodoPagoInput) metodoPagoInput.value = 'Efectivo'; cargoBancoPct.value=''; limpiarPagoMixto();
   updatePaymentChange();
   cambioLabel.textContent = formatMXN(0);
   cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
@@ -2464,7 +2503,7 @@ btnCancelar.addEventListener('click', ()=> {
   if(!confirm('¿Cancelar venta actual? Se borrará el carrito.')) return;
   carrito = []; saveCart(); renderCart();
   pagoInput.value = '';
-  if(metodoPagoInput) metodoPagoInput.value = 'Efectivo'; limpiarPagoMixto();
+  if(metodoPagoInput) metodoPagoInput.value = 'Efectivo'; cargoBancoPct.value=''; limpiarPagoMixto();
   updatePaymentChange();
   cambioLabel.textContent = formatMXN(0);
   cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
@@ -2681,6 +2720,7 @@ function armarTextoTicket(v){
   lineas.push(line('-'));
 
   // TOTALES
+  if(Number(v.cargoBanco)>0){lineas.push(right('PRODUCTOS: ',formatMXN(v.subtotalProductos??(v.total-v.cargoBanco))));lineas.push(right('CARGO BANCO ('+(v.cargoBancoPorcentaje||0)+'%): ',formatMXN(v.cargoBanco)));}
   lineas.push(right('TOTAL: ', formatMXN(v.total)));
   lineas.push('METODO: '+(v.metodoPago==='Consumo interno'?'CONSUMO INTERNO':v.metodoPago==='Mixto'?'MIXTO':v.metodoPago==='Tarjeta'?'TARJETA':v.metodoPago==='Vales'?'VALES':'EFECTIVO'));
   if(v.metodoPago==='Mixto'&&Array.isArray(v.pagos)) v.pagos.forEach(x=>lineas.push(right(x.metodo.toUpperCase()+': ',formatMXN(x.importe))));
@@ -3048,15 +3088,15 @@ function actualizarResumenHistorial(){
 /* CIERRE DE VENTAS: exportación compatible con reporte.html y borrado verificado */
 let cierreVentasActivo = false;
 function crearArchivoCierre(ventas){
-  const columnas = ['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal','Método de pago','Pago recibido','Cambio'];
+  const columnas = ['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal','Método de pago','Pago recibido','Cambio','Subtotal productos','Cargo Banco (%)','Cargo Banco $'];
   const rows = [columnas];
   ventas.forEach(v => {
     const metodo = v.metodoPago === 'Consumo interno' ? 'Consumo interno' : v.metodoPago === 'Mixto' ? ('Mixto: '+(v.pagos||[]).map(x=>x.metodo+' '+Number(x.importe).toFixed(2)).join(' + ')) : v.metodoPago === 'Tarjeta' ? 'Tarjeta' : ((v.metodoPago === 'Vales' || v.metodoPago === 'Vale') ? 'Vales' : 'Efectivo');
     const pago = (v.pago == null || v.pago === '') ? '' : v.pago;
     const cambio = (v.cambio == null || v.cambio === '') ? '' : v.cambio;
     const items = Array.isArray(v.items) ? v.items : [];
-    if(!items.length) rows.push([v.id,v.fecha,v.total,'','','','','',metodo,pago,cambio]);
-    items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre||'',it.cantidad,it.precio,it.subtotal,metodo,pago,cambio]));
+    if(!items.length) rows.push([v.id,v.fecha,v.total,'','','','','',metodo,pago,cambio,v.subtotalProductos??v.total-(v.cargoBanco||0),v.cargoBancoPorcentaje||0,v.cargoBanco||0]);
+    items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre||'',it.cantidad,it.precio,it.subtotal,metodo,pago,cambio,v.subtotalProductos??v.total-(v.cargoBanco||0),v.cargoBancoPorcentaje||0,v.cargoBanco||0]));
   });
   return '\uFEFF' + rows.map(r => r.map(c => '"' + String(c ?? '').replace(/"/g,'""') + '"').join(',')).join('\r\n');
 }
