@@ -1,7 +1,7 @@
 {"autorizados":[
-{"id":"c46bb58c9fb656115328dbd55c0fbfd3","user":"admin","vencimiento":"2027-12-31","cliente":"dell latitude"},
-{"id":"a5a5dabc300596dfb6d2efc4067bf9a2","user":"admin","vencimiento":"2027-12-31","cliente":"Tienda Charmin"},
-{"id":"3a358693c637e01001b25a6680b18d8e","user":"admin","vencimiento":"2027-12-31","cliente":"Tienda Toño","revocado":false},
+{"id":"c46bb58c9fb656115328dbd55c0fbfd3","user":"admin","vencimiento":"2999-12-31","cliente":"dell latitude"},
+{"id":"a5a5dabc300596dfb6d2efc4067bf9a2","user":"admin","vencimiento":"2999-12-31","cliente":"Tienda Charmin"},
+{"id":"3a358693c637e01001b25a6680b18d8e","user":"admin","vencimiento":"2999-12-31","cliente":"Tienda Toño","revocado":false},
 {"id":"bdc5d2ee3ad742dfd5e0c7fc4c1952bd","user":"admin","vencimiento":"2027-12-31","cliente":"chrome dell","revocado":false},
 {"id":"0698debb1102dbc18effabd22172c8f8","user":"admin","vencimiento":"2027-12-31","cliente":"Probook firefox"},
 {"id":"1dca452af794334c30ad6df8abbf839b","user":"admin","vencimiento":"2027-12-31","cliente":"Pruebas edge","revocado":false},
