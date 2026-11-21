@@ -1880,6 +1880,17 @@ document.getElementById('bulk-save').addEventListener('click',()=>{
 /* Filtro visual: nunca altera los índices originales usados por editar/eliminar. */
 /* Filtro independiente: no altera el buscador de ventas ni el catálogo. */
 document.getElementById('buscar-rapida')?.addEventListener('input',actualizarBusquedaRapida);
+/* Búsqueda rápida táctil: al primer clic/toque fuera del cuadro, quitar el
+   filtro anterior. Se usa click en burbuja para no impedir que los botones
+   Agregar/Ventas/Productos ejecuten primero su propia acción. */
+const campoBusquedaRapida=document.getElementById('buscar-rapida');
+document.addEventListener('click',function(evento){
+  if(!campoBusquedaRapida || !campoBusquedaRapida.value) return;
+  if(evento.target===campoBusquedaRapida || campoBusquedaRapida.contains(evento.target)) return;
+  campoBusquedaRapida.value='';
+  actualizarBusquedaRapida();
+});
+
 
 function normalizarBusquedaCatalogo(texto){return String(texto??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-MX').trim();}
 document.addEventListener('input', function(evento){
