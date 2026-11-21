@@ -831,9 +831,10 @@ body.pink #proteccion-catalogo {
             </div>
             <input id="prod-nombre" placeholder="Nombre del producto" style="flex:1" />
             <input id="prod-precio" placeholder="Precio" type="number" step="0.01" style="width:120px" />
-            <button id="btn-add-prod" class="btn btn-rojo">Agregar</button>
+            <button id="btn-add-prod" class="btn btn-rojo">Agregar</button><button type="button" id="btn-nuevo-registro" class="btn btn-outline" title="Limpiar formulario e iniciar un producto nuevo">Nuevo registro</button>
           </div>
 
+          <div id="estado-registro-producto" class="small" aria-live="polite" style="margin:5px 0 8px;font-weight:600">Nuevo registro · sin producto seleccionado</div>
           <div class="granel-control"><label for="prod-tipo">Tipo de venta</label><select id="prod-tipo"><option value="pieza">Por pieza</option><option value="granel">A granel</option></select><label for="prod-unidad-granel">Unidad granel</label><select id="prod-unidad-granel" disabled><option value="kg">kg</option><option value="L">L</option></select><span id="total-productos-registrados" class="total-productos-registrados" aria-live="polite">Artículos registrados: <strong>0</strong></span></div>
           <div class="catalogo-busqueda"><input id="buscar-catalogo" type="search" placeholder="🔎 Buscar artículo por nombre o código" aria-label="Buscar entre artículos registrados" autocomplete="off"/><span id="catalogo-resultado" class="catalogo-resultado" aria-live="polite"></span></div>
           <div id="granel-campos" class="granel-campos">
@@ -899,6 +900,7 @@ body.pink #proteccion-catalogo {
 
         <div class="panel">
           <strong>Búsqueda rápida</strong>
+          <input id="buscar-rapida" type="search" autocomplete="off" placeholder="🔎 Buscar por código o nombre" aria-label="Buscar en la lista rápida" style="width:100%;box-sizing:border-box;margin-top:9px;padding:10px;border-radius:9px"/>
           <div id="right-products" class="products-list" style="margin-top:8px"></div>
         </div>
 
@@ -1202,7 +1204,17 @@ function renderBusquedaRapida(){
   const ordenados = productos.map((p, indice) => ({p, indice})).sort((a,b) =>
     (cantidades.get(String(b.p.codigo)) || 0) - (cantidades.get(String(a.p.codigo)) || 0) || a.indice - b.indice
   );
-  ordenados.forEach(({p}) => {
+  const campoRapido=document.getElementById('buscar-rapida');
+  const terminos=normalizarBusquedaCatalogo(campoRapido?.value||'').split(/\s+/).filter(Boolean);
+  const filtrados=ordenados.filter(({p})=>{
+    const texto=normalizarBusquedaCatalogo([p.codigo,p.nombre,p.marca,p.grupo].filter(Boolean).join(' '));
+    return terminos.every(t=>texto.includes(t));
+  });
+  if(!filtrados.length && terminos.length){
+    const aviso=document.createElement('div'); aviso.className='small';
+    aviso.textContent='No se encontraron artículos.'; rightProducts.appendChild(aviso);
+  }
+  filtrados.forEach(({p}) => {
     const small = document.createElement('div');
     small.className = 'product-item';
     small.innerHTML = `<div><strong>${escapeHtml(String(p.codigo))}</strong> ${escapeHtml(p.nombre)}
@@ -1479,9 +1491,19 @@ function renderCart(){
 
 /* PRODUCTS UI */
 /* Filtro visual: nunca altera los índices originales usados por editar/eliminar. */
+/* Filtro independiente: no altera el buscador de ventas ni el catálogo. */
+document.getElementById('buscar-rapida')?.addEventListener('input',actualizarBusquedaRapida);
+
 function normalizarBusquedaCatalogo(texto){return String(texto??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-MX').trim();}
 document.addEventListener('input', function(evento){
   if(evento.target && evento.target.id === 'buscar-catalogo') filtrarCatalogoRegistrado();
+});
+/* Al volver a tocar la búsqueda en tablet, empezar una consulta nueva. */
+const campoBusquedaCatalogo=document.getElementById('buscar-catalogo');
+campoBusquedaCatalogo?.addEventListener('pointerdown',function(){
+  if(this.value && document.activeElement!==this){
+    this.value='';filtrarCatalogoRegistrado();
+  }
 });
 function filtrarCatalogoRegistrado(){
   const campo=document.getElementById('buscar-catalogo');
@@ -1570,6 +1592,8 @@ function renderProducts(){
 
     actualizarCamposGranel();
     prodCodigo.dataset.editIndex = i;
+    document.getElementById('estado-registro-producto').textContent='Editando: '+p.codigo+' — '+p.nombre;
+    btnAddProd.textContent='Guardar cambios';
     checkProductLimitOnOpen();
     prodNombre.focus();
   }));
@@ -1591,7 +1615,15 @@ function limpiarFormularioProducto(){
   delete prodCodigo.dataset.editIndex;
   prodCodigo.value='';prodNombre.value='';prodPrecio.value='';prodTipo.value='pieza';
   actualizarCamposGranel();
+  const estado=document.getElementById('estado-registro-producto');if(estado)estado.textContent='Nuevo registro · sin producto seleccionado';
+  const boton=document.getElementById('btn-add-prod');if(boton)boton.textContent='Agregar';
 }
+document.getElementById('btn-nuevo-registro')?.addEventListener('click',()=>{
+  limpiarFormularioProducto();
+  prodUnidadGranel.value='kg';
+  [prodCostoKg,prodStockKg,prodPesoCostal,prodCostoCostal].forEach(e=>e.value='');
+  actualizarCamposGranel();checkProductLimitOnOpen();prodCodigo.focus();
+});
 function hexDeBytes(bytes){return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');}
 async function hashClaveCatalogo(clave,sal){
   if(!window.crypto || !crypto.subtle) throw new Error('La protección requiere HTTPS o un navegador compatible.');
@@ -1815,6 +1847,7 @@ btnAddProd.addEventListener('click', async ()=>{
   } catch (e) {
     console.warn('Audio no disponible:', e);
   }
+  limpiarFormularioProducto();
   prodCodigo.value=''; prodNombre.value=''; prodPrecio.value='';prodTipo.value='pieza';prodUnidadGranel.value='kg';[prodCostoKg,prodStockKg,prodPesoCostal,prodCostoCostal].forEach(e=>e.value='');actualizarCamposGranel(); prodCodigo.focus();
   checkProductLimitOnOpen();
 });

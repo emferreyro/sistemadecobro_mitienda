@@ -903,11 +903,12 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6b7280;margin:0 0 0 0;white-space:nowrap"><input id="prod-inventariado" type="checkbox" />Inventario</label>
 <input id="prod-stock" placeholder="Existencias" type="number" step="1" min="0" style="width:120px" />
 </div>
+<div id="estado-registro-producto" class="small" aria-live="polite" style="margin:6px 0;font-weight:600">Nuevo registro · sin producto seleccionado</div>
 <div class="mg-product-fields">
  <div style="flex:1 1 200px;min-width:0"><label for="prod-marca">Marca</label><select id="prod-marca" style="display:none!important;width:100%;box-sizing:border-box;padding:10px;border-radius:10px"><option value="">SIN MARCA</option><option value="__nueva__">+ CREAR NUEVA MARCA</option></select><input id="prod-marca-nueva" type="text" placeholder="NUEVA MARCA" autocomplete="off" style="display:none;width:100%;box-sizing:border-box;margin-top:6px;text-transform:uppercase"/></div>
  <div style="flex:1 1 200px;min-width:0"><label for="prod-grupo">Grupo</label><select id="prod-grupo" style="display:none!important;width:100%;box-sizing:border-box;padding:10px;border-radius:10px"><option value="">SIN GRUPO</option><option value="__nueva__">+ CREAR NUEVO GRUPO</option></select><input id="prod-grupo-nuevo" type="text" placeholder="NUEVO GRUPO" autocomplete="off" style="display:none;width:100%;box-sizing:border-box;margin-top:6px;text-transform:uppercase"/></div>
 <div class="catalogo-tipo-celda"><label for="prod-tipo">Tipo de venta</label><select id="prod-tipo"><option value="pieza">Por pieza</option><option value="granel">A granel</option></select></div>
-<div class="catalogo-agregar-celda"><button class="btn btn-rojo" id="btn-add-prod">Agregar</button></div>
+<div class="catalogo-agregar-celda"><button class="btn btn-rojo" id="btn-add-prod">Agregar</button><button type="button" id="btn-nuevo-registro" class="btn btn-outline" title="Limpiar formulario e iniciar un producto nuevo">Nuevo registro</button></div>
 </div>
 <div id="granel-campos" class="granel-campos">
 <div><label>Unidad de venta</label><select id="prod-unidad-granel"><option value="kg">Kilogramos (kg)</option><option value="L">Litros (L)</option></select></div>
@@ -1023,6 +1024,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 </div>
 <div class="panel">
 <strong>Búsqueda rápida</strong>
+<input id="buscar-rapida" type="search" autocomplete="off" placeholder="🔎 Buscar por código o nombre" aria-label="Buscar en la lista rápida" style="width:100%;box-sizing:border-box;margin-top:9px;padding:10px;border-radius:9px"/>
 <div class="products-list" id="right-products" style="margin-top:8px"></div>
 </div>
 <div class="panel">
@@ -1613,7 +1615,17 @@ function actualizarBusquedaRapida(){
   const conteos = totalUnidadesVendidasPorCodigo();
   const ordenados = productos.map((p, posicion) => ({p, posicion}))
     .sort((a,b) => (conteos.get(String(b.p.codigo)) || 0) - (conteos.get(String(a.p.codigo)) || 0) || a.posicion-b.posicion);
-  ordenados.forEach(({p}) => {
+  const campoRapido=document.getElementById('buscar-rapida');
+  const terminos=normalizarBusquedaCatalogo(campoRapido?.value||'').split(/\s+/).filter(Boolean);
+  const filtrados=ordenados.filter(({p})=>{
+    const texto=normalizarBusquedaCatalogo([p.codigo,p.nombre,p.marca,p.grupo].filter(Boolean).join(' '));
+    return terminos.every(t=>texto.includes(t));
+  });
+  if(!filtrados.length && terminos.length){
+    const aviso=document.createElement('div'); aviso.className='small';
+    aviso.textContent='No se encontraron artículos.'; rightProducts.appendChild(aviso);
+  }
+  filtrados.forEach(({p}) => {
     const small = document.createElement('div');
     small.className = 'product-item';
     small.innerHTML = `<div><strong>${escapeHtml(String(p.codigo))}</strong> ${escapeHtml(String(p.nombre))}<div class="small">${formatMXN(p.precio)}</div></div><button class="btn btn-rojo btn-small" type="button">Agregar</button>`;
@@ -1998,9 +2010,19 @@ document.getElementById('bulk-save').addEventListener('click',()=>{
 
 /* PRODUCTS UI */
 /* Filtro visual: nunca altera los índices originales usados por editar/eliminar. */
+/* Filtro independiente: no altera el buscador de ventas ni el catálogo. */
+document.getElementById('buscar-rapida')?.addEventListener('input',actualizarBusquedaRapida);
+
 function normalizarBusquedaCatalogo(texto){return String(texto??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-MX').trim();}
 document.addEventListener('input', function(evento){
   if(evento.target && evento.target.id === 'buscar-catalogo') filtrarCatalogoRegistrado();
+});
+/* Al volver a tocar la búsqueda en tablet, empezar una consulta nueva. */
+const campoBusquedaCatalogo=document.getElementById('buscar-catalogo');
+campoBusquedaCatalogo?.addEventListener('pointerdown',function(){
+  if(this.value && document.activeElement!==this){
+    this.value='';filtrarCatalogoRegistrado();
+  }
 });
 function filtrarCatalogoRegistrado(){
   const campo=document.getElementById('buscar-catalogo');
@@ -2076,6 +2098,8 @@ function renderProducts(){
       if(prodStock) prodStock.value = (p.inventariado ? (p.stock ?? '') : '');
       if(prodInventariado) prodInventariado.checked = !!p.inventariado;
       prodCodigo.dataset.editIndex = i;
+      document.getElementById('estado-registro-producto').textContent='Editando: '+p.codigo+' — '+p.nombre;
+      btnAddProd.textContent='Guardar cambios';
       prodNombre.focus();
     }));
     document.querySelectorAll('.btn-del').forEach(b=> b.addEventListener('click', e=> {
@@ -2114,6 +2138,22 @@ function checkProductLimitOnOpen(){
   }
 }
 
+function limpiarRegistroParaNuevo(){
+  delete prodCodigo.dataset.editIndex;
+  prodCodigo.value='';prodNombre.value='';prodCosto.value='';prodPrecio.value='';
+  prodStock.value='';prodInventariado.checked=false;
+  prodTipo.value='pieza';prodUnidadGranel.value='kg';
+  [prodStockKg,prodCostoKg,prodPesoCostal,prodCostoCostal].forEach(c=>c.value='');
+  prodMarca.value='';prodGrupo.value='';prodMarcaNueva.value='';prodGrupoNuevo.value='';
+  prodMarcaNueva.style.display='none';prodGrupoNuevo.style.display='none';
+  actualizarTipoGranel();sincronizarBuscadoresClasificacion();
+  const estado=document.getElementById('estado-registro-producto');
+  if(estado)estado.textContent='Nuevo registro · sin producto seleccionado';
+  btnAddProd.textContent='Agregar';
+}
+document.getElementById('btn-nuevo-registro')?.addEventListener('click',()=>{
+  limpiarRegistroParaNuevo();checkProductLimitOnOpen();prodCodigo.focus();
+});
 btnAddProd.addEventListener('click', ()=>{
   const codigo = (prodCodigo.value || '').toString().trim();
   const nombre = normalizarNombreProducto(prodNombre.value);
@@ -2171,7 +2211,7 @@ btnAddProd.addEventListener('click', ()=>{
   } catch (e) {
     console.warn('Audio no disponible:', e);
   }
-prodTipo.value='pieza';prodUnidadGranel.value='kg';[prodStockKg,prodCostoKg,prodPesoCostal,prodCostoCostal].forEach(e=>e.value='');actualizarTipoGranel();prodCodigo.value=''; prodNombre.value=''; prodMarca.value=''; prodGrupo.value=''; prodMarcaNueva.value=''; prodGrupoNuevo.value=''; prodMarcaNueva.style.display='none'; prodGrupoNuevo.style.display='none'; sincronizarBuscadoresClasificacion(); if(typeof prodCosto!=='undefined' && prodCosto) prodCosto.value=''; prodPrecio.value=''; prodCodigo.focus();
+limpiarRegistroParaNuevo();prodTipo.value='pieza';prodUnidadGranel.value='kg';[prodStockKg,prodCostoKg,prodPesoCostal,prodCostoCostal].forEach(e=>e.value='');actualizarTipoGranel();prodCodigo.value=''; prodNombre.value=''; prodMarca.value=''; prodGrupo.value=''; prodMarcaNueva.value=''; prodGrupoNuevo.value=''; prodMarcaNueva.style.display='none'; prodGrupoNuevo.style.display='none'; sincronizarBuscadoresClasificacion(); if(typeof prodCosto!=='undefined' && prodCosto) prodCosto.value=''; prodPrecio.value=''; prodCodigo.focus();
   checkProductLimitOnOpen();
   // FULLV: modo admin siempre activo (silencioso)
   isAdmin = true;
