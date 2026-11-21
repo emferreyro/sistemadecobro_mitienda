@@ -1198,30 +1198,40 @@ function unidadesVendidasPorCodigo(){
   });
   return cantidades;
 }
+/* Rendimiento Android: el orden y los textos de búsqueda se calculan una sola vez
+   por modificación del catálogo o historial; no en cada pulsación. */
+let cacheBusquedaRapida = null;
+function invalidarCacheBusquedaRapida(){ cacheBusquedaRapida=null; }
+function obtenerBusquedaRapidaPreparada(){
+  if(cacheBusquedaRapida) return cacheBusquedaRapida;
+  const conteos = unidadesVendidasPorCodigo();
+  cacheBusquedaRapida = productos.map((p, posicion) => ({
+    p, posicion, texto: normalizarBusquedaCatalogo([p.codigo,p.nombre,p.marca,p.grupo].filter(Boolean).join(' ')),
+    ventas: conteos.get(String(p.codigo)) || 0
+  })).sort((a,b) => b.ventas-a.ventas || a.posicion-b.posicion);
+  return cacheBusquedaRapida;
+}
 function renderBusquedaRapida(){
   rightProducts.innerHTML = '';
-  const cantidades = unidadesVendidasPorCodigo();
-  const ordenados = productos.map((p, indice) => ({p, indice})).sort((a,b) =>
-    (cantidades.get(String(b.p.codigo)) || 0) - (cantidades.get(String(a.p.codigo)) || 0) || a.indice - b.indice
-  );
+  const ordenados = obtenerBusquedaRapidaPreparada();
   const campoRapido=document.getElementById('buscar-rapida');
   const terminos=normalizarBusquedaCatalogo(campoRapido?.value||'').split(/\s+/).filter(Boolean);
-  const filtrados=ordenados.filter(({p})=>{
-    const texto=normalizarBusquedaCatalogo([p.codigo,p.nombre,p.marca,p.grupo].filter(Boolean).join(' '));
-    return terminos.every(t=>texto.includes(t));
-  });
+  const filtrados=terminos.length ? ordenados.filter(({texto})=>terminos.every(t=>texto.includes(t))) : ordenados;
   if(!filtrados.length && terminos.length){
     const aviso=document.createElement('div'); aviso.className='small';
     aviso.textContent='No se encontraron artículos.'; rightProducts.appendChild(aviso);
   }
+  const fragmentoRapido=document.createDocumentFragment();
   filtrados.forEach(({p}) => {
     const small = document.createElement('div');
     small.className = 'product-item';
     small.innerHTML = `<div><strong>${escapeHtml(String(p.codigo))}</strong> ${escapeHtml(p.nombre)}
       <div class="small">${formatMXN(p.precio)}${esGranel(p)?' / '+unidadGranel(p):''}</div></div>
       <button data-codigo="${escapeHtml(String(p.codigo))}" class="btn btn-rojo btn-small">Agregar</button>`;
-    rightProducts.appendChild(small);
+    fragmentoRapido.appendChild(small);
   });
+  rightProducts.appendChild(fragmentoRapido);
+  // Los botones deben estar dentro de la lista antes de enlazar su acción.
   rightProducts.querySelectorAll('button[data-codigo]').forEach(btn => {
     btn.addEventListener('click', e => {
       agregarAlCarrito(e.currentTarget.getAttribute('data-codigo'), 1);
@@ -1234,9 +1244,9 @@ function formatMXN(n){ return '$' + Number(n).toFixed(2); }
 function escapeHtml(str){ if(!str) return ''; return str.replace(/[&<>"']/g, m=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 /* PERSISTENCE helpers */
-function saveProducts(){ localStorage.setItem(KEY_PRODUCTS, JSON.stringify(productos)); }
+function saveProducts(){ invalidarCacheBusquedaRapida(); localStorage.setItem(KEY_PRODUCTS, JSON.stringify(productos)); }
 function saveCart(){ localStorage.setItem(KEY_CART, JSON.stringify(carrito)); }
-function saveHistory(){ localStorage.setItem(KEY_HISTORY, JSON.stringify(historial)); }
+function saveHistory(){ invalidarCacheBusquedaRapida(); localStorage.setItem(KEY_HISTORY, JSON.stringify(historial)); }
 /* Aviso preventivo antes de llegar a 4 MB (datos locales de este navegador). */
 function mostrarEstadoAlmacenamiento(){
   const info=MiTiendaIntegridad.estado();
@@ -1534,7 +1544,7 @@ function filtrarCatalogoRegistrado(){
   let visibles=0;
   Array.from(lista.children).forEach(item=>{
     if(!item.classList.contains('product-item'))return;
-    const texto=normalizarBusquedaCatalogo(item.dataset.catalogoTexto||'');
+    const texto=item.dataset.catalogoNormalizado || (item.dataset.catalogoNormalizado=normalizarBusquedaCatalogo(item.dataset.catalogoTexto||''));
     const coincide=palabras.every(p=>texto.includes(p));
     item.hidden=!coincide;
     item.style.display=coincide?'':'none';
@@ -1554,6 +1564,7 @@ function renderProducts(){
   const contadorProductos = document.querySelector('#total-productos-registrados strong');
   if(contadorProductos) contadorProductos.textContent = productos.length.toLocaleString('es-MX');
   productsList.innerHTML = '';
+  const fragmentoProductos=document.createDocumentFragment();
   productos.forEach((p, idx) => {
     const div = document.createElement('div'); div.className='product-item';
     div.dataset.catalogoTexto = [p.codigo,p.nombre,p.marca,p.grupo].filter(Boolean).join(' ');
@@ -1581,9 +1592,10 @@ function renderProducts(){
                        ${adminBtns}
                        <button data-codigo="${p.codigo}" class="btn btn-rojo btn-add-to-cart">Agregar</button>
                      </div>`;
-    productsList.appendChild(div);
+    fragmentoProductos.appendChild(div);
 
   });
+  productsList.appendChild(fragmentoProductos);
 
   filtrarCatalogoRegistrado();
   renderBusquedaRapida();
@@ -2325,6 +2337,7 @@ document.getElementById('btnSinCodigo') && document.getElementById('btnSinCodigo
 /* HISTORIAL */
 function renderHistorial(){
   historyList.innerHTML = '';
+  const fragmentoHistorial=document.createDocumentFragment();
   if(historial.length === 0){
     const p = document.createElement('div');
     p.className='small';
@@ -2363,8 +2376,9 @@ function renderHistorial(){
                          <button type="button" class="btn btn-outline btn-small btn-ticket" data-id="${v.id}">Ticket</button>
                        </div>
                      </div>`;
-      historyList.appendChild(d);
+      fragmentoHistorial.appendChild(d);
     });
+  historyList.appendChild(fragmentoHistorial);
 
     // Asignar eventos a botones de ticket
     document.querySelectorAll('.btn-ticket').forEach(btn => {
