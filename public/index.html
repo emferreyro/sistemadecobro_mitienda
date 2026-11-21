@@ -374,7 +374,7 @@ body.neon{
 
 /* Catálogo compacto y búsqueda independiente del buscador de ventas */
 #panel-productos .catalogo-busqueda{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 8px}
-#panel-productos .catalogo-busqueda input{box-sizing:border-box;flex:1 1 260px;min-width:0;max-width:100%;padding:9px 12px;border-radius:9px}
+#panel-productos .catalogo-busqueda input{box-sizing:border-box;flex:0 1 360px;width:min(100%,360px);min-width:0;max-width:100%;padding:9px 12px;border-radius:9px}
 #panel-productos .catalogo-resultado{font-size:12px;opacity:.85;white-space:nowrap}
 #panel-productos .catalogo-sin-resultados{padding:12px;opacity:.8;font-size:13px}
 #panel-productos .product-item{gap:10px}
@@ -1504,6 +1504,15 @@ campoBusquedaCatalogo?.addEventListener('pointerdown',function(){
   if(this.value && document.activeElement!==this){
     this.value='';filtrarCatalogoRegistrado();
   }
+});
+/* En tableta, el primer toque fuera de este campo descarta la búsqueda anterior.
+   Escuchar click (fase de burbuja) permite que Editar/Agregar procese el toque
+   antes de restaurar el catálogo completo. No afecta el buscador de ventas. */
+document.addEventListener('click',function(evento){
+  if(!campoBusquedaCatalogo || !campoBusquedaCatalogo.value) return;
+  if(evento.target === campoBusquedaCatalogo || campoBusquedaCatalogo.contains(evento.target)) return;
+  campoBusquedaCatalogo.value='';
+  filtrarCatalogoRegistrado();
 });
 function filtrarCatalogoRegistrado(){
   const campo=document.getElementById('buscar-catalogo');
