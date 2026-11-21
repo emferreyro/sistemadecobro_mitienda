@@ -1492,7 +1492,7 @@ function renderCart(){
 /* PRODUCTS UI */
 /* Filtro visual: nunca altera los índices originales usados por editar/eliminar. */
 /* Filtro independiente: no altera el buscador de ventas ni el catálogo. */
-document.getElementById('buscar-rapida')?.addEventListener('input',actualizarBusquedaRapida);
+document.getElementById('buscar-rapida')?.addEventListener('input',renderBusquedaRapida);
 
 function normalizarBusquedaCatalogo(texto){return String(texto??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-MX').trim();}
 document.addEventListener('input', function(evento){

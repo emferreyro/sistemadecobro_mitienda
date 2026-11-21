@@ -1,7 +1,7 @@
 /* Mi Tienda POS - Web Windows - cache offline de prueba, v1
  * Guardar documentos/scripts bajo el MISMO origen. No almacenar autorizados.json.
  */
-const CACHE = 'mitienda-windows-web-prueba-v7';
+const CACHE = 'mitienda-windows-web-prueba-v8';
 const CORE = [
   './', './index.html', './fullv.html', './fullv_demo.html',
   './reporte.html', './gencodigo.html',
