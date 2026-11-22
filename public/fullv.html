@@ -1495,7 +1495,7 @@ function actualizarBusquedaRapida(){
   rightProducts.innerHTML = '';
   const ordenados = obtenerBusquedaRapidaPreparada();
   const campoRapido=document.getElementById('buscar-rapida');
-  const terminos=normalizarBusquedaCatalogo(campoRapido?.value||'').split(/\s+/).filter(Boolean);
+  const terminos=terminosBusquedaArticulos(campoRapido?.value||'');
   const filtrados=terminos.length ? ordenados.filter(({texto})=>terminos.every(t=>texto.includes(t))) : ordenados;
   if(!filtrados.length && terminos.length){
     const aviso=document.createElement('div'); aviso.className='small';
@@ -1903,6 +1903,8 @@ document.addEventListener('click',function(evento){
 
 
 function normalizarBusquedaCatalogo(texto){return String(texto??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es-MX').trim();}
+// Cada término debe aparecer en el artículo; comas, puntos y coma y espacios separan palabras.
+function terminosBusquedaArticulos(texto){return normalizarBusquedaCatalogo(texto).split(/[\s,;]+/).filter(Boolean);}
 document.addEventListener('input', function(evento){
   if(evento.target && evento.target.id === 'buscar-catalogo') filtrarCatalogoRegistrado();
 });
@@ -1932,7 +1934,7 @@ function filtrarCatalogoRegistrado(){
   const lista=document.getElementById('products-list');
   const contador=document.getElementById('catalogo-resultado');
   if(!campo||!lista)return;
-  const palabras=normalizarBusquedaCatalogo(campo.value).split(/\s+/).filter(Boolean);
+  const palabras=terminosBusquedaArticulos(campo.value);
   let visibles=0;
   Array.from(lista.children).forEach(item=>{
     if(!item.classList.contains('product-item'))return;
@@ -2238,11 +2240,12 @@ function elegirProducto(i){
 }
 function mostrarSugerencias(){
   if(!inputBusqueda || !sugerenciasProductos) return;
-  const texto = normalizarBusqueda(inputBusqueda.value);
-  if(!texto){ ocultarSugerencias(); return; }
-  coincidenciasProductos = productos.filter(p =>
-    normalizarBusqueda(p.nombre).includes(texto) || normalizarBusqueda(p.codigo).includes(texto)
-  ).slice(0,8);
+  const terminos = terminosBusquedaArticulos(inputBusqueda.value);
+  if(!terminos.length){ ocultarSugerencias(); return; }
+  coincidenciasProductos = productos.filter(p => {
+    const contenido = normalizarBusquedaCatalogo([p.codigo,p.nombre,p.marca,p.grupo].filter(Boolean).join(' '));
+    return terminos.every(t=>contenido.includes(t));
+  }).slice(0,8);
   sugerenciaActiva = -1;
   sugerenciasProductos.innerHTML = '';
   coincidenciasProductos.forEach((p,i)=>{
