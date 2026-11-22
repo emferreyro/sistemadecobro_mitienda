@@ -65,6 +65,18 @@ body:not(.dark):not(.neon):not(.pink) #panel-productos .bulk-toolbar .btn-outlin
 #clasif-admin-actions{display:flex;justify-content:flex-end;gap:8px;align-items:center;padding-top:12px;margin-top:12px;border-top:1px solid #cbd5e1;background:#fff;position:sticky;bottom:-18px}
 #clasif-admin-save:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:670px){#clasif-admin-dialog{padding:12px;max-height:94vh}#clasif-admin-tables{grid-template-columns:minmax(0,1fr)}}
+
+/* Controles táctiles de cantidad: visibles también en Android. */
+.qty-stepper{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.qty-stepper .qty-step{display:inline-flex;align-items:center;justify-content:center;flex:0 0 32px;min-width:32px;height:38px;padding:0;border:1px solid #667085;border-radius:7px;background:transparent;color:inherit;font-size:22px;line-height:1;font-weight:700;touch-action:manipulation;cursor:pointer}
+.qty-stepper .qty-step:active{background:rgba(120,120,120,.2)}
+.qty-stepper input[type="number"]{width:56px!important;min-width:0;max-width:56px!important;text-align:center;box-sizing:border-box;font-size:16px}
+.qty-stepper input[type="number"]::-webkit-inner-spin-button,.qty-stepper input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.qty-stepper input[type="number"]{-moz-appearance:textfield;appearance:textfield}
+.qty-cart-stepper{gap:3px}
+.qty-cart-stepper .qty-step{height:32px;min-width:27px;flex-basis:27px;font-size:19px}
+.qty-cart-stepper input[type="number"]{width:55px!important;max-width:55px!important;padding:5px 3px!important}
+
 </style><script src="js/fp.min.js">
 // Inventario progresivo: solo FULLV registra (descuenta) stock; MiTienda solo refleja
 window.INVENTARIO_ACTIVO = true;
@@ -685,9 +697,9 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
                 Puedes escribir el código o utilizar un lector físico.
               </div>
 </div>
-<div style="width:120px">
+<div style="width:166px;max-width:100%">
 <label for="cantidad">Cantidad</label>
-<input id="cantidad" min="1" type="number" value="1" style="width:80px"/>
+<div class="qty-stepper" aria-label="Ajustar cantidad para el siguiente producto"><button type="button" class="qty-step" data-step-main="-1" aria-label="Disminuir cantidad">−</button><input id="cantidad" min="1" type="number" value="1" style="width:80px"/><button type="button" class="qty-step" data-step-main="1" aria-label="Aumentar cantidad">+</button></div>
 </div>
 <div style="display:flex;gap:8px">
 <button class="btn btn-rojo" id="btnAgregar" style="height:44px;margin-top:22px">Agregar</button>
@@ -700,7 +712,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 <div style="margin-top:14px">
 <table aria-describedby="cart-desc" class="table">
 <thead>
-<tr><th>Código</th><th>Nombre</th><th style="width:88px">Cant.</th><th style="width:120px">Precio</th><th style="width:120px">Subtotal</th><th></th></tr>
+<tr><th>Código</th><th>Nombre</th><th style="width:155px">Cant.</th><th style="width:120px">Precio</th><th style="width:120px">Subtotal</th><th></th></tr>
 </thead>
 <tbody id="cart-body"></tbody>
 </table>
@@ -1009,6 +1021,13 @@ const panelVenta = document.getElementById('panel-venta');
 const panelProductos = document.getElementById('panel-productos');
 const panelHistorial = document.getElementById('panel-historial');
 const cantidadInput = document.getElementById('cantidad');
+// Botones grandes para cambiar cantidad en tabletas; el campo sigue siendo editable.
+document.querySelectorAll('[data-step-main]').forEach(btn => btn.addEventListener('click', () => {
+  if (!cantidadInput) return;
+  const actual = Math.max(1, Math.floor(Number(cantidadInput.value) || 1));
+  cantidadInput.value = String(Math.max(1, actual + Number(btn.getAttribute('data-step-main'))));
+}));
+
 const btnAgregar = document.getElementById('btnAgregar');
 const btnLimpiar = document.getElementById('btnLimpiar');
 const cartBody = document.getElementById('cart-body');
@@ -1433,7 +1452,7 @@ function renderCart(){
     tr.innerHTML = `
       <td>${item.codigo || ''}</td>
       <td>${escapeHtml(item.nombre)}${esGranel(item)?'<div class="small">A granel · '+unidadGranel(item)+'</div>':''}</td>
-      <td><input type="number" min="${esGranel(item)?0.001:1}" step="${esGranel(item)?0.001:1}" value="${item.cantidad}" data-codigo="${item.codigo}" style="width:64px;padding:6px;border-radius:6px;border:1px solid #e6e7ea" class="inp-cant" /></td>
+      <td><div class="qty-stepper qty-cart-stepper"><button type="button" class="qty-step" data-step-cart="-1" data-codigo="${item.codigo}" aria-label="Disminuir cantidad de este producto">−</button><input type="number" min="${esGranel(item)?0.001:1}" step="${esGranel(item)?0.001:1}" value="${item.cantidad}" data-codigo="${item.codigo}" style="width:64px;padding:6px;border-radius:6px;border:1px solid #e6e7ea" class="inp-cant" /><button type="button" class="qty-step" data-step-cart="1" data-codigo="${item.codigo}" aria-label="Aumentar cantidad de este producto">+</button></div></td>
       <td>${formatMXN(valorItemActual(item).precio)}</td>
       <td>${formatMXN(valorItemActual(item).subtotal)}</td>
       <td><button data-codigo="${item.codigo}" class="btn btn-outline btn-small btn-remove">Quitar</button></td>
@@ -1465,6 +1484,21 @@ function renderCart(){
     });
     saveCart(); renderCart();
   }));
+  // Botones +/- del carrito: emplean el mismo evento y validaciones que la edición manual.
+  cartBody.querySelectorAll('[data-step-cart]').forEach(btn => btn.addEventListener('click', () => {
+    const linea = carrito.find(it => String(it.codigo) === btn.getAttribute('data-codigo'));
+    if (!linea) return;
+    const inp = btn.closest('.qty-cart-stepper')?.querySelector('.inp-cant');
+    if (!inp) return;
+    const delta = Number(btn.getAttribute('data-step-cart'));
+    const granel = esGranel(linea);
+    const unidad = granel ? 0.001 : 1;
+    const proxima = granel ? Math.round((Number(linea.cantidad) + delta * unidad) * 1000) / 1000 : Math.floor(Number(linea.cantidad)) + delta;
+    if (proxima < unidad) return;
+    inp.value = String(proxima);
+    inp.dispatchEvent(new Event('change', {bubbles:true}));
+  }));
+
 }
 
 
