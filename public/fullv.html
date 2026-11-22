@@ -1919,6 +1919,11 @@ campoBusquedaCatalogo?.addEventListener('pointerdown',function(){
 document.addEventListener('click',function(evento){
   if(!campoBusquedaCatalogo || !campoBusquedaCatalogo.value) return;
   if(evento.target === campoBusquedaCatalogo || campoBusquedaCatalogo.contains(evento.target)) return;
+  // En Cambios multiples conservar el filtro para que 'seleccionar visibles'
+  // y los controles de seleccion trabajen solo con los resultados filtrados.
+  // El usuario puede vaciar el campo tocandolo otra vez; fuera del modo
+  // multiple se mantiene la limpieza automatica habitual.
+  if(bulkModoActivo) return;
   campoBusquedaCatalogo.value='';
   filtrarCatalogoRegistrado();
 });
