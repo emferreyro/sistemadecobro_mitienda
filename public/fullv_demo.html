@@ -1524,13 +1524,24 @@ function showPanel(panel){
   [panelVenta, panelProductos, panelHistorial].forEach(p => p.style.display='none');
   navVenta.classList.remove('active'); navProductos.classList.remove('active'); navHistorial.classList.remove('active');
   panel.style.display = 'block';
-  if(panel === panelVenta) navVenta.classList.add('active');
+  if(panel === panelVenta){
+    navVenta.classList.add('active');
+    // Al entrar en Nueva venta, dejar listo el lector o la escritura de codigos.
+    enfocarBuscadorVenta();
+  }
   if(panel === panelProductos) navProductos.classList.add('active');
   if(panel === panelHistorial) navHistorial.classList.add('active');
 
   if(panel === panelProductos){
     checkProductLimitOnOpen();
   }
+}
+
+// Enfocar sin desplazar el formulario en pantallas tactiles.
+function enfocarBuscadorVenta(){
+  if(!inputBusqueda || panelVenta.style.display === 'none') return;
+  try { inputBusqueda.focus({preventScroll:true}); }
+  catch (_) { inputBusqueda.focus(); }
 }
 
 /* CART UI */
@@ -2283,7 +2294,7 @@ function abrirModalGranel(prod){
  let datos=null;
  function actualizar(){let gramos=modo.value==='peso'?(Number(campo.value)||0)*(unidad.value===unidadGranel(prod)?1000:1):((Number(campo.value)||0)/Number(prod.precio))*1000;gramos=modo.value==='importe'?Math.floor(gramos+1e-9):Math.round(gramos);const kg=gramos/1000;const importe=modo.value==='importe'?Number(Number(campo.value).toFixed(2)):redondearGranel50(kg*Number(prod.precio));const inv=gramosInventario(prod);const reservado=carrito.filter(x=>x.codigo===prod.codigo&&esGranel(x)).reduce((s,x)=>s+Math.round(Number(x.cantidad)*1000),0);datos=gramos>0&&Number.isFinite(kg)&&Number.isFinite(importe)&&importe>0&&(inv===null||gramos+reservado<=inv)?{kg,importe}:null;res.innerHTML=`<div>${unidadGranel(prod)==='L'?'Volumen':'Peso'}: <strong>${formatoGranel(kg,prod)}</strong> (${gramos.toLocaleString('es-MX')} ${unidadMenorGranel(prod)})</div><div>Total: <strong>${formatMXN(importe)}</strong></div>${inv!==null?'<div class="gm-existencia">Existencia: '+(inv/1000).toFixed(3)+' '+unidadGranel(prod)+'</div>':''}${!datos?'<div class="gm-error">Cantidad inválida o inventario insuficiente</div>':''}`;$('gm-agregar').disabled=!datos;}
  campo.oninput=actualizar;unidad.onchange=actualizar;
- $('gm-agregar').onclick=()=>{if(!datos)return;const existente=carrito.find(x=>x.codigo===prod.codigo);if(existente){existente.unidadGranel=unidadGranel(prod);existente.cantidad=Math.round((existente.cantidad+datos.kg)*1000)/1000;existente.subtotal=Number((Number(existente.subtotal)+datos.importe).toFixed(2));}else carrito.push({codigo:prod.codigo,nombre:prod.nombre,precio:prod.precio,cantidad:datos.kg,subtotal:datos.importe,tipoVenta:'granel',unidadGranel:unidadGranel(prod),costoKg:Number(prod.costoKg)||0,manual:false});saveCart();renderCart();cerrar();};
+ $('gm-agregar').onclick=()=>{if(!datos)return;const existente=carrito.find(x=>x.codigo===prod.codigo);if(existente){existente.unidadGranel=unidadGranel(prod);existente.cantidad=Math.round((existente.cantidad+datos.kg)*1000)/1000;existente.subtotal=Number((Number(existente.subtotal)+datos.importe).toFixed(2));}else carrito.push({codigo:prod.codigo,nombre:prod.nombre,precio:prod.precio,cantidad:datos.kg,subtotal:datos.importe,tipoVenta:'granel',unidadGranel:unidadGranel(prod),costoKg:Number(prod.costoKg)||0,manual:false});saveCart();renderCart();cerrar();if(cantidadInput)cantidadInput.value=1;enfocarBuscadorVenta();};
  actualizar();
 }
 function agregarAlCarrito(termino, cantidad, desdeLector){
@@ -2318,6 +2329,8 @@ function agregarAlCarrito(termino, cantidad, desdeLector){
   if(existente){ existente.cantidad += qty; existente.subtotal = Number((existente.cantidad * existente.precio).toFixed(2)); }
   else { carrito.push({ codigo: prod.codigo, nombre: prod.nombre, precio: prod.precio, cantidad: qty, subtotal: Number((qty * prod.precio).toFixed(2)) }); }
   saveCart(); renderCart();
+  if(cantidadInput) cantidadInput.value = 1;
+  enfocarBuscadorVenta();
 }
 
 function encontrarProducto(termino){

@@ -1415,13 +1415,24 @@ function showPanel(panel){
   [panelVenta, panelProductos, panelHistorial].forEach(p => p.style.display='none');
   navVenta.classList.remove('active'); navProductos.classList.remove('active'); navHistorial.classList.remove('active');
   panel.style.display = 'block';
-  if(panel === panelVenta) navVenta.classList.add('active');
+  if(panel === panelVenta){
+    navVenta.classList.add('active');
+    // Al entrar en Nueva venta, dejar listo el lector o la escritura de codigos.
+    enfocarBuscadorVenta();
+  }
   if(panel === panelProductos) navProductos.classList.add('active');
   if(panel === panelHistorial) navHistorial.classList.add('active');
 
   if(panel === panelProductos){
     checkProductLimitOnOpen();
   }
+}
+
+// Enfocar sin desplazar el formulario en pantallas tactiles.
+function enfocarBuscadorVenta(){
+  if(!inputBusqueda || panelVenta.style.display === 'none') return;
+  try { inputBusqueda.focus({preventScroll:true}); }
+  catch (_) { inputBusqueda.focus(); }
 }
 
 /* CART UI */
@@ -1926,7 +1937,7 @@ function abrirModalGranel(prod){
     const previo=carrito.find(i=>i.codigo===prod.codigo && esGranel(i));
     if(previo){previo.unidadGranel=unidadGranel(prod);previo.cantidad=Number((previo.cantidad+kg).toFixed(3));previo.subtotal=Number((previo.subtotal+importe).toFixed(2));}
     else carrito.push({codigo:prod.codigo,nombre:prod.nombre,precio:prod.precio,cantidad:kg,subtotal:importe,manual:false,tipoVenta:'granel',unidadGranel:unidadGranel(prod)});
-    saveCart();renderCart();modal.remove();showPanel(panelVenta);
+    saveCart();renderCart();modal.remove();if(cantidadInput)cantidadInput.value=1;showPanel(panelVenta);
   };
   calcular();setTimeout(()=>numero.focus(),0);
 }
@@ -1963,6 +1974,8 @@ function agregarAlCarrito(termino, cantidad, desdeLector){
   if(existente){ existente.cantidad += qty; existente.subtotal = Number((existente.cantidad * existente.precio).toFixed(2)); }
   else { carrito.push({ codigo: prod.codigo, nombre: prod.nombre, precio: prod.precio, cantidad: qty, subtotal: Number((qty * prod.precio).toFixed(2)), manual: false }); }
   saveCart(); renderCart();
+  if(cantidadInput) cantidadInput.value = 1;
+  enfocarBuscadorVenta();
 }
 
 function encontrarProducto(termino){
