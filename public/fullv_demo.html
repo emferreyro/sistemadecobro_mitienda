@@ -2566,8 +2566,8 @@ function desgloseCobro(){
     const metodo=metodoPagoInput.value;
     const cargo=metodo==='Tarjeta'?Math.ceil((base*pct/100-1e-9)/50)*50:0;
     const total=base+cargo;
-    const recibido=metodo==='Efectivo'?centavosPago(pagoInput.value):total;
-    return {valido:recibido>=total,metodoPago:metodo,pago:recibido/100,cambio:metodo==='Efectivo'?Math.max(0,recibido-total)/100:0,
+    const recibido=metodo==='Tarjeta'?total:centavosPago(pagoInput.value);
+    return {valido:recibido>=total,metodoPago:metodo,pago:recibido/100,cambio:metodo!=='Tarjeta'?Math.max(0,recibido-total)/100:0,
       pagos:[{metodo,importe:total/100,recibido:recibido/100}],faltante:Math.max(0,total-recibido)/100,
       cargoBanco:cargo/100,porcentajeBanco:pct,total:total/100};
   }
@@ -2630,13 +2630,13 @@ function updatePaymentChange(){
     return;
   }
   if(interno){pagoInput.value='';pagoInput.disabled=true;labelPago.textContent='Sin cobro';cambioLabel.textContent=formatMXN(0);return;}
-  const sinCambio=metodoPagoInput.value==='Tarjeta'||metodoPagoInput.value==='Vales';
+  const sinCambio=metodoPagoInput.value==='Tarjeta';
   pagoInput.disabled=sinCambio;
   pagoInput.placeholder=sinCambio?'Cobro exacto':'0.00';
   labelPago.textContent=metodoPagoInput.value==='Vales'?'Importe en vales $':(sinCambio?'Importe en tarjeta $':'Su pago $');
   if(sinCambio){pagoInput.value=(cobroActual.total??currentTotal).toFixed(2);cambioLabel.textContent=formatMXN(0);return;}
-  if(String(pagoInput.value).trim()===''){cambioLabel.textContent=formatMXN(0);return;}
-  const diff=centavosPago(pagoInput.value)-centavosPago(currentTotal);
+  const diff=centavosPago(pagoInput.value)-centavosPago(cobroActual.total??currentTotal);
+  document.getElementById('labelCambio').textContent=diff<0?'Faltante $':'Cambio $';
   cambioLabel.textContent=formatMXN(Math.abs(diff)/100);
   cambioLabel.classList.add(diff>=0?'change-ok':'change-low');
 }
