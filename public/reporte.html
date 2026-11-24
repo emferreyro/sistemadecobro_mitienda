@@ -274,9 +274,12 @@ body.neon .table-wrap th, body.neon .table-wrap td{
 
 
 <style id="miTiendaKioscoTouchStyles">
-.kiosco-volver{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:48px;padding:10px 17px;border-radius:12px;border:2px solid #111;background:#f5e131;color:#161616;font:800 15px system-ui,Arial,sans-serif;cursor:pointer;touch-action:manipulation;white-space:nowrap;box-shadow:0 2px 8px #0003;position:relative;z-index:1010}
+.header-actions .kiosco-volver,.header-actions .catalogo-editor{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:36px;padding:6px 10px;border-radius:8px;font:800 12px system-ui,Arial,sans-serif;cursor:pointer;touch-action:manipulation;white-space:nowrap;position:relative;z-index:1010}
+.header-actions .kiosco-volver{border:1px solid currentColor;background:transparent;color:inherit}
+.header-actions .catalogo-editor{border:1px solid currentColor;background:transparent;color:inherit}
+.header-actions .catalogo-editor:hover,.header-actions .kiosco-volver:hover{background:rgba(128,128,128,.15)}
 .kiosco-volver:focus-visible{outline:3px solid #2678ff;outline-offset:3px}
-@media(max-width:600px){.kiosco-volver{min-height:52px;padding:10px 12px;font-size:14px}}
+@media(max-width:600px){.header-actions .kiosco-volver,.header-actions .catalogo-editor{min-height:40px;padding:6px 9px;font-size:12px}}
 </style>
 <style id="report-export-chart-styles">
 .ventas-chart{display:flex;align-items:flex-end;gap:12px;min-height:235px;overflow-x:auto;padding:18px 8px 8px;border:1px solid var(--border);border-radius:12px}
@@ -355,7 +358,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 
     <div class="header-actions">
       <button type="button" class="kiosco-volver" onclick="volverMiTiendaKiosco()" aria-label="Cerrar reporte y regresar a Mi Tienda">← Cerrar reporte</button>
-       <button id="btnToggleTheme" class="btn btn-outline btn-small" title="Cambiar tema">🌓 Tema</button>
+      <button type="button" class="catalogo-editor" onclick="abrirEditorCatalogos()">Editor de catálogos</button>
     </div>
   </div>
 </header>
@@ -545,20 +548,18 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     document.body.classList.add('pink');
     document.documentElement.classList.add('pink');
   }
-    localStorage.setItem(THEME_KEY,theme);
   }
   function detectPreferredTheme(){
     const saved=localStorage.getItem(THEME_KEY);
     if(saved === 'dark' || saved === 'light' || saved === 'neon' || saved === 'pink') return saved;
-    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+    return 'light';
   }
-  window.addEventListener('load', ()=> applyTheme(detectPreferredTheme()));
-  document.getElementById('btnToggleTheme')?.addEventListener('click', ()=>{
-    const current = document.body.classList.contains('pink') ? 'pink' : (document.body.classList.contains('neon') ? 'neon' :
-                    (document.body.classList.contains('dark') ? 'dark' : 'light'));
-    const order = ['light','dark','neon','pink'];
-    const next = order[(order.indexOf(current) + 1) % order.length];
-    applyTheme(next);
+  function syncReportTheme(){ applyTheme(detectPreferredTheme()); }
+  syncReportTheme();
+  window.addEventListener('pageshow', syncReportTheme);
+  window.addEventListener('focus', syncReportTheme);
+  window.addEventListener('storage', e => {
+    if(e.key === THEME_KEY || e.key === null) syncReportTheme();
   });
   // Helpers
   const $ = (id) => document.getElementById(id);
@@ -1287,6 +1288,10 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 </script>
 
 <script id="miTiendaKioscoTouchScript">
+function abrirEditorCatalogos(){
+  const editor = window.open('editor_catalogos.html?desde=reporte', '_blank');
+  if (!editor) alert('Permite las ventanas emergentes para abrir el editor de catálogos.');
+}
 function volverMiTiendaKiosco(){
   try {
     if (window.opener && !window.opener.closed) {
