@@ -1048,15 +1048,12 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
       const base=(Number(r.subtotalProductos)||((Number(r.total)||0)-cargo));
       if(base<=0) continue;
       const factor=r.subtotal/base;
+      // El desglose ya incluye el cargo en el método realmente registrado.
+      // No reasignar el cargo: los cierres antiguos conservan sus importes originales.
       for(const pago of pagos){
-        const parteProducto=Math.max(0,pago.importe-(pago.metodo==='Tarjeta'?cargo:0));
-        cobros[pago.metodo] += factor*parteProducto;
+        if(Object.hasOwn(cobros,pago.metodo)) cobros[pago.metodo] += factor*pago.importe;
       }
-      if(cargo>0){
-        const parteCargo=cargo*factor;
-        cargosBanco+=parteCargo;
-        cobros.Tarjeta+=parteCargo;
-      }
+      cargosBanco+=cargo*factor;
     }
     $("kBanco").textContent=money(cargosBanco);
     const granel = filtered.filter(r=>r.tipoVenta==='granel');

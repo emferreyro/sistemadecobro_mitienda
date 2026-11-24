@@ -886,7 +886,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 <input id="pago" min="0" placeholder="0.00" step="0.01" type="number"/>
 </div>
 <div class="pay-field" style="min-width:120px">
-<label>Cambio $</label>
+<label id="labelCambio">Cambio $</label>
 <div aria-live="polite" class="change-amount" id="cambio">$0.00</div>
 </div>
 </div>
@@ -2552,28 +2552,32 @@ function desgloseCobro(){
       cargoBanco:cargo/100,porcentajeBanco:pct,total:total/100};
   }
   const m1=metodoMixto1.value,m2=metodoMixto2.value;
-  // Los importes ingresados en mixto distribuyen el valor ORIGINAL de productos.
-  // Solo al importe de tarjeta se agrega su propio cargo bancario.
+  // Con efectivo, la tarjeta conserva su importe exacto y el cargo se cobra en efectivo.
+  // Sin efectivo se conserva el comportamiento anterior (tarjeta + vales).
   const a=centavosPago(importeMixto1.value),b=centavosPago(importeMixto2.value);
   const camposValidos=[importeMixto1,importeMixto2].every(el=>el.value.trim()!==''&&Number.isFinite(Number(el.value))&&Number(el.value)>=0);
   const noEfectivo=(m1!=='Efectivo'?a:0)+(m2!=='Efectivo'?b:0);
   const efectivo=(m1==='Efectivo'?a:0)+(m2==='Efectivo'?b:0);
-  const restante=base-noEfectivo;
+  const hayEfectivo=m1==='Efectivo'||m2==='Efectivo';
   const cargo=Math.ceil(((((m1==='Tarjeta'?a:0)+(m2==='Tarjeta'?b:0))*pct/100)-1e-9)/50)*50;
   const total=base+cargo;
-  const valido=camposValidos&&m1!==m2&&a>0&&b>0&&noEfectivo<=base&&a+b>=base&&(efectivo>0||a+b===base);
-  const cambio=efectivo>0?Math.max(0,a+b-base):0;
-  const pago1=(m1==='Efectivo'?Math.max(0,restante):a)+(m1==='Tarjeta'?cargo:0);
-  const pago2=(m2==='Efectivo'?Math.max(0,restante):b)+(m2==='Tarjeta'?cargo:0);
-  return {valido,metodoPago:'Mixto',pago:(a+b+cargo)/100,cambio:cambio/100,
-    pagos:[{metodo:m1,importe:pago1/100,recibido:(a+(m1==='Tarjeta'?cargo:0))/100},
-           {metodo:m2,importe:pago2/100,recibido:(b+(m2==='Tarjeta'?cargo:0))/100}],
+  const objetivo=hayEfectivo?total:base;
+  const faltante=Math.max(0,objetivo-a-b);
+  const valido=camposValidos&&m1!==m2&&a>0&&b>0&&noEfectivo<=base&&a+b>=objetivo&&(efectivo>0||a+b===objetivo);
+  const cambio=hayEfectivo?Math.min(Math.max(0,efectivo),Math.max(0,a+b-objetivo)):0;
+  const extra1=!hayEfectivo&&m1==='Tarjeta'?cargo:0;
+  const extra2=!hayEfectivo&&m2==='Tarjeta'?cargo:0;
+  const pago1=(m1==='Efectivo'?Math.max(0,a-cambio):a)+extra1;
+  const pago2=(m2==='Efectivo'?Math.max(0,b-cambio):b)+extra2;
+  return {valido,metodoPago:'Mixto',pago:(a+b+extra1+extra2)/100,cambio:cambio/100,
+    pagos:[{metodo:m1,importe:pago1/100,recibido:(a+extra1)/100},
+           {metodo:m2,importe:pago2/100,recibido:(b+extra2)/100}],
     cargoBanco:cargo/100,porcentajeBanco:pct,total:total/100,
-    faltante:Math.max(0,base-a-b)/100,motivo:m1===m2?'Selecciona dos métodos distintos.':
+    faltante:faltante/100,motivo:m1===m2?'Selecciona dos métodos distintos.':
       !camposValidos||a<=0||b<=0?'Ingresa ambos importes.':
       noEfectivo>base?'Vales y tarjeta no pueden superar el importe de productos.':
-      a+b<base?'Faltan '+formatMXN((base-a-b)/100):
-      efectivo===0&&a+b!==base?'Sin efectivo no puede haber cambio.':''};
+      faltante>0?'Faltan '+formatMXN(faltante/100):
+      !hayEfectivo&&a+b!==objetivo?'Sin efectivo no puede haber cambio.':''};
 }
 function limpiarPagoMixto(){
   metodoMixto1.value='Vales';metodoMixto2.value='Efectivo';
@@ -2596,9 +2600,10 @@ function updatePaymentChange(){
   panelMixto.hidden=!mixto;
   pagoInput.parentElement.hidden=mixto||interno;
   cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
+  document.getElementById('labelCambio').textContent=mixto&&cobroActual.faltante>0?'Faltante $':'Cambio $';
   if(mixto){
-    const d=desgloseCobro();
-    cambioLabel.textContent=formatMXN(d.cambio>0?d.cambio:d.faltante);
+    const d=cobroActual;
+    cambioLabel.textContent=formatMXN(d.cambio>0?d.cambio:(d.faltante||0));
     if(importeMixto1.value!==''||importeMixto2.value!=='') cambioLabel.classList.add(d.valido?'change-ok':'change-low');
     estadoMixto.textContent=d.motivo||(d.valido?'Pago completo':'');
     return;
