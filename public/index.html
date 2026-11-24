@@ -1439,7 +1439,62 @@ function actualizarCaja(totalHoy){
   closeEl.textContent = formatMXN(cierre);
 }
 /* NAV */
+// Regreso automático solo después de guardar una venta correctamente.
+let regresoVentaTimer = null;
+let regresoVentaAviso = null;
+function cancelarRegresoVenta(){
+  if(regresoVentaTimer !== null) clearInterval(regresoVentaTimer);
+  regresoVentaTimer = null;
+  if(regresoVentaAviso){ regresoVentaAviso.remove(); regresoVentaAviso = null; }
+}
+function iniciarRegresoVenta(){
+  cancelarRegresoVenta();
+  const limite = Date.now() + 5000;
+  const aviso = document.createElement('div');
+  aviso.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 10px;padding:8px;border:1px solid currentColor;border-radius:8px;';
+  const texto = document.createElement('span');
+  texto.className = 'small';
+  texto.setAttribute('role','status');
+  texto.style.flex = '1';
+  texto.textContent = 'Venta realizada. Regreso a Ventas en 5 s…';
+  const permanecer = document.createElement('button');
+  permanecer.type = 'button'; permanecer.className = 'btn btn-outline';
+  permanecer.textContent = 'Permanecer aquí';
+  permanecer.addEventListener('click', cancelarRegresoVenta);
+  const nueva = document.createElement('button');
+  nueva.type = 'button'; nueva.className = 'btn btn-outline';
+  nueva.textContent = 'Nueva venta';
+  nueva.addEventListener('click', ()=>showPanel(panelVenta));
+  aviso.append(texto, permanecer, nueva);
+  regresoVentaAviso = aviso;
+  panelHistorial.prepend(aviso);
+  regresoVentaTimer = setInterval(()=>{
+    if(panelHistorial.style.display === 'none'){ cancelarRegresoVenta(); return; }
+    const segundos = Math.max(0, Math.ceil((limite-Date.now())/1000));
+    if(segundos === 0){ showPanel(panelVenta); return; }
+    texto.textContent = 'Venta realizada. Regreso a Ventas en '+segundos+' s…';
+  }, 100);
+}
+// Capturar la intención antes de abrir tickets, diálogos o enlaces.
+function interaccionRegresoVenta(e){
+  if(!regresoVentaAviso) return;
+  // Los botones del aviso necesitan conservarse hasta ejecutar su clic.
+  if(regresoVentaAviso && regresoVentaAviso.contains(e.target)){
+    if(e.type !== 'click') {
+      clearInterval(regresoVentaTimer);
+      regresoVentaTimer = null;
+      const texto = regresoVentaAviso.querySelector('span');
+      if(texto) texto.textContent = 'Regreso automático cancelado.';
+    }
+    return;
+  }
+  cancelarRegresoVenta();
+}
+['pointerdown','keydown','wheel','touchstart','click'].forEach(tipo=>
+  document.addEventListener(tipo, interaccionRegresoVenta, {capture:true,passive:true}));
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) cancelarRegresoVenta(); });
 function showPanel(panel){
+  cancelarRegresoVenta();
   [panelVenta, panelProductos, panelHistorial].forEach(p => p.style.display='none');
   navVenta.classList.remove('active'); navProductos.classList.remove('active'); navHistorial.classList.remove('active');
   panel.style.display = 'block';
@@ -2351,6 +2406,7 @@ btnFinalizar.addEventListener('click', ()=> {
   pagoInput.value = '';
   updatePaymentChange();
   showPanel(panelHistorial);
+  iniciarRegresoVenta();
 });
 
 btnCancelar.addEventListener('click', ()=> {
