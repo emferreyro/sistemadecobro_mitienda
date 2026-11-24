@@ -359,6 +359,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     <div class="header-actions">
       <button type="button" class="kiosco-volver" onclick="volverMiTiendaKiosco()" aria-label="Cerrar reporte y regresar a Mi Tienda">← Cerrar reporte</button>
       <button type="button" class="catalogo-editor" onclick="abrirEditorCatalogos()">Editor de catálogos</button>
+      <button type="button" class="catalogo-editor" onclick="descargarJstienditas()">Descargar jstienditas.json</button>
     </div>
   </div>
 </header>
@@ -1288,6 +1289,24 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 </script>
 
 <script id="miTiendaKioscoTouchScript">
+async function descargarJstienditas(){
+  try {
+    const respuesta = await fetch('jstienditas.json', {cache: 'no-store'});
+    if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+    const contenido = await respuesta.text();
+    JSON.parse(contenido);
+    const url = URL.createObjectURL(new Blob([contenido], {type: 'application/json;charset=utf-8'}));
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = 'jstienditas.json';
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (e) {
+    alert('No se pudo descargar jstienditas.json. Verifica que el archivo exista y que haya conexión.');
+  }
+}
 function abrirEditorCatalogos(){
   const editor = window.open('editor_catalogos.html?desde=reporte', '_blank');
   if (!editor) alert('Permite las ventanas emergentes para abrir el editor de catálogos.');
