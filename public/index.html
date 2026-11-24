@@ -676,6 +676,15 @@ body.pink #proteccion-catalogo {
   border:1px solid var(--proteccion-borde) !important;
 }
 </style>
+<style>
+#panel-venta #pagoMixto #cargoBancoPanel,
+#panel-venta #pagoMixto #cargoBancoResumen {
+  min-width:0 !important; max-width:none; gap:4px; justify-content:center;
+}
+#panel-venta #pagoMixto #cargoBancoPanel label,
+#panel-venta #pagoMixto #cargoBancoResumen label { font-size:12px; }
+#panel-venta #pagoMixto #cargoBancoMonto { display:flex; align-items:center; }
+</style>
 </head>
 <body>
 <div class="app">
@@ -2178,6 +2187,17 @@ const cargoBancoPanel=document.getElementById('cargoBancoPanel');
 const cargoBancoPct=document.getElementById('cargoBancoPct');
 const cargoBancoResumen=document.getElementById('cargoBancoResumen');
 const cargoBancoMonto=document.getElementById('cargoBancoMonto');
+// Reubicar los controles existentes, conservando valores y eventos.
+const filaCobroBanco=panelMixto.parentElement;
+const rejillaPagoMixto=metodoMixto2.parentElement;
+function ubicarCargoBanco(mixto){
+  const destino=mixto?rejillaPagoMixto:filaCobroBanco;
+  if(cargoBancoPanel.parentElement===destino)return;
+  const antes=mixto?metodoMixto2:panelMixto;
+  destino.insertBefore(cargoBancoPanel,antes);
+  destino.insertBefore(cargoBancoResumen,antes);
+}
+
 function porcentajeBanco(){
   const texto=cargoBancoPct.value.trim();
   const pct=texto===''?0:Number(texto);
@@ -2241,6 +2261,7 @@ function updatePaymentChange(){
   const interno=esConsumoInterno();
   const mixto=metodoPagoInput.value==='Mixto';
   const tarjeta=metodosConTarjeta();
+  ubicarCargoBanco(mixto);
   cargoBancoPanel.hidden=!tarjeta;
   cargoBancoResumen.hidden=!tarjeta;
   const cobroActual=desgloseCobro();
