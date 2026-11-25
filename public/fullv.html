@@ -771,8 +771,9 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 </div>
 </div>
 </div>
-<div style="display:flex;gap:12px;align-items:center;margin-top:8px">
+<div style="display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap">
 <button class="btn btn-outline" id="btnCancelar">Cancelar</button>
+<select id="modoImpresionVenta" aria-label="Impresión al finalizar venta" style="width:auto;max-width:100%;flex:0 1 auto"><option value="no">Sin impresión</option><option value="si">Con impresión</option></select>
 <button class="btn btn-amarillo" id="btnFinalizar">Finalizar venta</button>
 </div>
 </div>
@@ -1043,6 +1044,24 @@ const cartBody = document.getElementById('cart-body');
 const cartCount = document.getElementById('cart-count');
 const totalLabel = document.getElementById('total');
 const btnFinalizar = document.getElementById('btnFinalizar');
+const modoImpresionVenta = document.getElementById('modoImpresionVenta');
+const KEY_IMPRESION_VENTA = 'sistemacobro_impresion_venta_v1';
+function actualizarModoImpresionVenta(){
+  btnFinalizar.textContent = modoImpresionVenta.value === 'si' ? 'Finalizar e imprimir' : 'Finalizar venta';
+}
+try { modoImpresionVenta.value = localStorage.getItem(KEY_IMPRESION_VENTA) === 'si' ? 'si' : 'no'; } catch (_) {}
+actualizarModoImpresionVenta();
+modoImpresionVenta.addEventListener('change',()=>{
+  try { localStorage.setItem(KEY_IMPRESION_VENTA, modoImpresionVenta.value); } catch (_) {}
+  actualizarModoImpresionVenta();
+});
+window.addEventListener('storage',e=>{
+  if(e.key===KEY_IMPRESION_VENTA || e.key===null){
+    try { modoImpresionVenta.value = localStorage.getItem(KEY_IMPRESION_VENTA)==='si'?'si':'no'; } catch (_) {}
+    actualizarModoImpresionVenta();
+  }
+});
+
 const btnCancelar = document.getElementById('btnCancelar');
 const productsList = document.getElementById('products-list');
 const rightProducts = document.getElementById('right-products');
@@ -1416,62 +1435,7 @@ productos = (productos || []).map(pr => {
 }
 
 /* NAV */
-// Regreso automático solo después de guardar una venta correctamente.
-let regresoVentaTimer = null;
-let regresoVentaAviso = null;
-function cancelarRegresoVenta(){
-  if(regresoVentaTimer !== null) clearInterval(regresoVentaTimer);
-  regresoVentaTimer = null;
-  if(regresoVentaAviso){ regresoVentaAviso.remove(); regresoVentaAviso = null; }
-}
-function iniciarRegresoVenta(){
-  cancelarRegresoVenta();
-  const limite = Date.now() + 5000;
-  const aviso = document.createElement('div');
-  aviso.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 10px;padding:8px;border:1px solid currentColor;border-radius:8px;';
-  const texto = document.createElement('span');
-  texto.className = 'small';
-  texto.setAttribute('role','status');
-  texto.style.flex = '1';
-  texto.textContent = 'Venta realizada. Regreso a Ventas en 5 s…';
-  const permanecer = document.createElement('button');
-  permanecer.type = 'button'; permanecer.className = 'btn btn-outline';
-  permanecer.textContent = 'Permanecer aquí';
-  permanecer.addEventListener('click', cancelarRegresoVenta);
-  const nueva = document.createElement('button');
-  nueva.type = 'button'; nueva.className = 'btn btn-outline';
-  nueva.textContent = 'Nueva venta';
-  nueva.addEventListener('click', ()=>showPanel(panelVenta));
-  aviso.append(texto, permanecer, nueva);
-  regresoVentaAviso = aviso;
-  panelHistorial.prepend(aviso);
-  regresoVentaTimer = setInterval(()=>{
-    if(panelHistorial.style.display === 'none'){ cancelarRegresoVenta(); return; }
-    const segundos = Math.max(0, Math.ceil((limite-Date.now())/1000));
-    if(segundos === 0){ showPanel(panelVenta); return; }
-    texto.textContent = 'Venta realizada. Regreso a Ventas en '+segundos+' s…';
-  }, 100);
-}
-// Capturar la intención antes de abrir tickets, diálogos o enlaces.
-function interaccionRegresoVenta(e){
-  if(!regresoVentaAviso) return;
-  // Los botones del aviso necesitan conservarse hasta ejecutar su clic.
-  if(regresoVentaAviso && regresoVentaAviso.contains(e.target)){
-    if(e.type !== 'click') {
-      clearInterval(regresoVentaTimer);
-      regresoVentaTimer = null;
-      const texto = regresoVentaAviso.querySelector('span');
-      if(texto) texto.textContent = 'Regreso automático cancelado.';
-    }
-    return;
-  }
-  cancelarRegresoVenta();
-}
-['pointerdown','keydown','wheel','touchstart','click'].forEach(tipo=>
-  document.addEventListener(tipo, interaccionRegresoVenta, {capture:true,passive:true}));
-document.addEventListener('visibilitychange', ()=>{ if(document.hidden) cancelarRegresoVenta(); });
 function showPanel(panel){
-  cancelarRegresoVenta();
   [panelVenta, panelProductos, panelHistorial].forEach(p => p.style.display='none');
   navVenta.classList.remove('active'); navProductos.classList.remove('active'); navHistorial.classList.remove('active');
   panel.style.display = 'block';
@@ -2659,9 +2623,8 @@ pagoInput.value = '';
   updatePaymentChange();
   cambioLabel.textContent = formatMXN(0);
   cambioLabel.classList.remove('change-ok','change-low','blink-green','blink-red');
-  // Ya no mostramos opciones de ticket al finalizar; se imprime desde Historial.
-  showPanel(panelHistorial);
-  iniciarRegresoVenta();
+  showPanel(panelVenta);
+  if(modoImpresionVenta.value === 'si') imprimirTicket(venta, true);
 });
 
 btnCancelar.addEventListener('click', ()=> {
@@ -2969,7 +2932,7 @@ if(ticketConfigModal){
   });
 }
 
-function imprimirTicket(venta){
+function imprimirTicket(venta, directa = false){
   const ticketTexto = armarTextoTicket(venta);
   if(!ticketTexto){ alert('No se pudo generar el ticket.'); return; }
 
@@ -3141,6 +3104,30 @@ body.dark #lowStockModal .low-stock{
   barra.append(titulo, acciones);
   panel.append(barra, vista);
   overlay.append(panel);
+  if(directa){
+    let iniciado = false;
+    const terminar = () => {
+      window.removeEventListener('afterprint', terminar);
+      if(!overlay.isConnected) return;
+      overlay.remove();
+      enfocarBuscadorVenta();
+    };
+    cerrar.addEventListener('click',()=>{window.removeEventListener('afterprint', terminar);enfocarBuscadorVenta();});
+    vista.addEventListener('load',()=>{
+      if(iniciado || !overlay.isConnected) return;
+      iniciado = true;
+      try {
+        const win = vista.contentWindow;
+        win.addEventListener('afterprint', terminar, {once:true});
+        window.addEventListener('afterprint', terminar, {once:true});
+        win.focus();
+        win.print();
+      } catch(e) {
+        console.warn('Impresión directa no disponible:',e);
+        cerrar.focus();
+      }
+    },{once:true});
+  }
   document.body.appendChild(overlay);
   cerrar.focus();
   // El usuario puede imprimir otra vez o cerrar aun si está en pantalla completa.
