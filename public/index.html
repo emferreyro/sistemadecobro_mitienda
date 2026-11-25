@@ -690,8 +690,34 @@ body.pink #proteccion-catalogo {
 #ventas-pestanas button{width:auto;min-width:65px;min-height:32px;margin:0;padding:4px 9px;border:1px solid var(--border,#aeb4bc);border-radius:4px;background:transparent;color:inherit;font:inherit;font-size:13px;line-height:1.2;cursor:pointer;white-space:nowrap;}
 #ventas-pestanas button strong{font-weight:600;}
 #ventas-pestanas button.espera{background:#fff1d6;color:#71440b;border-color:#d59a32;}
-#ventas-pestanas button[aria-pressed="true"]{background:#1d4ed8;color:#fff;border-color:#1d4ed8;}
+#ventas-pestanas button[aria-pressed="true"]{background:#15803d;color:#fff;border-color:#15803d;}
 #ventas-pestanas button:focus-visible{outline:3px solid #60a5fa;outline-offset:2px;}
+</style>
+<style id="tablet-venta-estable">
+@media screen and (pointer: coarse) {
+  #panel-venta .cart-table-scroll { width:100%; max-width:100%; overflow-x:auto; padding-bottom:3px; }
+  #panel-venta .cart-table-scroll .table { display:table; width:100%; min-width:540px; max-width:none; overflow:visible; table-layout:auto; }
+  #panel-venta .table th, #panel-venta .table td { padding:7px 4px; height:auto; line-height:1.35; vertical-align:middle; }
+  #panel-venta .table th:nth-child(3) { width:112px!important; }
+  #panel-venta .table th:nth-child(4), #panel-venta .table th:nth-child(5) { width:auto!important; }
+  #panel-venta .table td:nth-child(4), #panel-venta .table td:nth-child(5) { white-space:nowrap; }
+  #panel-venta .qty-cart-stepper { width:max-content; }
+  #panel-venta .qty-cart-stepper input { min-height:32px; line-height:normal; }
+  #panel-venta .venta-footer { display:flex!important; flex-wrap:wrap; gap:8px; align-items:flex-end!important; }
+  #panel-venta .venta-footer > .venta-cobro { flex:1 1 100%; width:100%; min-width:0; align-items:stretch!important; }
+  #panel-venta .total-wrap { display:flex!important; flex-wrap:wrap!important; align-items:center!important; justify-content:flex-end!important; gap:10px; width:100%; }
+  #panel-venta .total-wrap > div:first-child { min-width:0; padding:0!important; flex:0 1 auto; }
+  #panel-venta .pay-change-row { display:flex!important; flex:1 1 320px; min-width:0; width:auto; max-width:100%; flex-wrap:wrap!important; margin:0!important; gap:8px; align-items:flex-end; }
+  #panel-venta .pay-field { flex:1 1 115px; min-width:0!important; max-width:100%!important; }
+  #panel-venta #pagoMixto { flex-basis:240px; }
+  #panel-venta .pay-field input, #panel-venta .pay-field select { box-sizing:border-box; width:100%; min-width:0; max-width:100%; line-height:normal; }
+  #panel-venta #total, #panel-venta #cambio { height:auto; min-height:1.4em; line-height:1.4; padding:2px 0; white-space:nowrap; overflow:visible; }
+  #panel-venta .venta-cobro > div:last-child { justify-content:flex-end; }
+  #panel-venta .blink-green, #panel-venta .blink-red { animation:none; }
+  #panel-venta .qty-step, #panel-venta .btn-remove, #panel-venta .inp-cant { opacity:1; visibility:visible; }
+  body.neon #panel-venta .qty-step, body.neon #panel-venta .btn-remove, body.neon #panel-venta .inp-cant { color:#e8f4ff!important; }
+  #products-list .product-item, #right-products .product-item { content-visibility:auto; contain-intrinsic-size:auto 60px; }
+}
 </style>
 </head>
 <body>
@@ -778,16 +804,16 @@ body.pink #proteccion-catalogo {
           </div>
 
           <div style="margin-top:14px">
-            <table class="table" aria-describedby="cart-desc">
+            <div class="cart-table-scroll"><table class="table" aria-describedby="cart-desc">
               <thead>
                 <tr><th>Código</th><th>Nombre</th><th style="width:155px">Cant.</th><th style="width:120px">Precio</th><th style="width:120px">Subtotal</th><th></th></tr>
               </thead>
               <tbody id="cart-body"></tbody>
-            </table>
+            </table></div>
 
-            <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px">
+            <div class="venta-footer" style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px">
               <div class="small">Artículos: <span id="cart-count">0</span></div>
-              <div style="display:flex;flex-direction:column;align-items:flex-end">
+              <div class="venta-cobro" style="display:flex;flex-direction:column;align-items:flex-end">
                 <div class="total-wrap">
                   <div style="text-align:right">
                     <div class="small">Total</div>
@@ -1326,11 +1352,15 @@ function obtenerBusquedaRapidaPreparada(){
   })).sort((a,b) => b.ventas-a.ventas || a.posicion-b.posicion);
   return cacheBusquedaRapida;
 }
+let ultimaListaRapida=null, ultimaConsultaRapida=null;
 function renderBusquedaRapida(){
-  rightProducts.innerHTML = '';
   const ordenados = obtenerBusquedaRapidaPreparada();
   const campoRapido=document.getElementById('buscar-rapida');
   const terminos=terminosBusquedaArticulos(campoRapido?.value||'');
+  const consulta=terminos.join(' ');
+  if(ultimaListaRapida===ordenados && ultimaConsultaRapida===consulta) return;
+  rightProducts.innerHTML='';
+  ultimaListaRapida=ordenados; ultimaConsultaRapida=consulta;
   const filtrados=terminos.length ? ordenados.filter(({texto})=>terminos.every(t=>texto.includes(t))) : ordenados;
   if(!filtrados.length && terminos.length){
     const aviso=document.createElement('div'); aviso.className='small';
@@ -1528,7 +1558,7 @@ function actualizarCaja(totalHoy){
 }
 /* NAV */
 function showPanel(panel){
-  [panelVenta, panelProductos, panelHistorial].forEach(p => p.style.display='none');
+  [panelVenta, panelProductos, panelHistorial].forEach(p => {if(p!==panel && p.style.display!=='none') p.style.display='none';});
   navVenta.classList.remove('active'); navProductos.classList.remove('active'); navHistorial.classList.remove('active');
   panel.style.display = 'block';
   if(panel === panelVenta){
@@ -1692,8 +1722,9 @@ function filtrarCatalogoRegistrado(){
     if(!item.classList.contains('product-item'))return;
     const texto=item.dataset.catalogoNormalizado || (item.dataset.catalogoNormalizado=normalizarBusquedaCatalogo(item.dataset.catalogoTexto||''));
     const coincide=palabras.every(p=>texto.includes(p));
-    item.hidden=!coincide;
-    item.style.display=coincide?'':'none';
+    if(item.hidden===coincide) item.hidden=!coincide;
+    const display=coincide?'':'none';
+    if(item.style.display!==display) item.style.display=display;
     if(coincide)visibles++;
   });
   const vacio=lista.querySelector('.catalogo-sin-resultados');
@@ -1711,11 +1742,13 @@ function renderProducts(){
   if(contadorProductos) contadorProductos.textContent = productos.length.toLocaleString('es-MX');
   productsList.innerHTML = '';
   const fragmentoProductos=document.createDocumentFragment();
+  const permiteEditarListado=catalogoPuedeEditar();
+  const limiteListado=limiteProductosActual();
   productos.forEach((p, idx) => {
     const div = document.createElement('div'); div.className='product-item';
     div.dataset.catalogoTexto = [p.codigo,p.nombre,p.marca,p.grupo].filter(Boolean).join(' ');
-    const adminBtns = idx < limiteProductosActual()
-      ? (catalogoPuedeEditar()
+    const adminBtns = idx < limiteListado
+      ? (permiteEditarListado
         ? `<button data-idx="${idx}" class="btn btn-outline btn-small btn-edit" title="Editar producto">✏️</button>`
         : `<span class="small" title="Desbloquea el catálogo para editar">🔒</span>`)
       : `<span class="small" title="Producto de consulta y venta; edición exclusiva en versión completa">Solo consulta</span>`;
