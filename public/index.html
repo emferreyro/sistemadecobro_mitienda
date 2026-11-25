@@ -716,7 +716,37 @@ body.pink #proteccion-catalogo {
   #panel-venta .blink-green, #panel-venta .blink-red { animation:none; }
   #panel-venta .qty-step, #panel-venta .btn-remove, #panel-venta .inp-cant { opacity:1; visibility:visible; }
   body.neon #panel-venta .qty-step, body.neon #panel-venta .btn-remove, body.neon #panel-venta .inp-cant { color:#e8f4ff!important; }
-  #products-list .product-item, #right-products .product-item { content-visibility:auto; contain-intrinsic-size:auto 60px; }
+  /* Evitar omisión de pintura en navegadores táctiles antiguos. */
+  #products-list .product-item, #right-products .product-item { content-visibility:visible; contain:none; }
+}
+</style>
+<style id="venta-repintado-tactil">
+@media screen and (pointer: coarse), screen and (any-pointer: coarse) {
+  #panel-venta, #panel-venta .cart-table-scroll, #panel-venta .venta-cobro {
+    contain:none; content-visibility:visible; box-shadow:none!important;
+  }
+  #panel-venta .table, #panel-venta .table td, #panel-venta .venta-cobro,
+  #panel-venta .venta-cobro label, #panel-venta .venta-cobro .small,
+  #panel-venta .qty-cart-stepper, #panel-venta .qty-cart-stepper input,
+  #panel-venta .qty-cart-stepper button, #panel-venta .btn-remove {
+    opacity:1!important; visibility:visible!important; text-shadow:none!important;
+    animation:none!important; transition:none!important;
+    font-family:Arial,Roboto,sans-serif;
+  }
+  #panel-venta .table td, #panel-venta .qty-cart-stepper input,
+  #panel-venta .qty-cart-stepper button, #panel-venta .btn-remove,
+  #panel-venta .venta-cobro label, #panel-venta .venta-cobro .small {
+    color:inherit!important; -webkit-text-fill-color:currentColor!important;
+  }
+  #panel-venta .table td, #panel-venta .venta-cobro label { line-height:1.4; }
+  #panel-venta .qty-cart-stepper input { box-sizing:border-box; min-width:44px; max-width:64px; }
+  #panel-venta .qty-cart-stepper button, #panel-venta .btn-remove { box-shadow:none!important; }
+  #panel-venta #total, #panel-venta #cambio { font-family:Arial,Roboto,sans-serif; line-height:1.45; text-shadow:none!important; animation:none!important; opacity:1!important; -webkit-text-fill-color:currentColor; }
+  #panel-venta input:focus, #panel-venta button { box-shadow:none!important; transition:none!important; }
+  body.neon #panel-venta { background:#0b1624; }
+  /* Alternar únicamente el color de borde de bloques existentes: invalida pintura sin ocultarlos. */
+  #panel-venta .cart-table-scroll, #panel-venta .venta-cobro { outline:1px solid transparent; outline-offset:-1px; }
+  #panel-venta.repintar-venta .cart-table-scroll, #panel-venta.repintar-venta .venta-cobro { outline-color:rgba(127,127,127,.025); }
 }
 </style>
 </head>
@@ -1565,6 +1595,7 @@ function showPanel(panel){
     navVenta.classList.add('active');
     // Al entrar en Nueva venta, dejar listo el lector o la escritura de codigos.
     enfocarBuscadorVenta();
+    solicitarRepintadoVenta();
   }
   if(panel === panelProductos) navProductos.classList.add('active');
   if(panel === panelHistorial) navHistorial.classList.add('active');
@@ -1579,6 +1610,20 @@ function enfocarBuscadorVenta(){
   if(!inputBusqueda || panelVenta.style.display === 'none') return;
   try { inputBusqueda.focus({preventScroll:true}); }
   catch (_) { inputBusqueda.focus(); }
+}
+
+// Redibujado localizado para dispositivos táctiles. No reconstruye el carrito
+// ni altera los importes, el foco o las ventas guardadas.
+function solicitarRepintadoVenta(){
+  if (!window.matchMedia('(pointer: coarse), (any-pointer: coarse)').matches ||
+      panelVenta.style.display === 'none' || solicitarRepintadoVenta.pendiente) return;
+  solicitarRepintadoVenta.pendiente = requestAnimationFrame(function(){
+    solicitarRepintadoVenta.pendiente = 0;
+    if(panelVenta.style.display === 'none') return;
+    // Leer geometría después de las escrituras DOM, una sola vez por cuadro.
+    panelVenta.getBoundingClientRect();
+    panelVenta.classList.toggle('repintar-venta');
+  });
 }
 
 /* CART UI */
@@ -2383,6 +2428,7 @@ for(const el of [metodoMixto1,metodoMixto2,importeMixto1,importeMixto2]){
 }
 
 function updatePaymentChange(){
+  solicitarRepintadoVenta();
   const interno=esConsumoInterno();
   const mixto=metodoPagoInput.value==='Mixto';
   const tarjeta=metodosConTarjeta();
@@ -3037,6 +3083,7 @@ function applyTheme(theme){
     document.documentElement.classList.add('pink');
   }
   localStorage.setItem(THEME_KEY,theme);
+  solicitarRepintadoVenta();
 }
 function detectPreferredTheme(){
   const saved = localStorage.getItem(THEME_KEY);
