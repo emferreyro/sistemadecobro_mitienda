@@ -3231,36 +3231,14 @@ body.dark #lowStockModal .low-stock{
   panel.append(barra, vista);
   overlay.append(panel);
   if(directa){
-    // Preparar el mismo iframe de Historial de forma síncrona,
-    // sin perder el gesto del botón Finalizar e imprimir.
-    vista.removeAttribute('srcdoc');
-    overlay.style.opacity='0';
-    document.body.appendChild(overlay);
-    const win = vista.contentWindow;
     const terminar = () => {
-      win.removeEventListener('afterprint', terminar);
-      window.removeEventListener('afterprint', terminar);
       overlay.remove();
       enfocarBuscadorVenta();
     };
     cerrar.addEventListener('click', terminar);
-    try {
-      const doc=win.document;
-      doc.open(); doc.write(html); doc.close();
-      win.addEventListener('afterprint', terminar);
-      window.addEventListener('afterprint', terminar);
-      // Mismo diálogo nativo que el botón Imprimir de Historial.
-      win.focus(); win.print();
-    } catch(e) {
-      console.warn('Impresión directa no disponible:',e);
-      win.removeEventListener('afterprint', terminar);
-      window.removeEventListener('afterprint', terminar);
-      overlay.style.opacity='1';
-      cerrar.focus();
-    }
-    // Si el navegador no abrió el diálogo, conservar una salida manual.
-    if(overlay.isConnected) overlay.style.opacity='1';
-    return;
+    vista.addEventListener('load', () => {
+      vista.contentWindow.addEventListener('afterprint', terminar, {once:true});
+    }, {once:true});
   }
   document.body.appendChild(overlay);
   cerrar.focus();
