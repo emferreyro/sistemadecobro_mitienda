@@ -645,6 +645,16 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 #panel-venta #pagoMixto #cargoBancoPanel label,
 #panel-venta #pagoMixto #cargoBancoResumen label { font-size:12px; }
 #panel-venta #pagoMixto #cargoBancoMonto { display:flex; align-items:center; }
+
+.ventas-espera{margin:0 0 12px;padding:8px;border:1px solid var(--border,#b8bec6);border-radius:10px;color:var(--text,var(--texto));}
+#ventas-pestanas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:6px;}
+#ventas-pestanas button{min-width:0;min-height:52px;padding:6px 3px;border:1px solid var(--border,#aeb4bc);border-radius:8px;background:transparent;color:inherit;font:inherit;cursor:pointer;overflow-wrap:anywhere;}
+#ventas-pestanas button strong,#ventas-pestanas button span{display:block;}
+#ventas-pestanas button span{font-size:11px;line-height:1.3;}
+#ventas-pestanas button.espera{background:#fff1d6;color:#71440b;border-color:#d59a32;}
+#ventas-pestanas button[aria-pressed="true"]{background:#1d4ed8;color:#fff;border-color:#1d4ed8;}
+#ventas-pestanas button:focus-visible{outline:3px solid #60a5fa;outline-offset:2px;}
+
 </style>
 </head>
 <body>
@@ -822,6 +832,10 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
 </div>
 <div class="small">Moneda: MXN</div>
 </div>
+          <div class="ventas-espera" aria-label="Venta en espera">
+            <div class="small"><strong>Venta en espera</strong> · Hasta 3 ventas abiertas</div>
+            <div id="ventas-pestanas" role="group" aria-label="Seleccionar venta"></div>
+          </div>
 <div class="venta-top">
 <div style="flex:1">
 <label for="inputBusqueda">Buscar o escanear producto</label>
@@ -1147,6 +1161,63 @@ const DEFAULT_PRODUCTS = [
 /* STATE */
 let productos = [];
 let carrito = [];
+// El carrito activo conserva la clave histórica y su recuperación de cobros.
+const KEY_VENTAS_ESPERA='sistemacobro_ventas_espera_v1';
+let ventasEspera={activa:0,guardadas:[null,null,null]};
+function cargarVentasEspera(){
+  const raw=localStorage.getItem(KEY_VENTAS_ESPERA);
+  if(!raw)return;
+  const estado=JSON.parse(raw);
+  if(!Number.isInteger(estado.activa)||estado.activa<0||estado.activa>2||!Array.isArray(estado.guardadas)||estado.guardadas.length!==3)throw new Error('Estado de ventas en espera inválido.');
+  // Completar un cambio de pestaña interrumpido antes de recuperar un cobro.
+  if(Array.isArray(estado.pendiente)){
+    localStorage.setItem(KEY_CART,JSON.stringify(estado.pendiente));
+    delete estado.pendiente;
+    localStorage.setItem(KEY_VENTAS_ESPERA,JSON.stringify(estado));
+  }
+  ventasEspera=estado;
+}
+function camposCobroEspera(){return [metodoPagoInput,pagoInput,cargoBancoPct,metodoMixto1,metodoMixto2,importeMixto1,importeMixto2];}
+function restaurarCobroEspera(valores){
+  metodoPagoInput.value='Efectivo';pagoInput.value='';cargoBancoPct.value='';limpiarPagoMixto();
+  if(Array.isArray(valores)&&Array.from(metodoPagoInput.options).some(op=>op.value===valores[0]))camposCobroEspera().forEach((el,i)=>{if(typeof valores[i]==='string')el.value=valores[i];});
+}
+function pintarVentasEspera(){
+  const zona=document.getElementById('ventas-pestanas');
+  zona.replaceChildren();
+  for(let i=0;i<3;i++){
+    const activa=i===ventasEspera.activa;
+    const guardada=ventasEspera.guardadas[i];
+    const items=activa?carrito:(guardada?.items||[]);
+    const btn=document.createElement('button');btn.type='button';btn.setAttribute('aria-pressed',String(activa));
+    if(!activa&&items.length)btn.className='espera';
+    const titulo=document.createElement('strong');titulo.textContent='Venta '+(i+1);
+    const estado=document.createElement('span');
+    estado.textContent=activa?'En atención':items.length?'En espera · '+formatMXN(guardada.total):'＋ Disponible';
+    btn.append(titulo,estado);btn.addEventListener('click',()=>cambiarVentaEspera(i));zona.appendChild(btn);
+  }
+}
+function cambiarVentaEspera(i){
+  if(i===ventasEspera.activa||Array.from(document.querySelectorAll('.modal')).some(el=>el.getClientRects().length>0))return;
+  const entrante=ventasEspera.guardadas[i];
+  const guardadas=ventasEspera.guardadas.slice();
+  guardadas[ventasEspera.activa]=carrito.length?{items:carrito,cobro:camposCobroEspera().map(el=>el.value),total:desgloseCobro().total??currentTotal}:null;
+  guardadas[i]=null;
+  const siguiente={activa:i,guardadas,pendiente:entrante?.items||[]};
+  try{
+    localStorage.setItem(KEY_VENTAS_ESPERA,JSON.stringify(siguiente));
+  }catch(e){alert('No se pudo guardar la venta en espera. No se cambió de venta.');return;}
+  try{
+    localStorage.setItem(KEY_CART,JSON.stringify(siguiente.pendiente));
+    delete siguiente.pendiente;
+    localStorage.setItem(KEY_VENTAS_ESPERA,JSON.stringify(siguiente));
+  }catch(e){alert('No se pudo completar el cambio de venta. Recarga para recuperar las ventas antes de cobrar.');location.reload();return;}
+  ventasEspera=siguiente;carrito=entrante?.items||[];
+  restaurarCobroEspera(entrante?.cobro);
+  inputBusqueda.value='';cantidadInput.value=1;ocultarSugerencias();
+  renderCart();enfocarBuscadorVenta();
+}
+
 let historial = [];
 let isAdmin = false;
 let currentTotal = 0;
@@ -1539,6 +1610,7 @@ function optimizarLogoExistente(original){
 function saveLogo(dataUrl){ localStorage.setItem(KEY_LOGO, dataUrl); }
 
 function loadState(){
+  cargarVentasEspera();
   MiTiendaIntegridad.recuperar({historyKey:KEY_HISTORY,productsKey:KEY_PRODUCTS,cartKey:KEY_CART});
   const p = localStorage.getItem(KEY_PRODUCTS);
   productos = p ? JSON.parse(p) : (localStorage.setItem(KEY_PRODUCTS, JSON.stringify(DEFAULT_PRODUCTS.slice())), DEFAULT_PRODUCTS.slice());
@@ -1625,6 +1697,8 @@ function renderCart(){
   totalLabel.textContent = formatMXN(currentTotal);
 
   updatePaymentChange();
+
+  pintarVentasEspera();
 
   document.querySelectorAll('.btn-remove').forEach(b=> b.addEventListener('click', e=>{
     const c = e.currentTarget.getAttribute('data-codigo');
@@ -2529,8 +2603,10 @@ if(btnAgregar){
 if (btnLimpiar){
   btnLimpiar.addEventListener('click', ()=>{
 
+    if(carrito.length&&!confirm('¿Limpiar Venta '+(ventasEspera.activa+1)+'? Las demás ventas se conservarán.')) return;
     carrito = [];
     saveCart();
+    restaurarCobroEspera();
     renderCart();
 
 if(inputBusqueda) inputBusqueda.value='';
@@ -2671,7 +2747,18 @@ btnFinalizar.addEventListener('click', ()=> {
   const metodoPago=cobro.metodoPago;
   const pago=cobro.pago;
   const total = cobro.total;
-  for(const it of carrito){const p=productos.find(x=>x.codigo===it.codigo);if(esGranel(it)&&esGranel(p)&&gramosInventario(p)!==null&&Math.round(Number(it.cantidad)*1000)>gramosInventario(p)){alert('No hay existencia suficiente para '+p.nombre);return;}}
+  for(const it of carrito){
+    if(it.manual)continue;
+    const prod=productos.find(p=>String(p.codigo)===String(it.codigo));
+    if(!prod || esGranel(prod)!==esGranel(it)){alert('Producto eliminado o modificado: '+it.nombre+'. Revisa la venta antes de cobrar.');return;}
+    if(!esGranel(it)){
+      if(prod.inventariado&&prod.stock!=null&&Number.isFinite(Number(prod.stock))&&Number(it.cantidad)>Number(prod.stock)){alert('Inventario insuficiente para '+it.nombre);return;}
+      continue;
+    }
+    if(!prod || !esGranel(prod)){alert('Producto a granel modificado: '+it.nombre);return;}
+    const disponible=gramosInventario(prod);
+    if(disponible!==null && Math.round(Number(it.cantidad)*1000)>disponible){alert('Inventario insuficiente para '+it.nombre);return;}
+  }
   // La referencia preventiva de 4 MiB genera un aviso, pero no bloquea el cobro.
   // === Inventario progresivo (fase 1): permitir venta pero generar alertas en historial ===
   const warnings = [];
@@ -2754,7 +2841,7 @@ pagoInput.value = '';
 });
 
 btnCancelar.addEventListener('click', ()=> {
-  if(!confirm('¿Cancelar venta actual? Se borrará el carrito.')) return;
+  if(!confirm('¿Cancelar Venta '+(ventasEspera.activa+1)+'? Las demás ventas no se modificarán.')) return;
   carrito = []; saveCart(); renderCart();
   pagoInput.value = '';
   if(metodoPagoInput) metodoPagoInput.value = 'Efectivo'; cargoBancoPct.value=''; limpiarPagoMixto();
