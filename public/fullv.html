@@ -2680,14 +2680,15 @@ btnFinalizar.addEventListener('click', ()=> {
   // La referencia preventiva de 4 MiB genera un aviso, pero no bloquea el cobro.
   // === Inventario progresivo (fase 1): permitir venta pero generar alertas en historial ===
   const warnings = [];
-  const prodIndexByCode = new Map(productos.map((p, i)=> [String(p.codigo), i]));
+  const productosNuevos=productos.map(p=>({...p}));
+  const prodIndexByCode = new Map(productosNuevos.map((p, i)=> [String(p.codigo), i]));
 
   // Clonar items y anotar inventario por renglón
   const itemsVenta = carrito.map(original => {
     const it = {...original,...(esConsumoInterno()?valorItemActual(original):{})};
     const code = String(it.codigo || '');
     const idx = prodIndexByCode.get(code);
-    const prod = (typeof idx !== 'undefined') ? productos[idx] : null;
+    const prod = !it.manual && (typeof idx !== 'undefined') ? productosNuevos[idx] : null;
 
     let inv = false;
     let stockAntes = null;
@@ -2697,7 +2698,7 @@ btnFinalizar.addEventListener('click', ()=> {
     if(esGranel(prod) && esGranel(it)){
       inv=true;stockAntes=gramosInventario(prod)===null?null:gramosInventario(prod)/1000;
       const kg=Number(it.cantidad)||0;
-      if(stockAntes!==null){stockDespues=Math.max(0,stockAntes-kg);if(window.INVENTARIO_ACTIVO)prod.stockGramos=Math.max(0,gramosInventario(prod)-Math.round(kg*1000));}
+      if(stockAntes!==null){stockDespues=Math.max(0,stockAntes-kg);prod.stockGramos=Math.max(0,gramosInventario(prod)-Math.round(kg*1000));stockDespues=prod.stockGramos/1000;}
     }else if(prod && prod.inventariado){
       inv = true;
       stockAntes = (prod.stock === null || typeof prod.stock === 'undefined') ? null : Number(prod.stock);
@@ -2712,11 +2713,7 @@ btnFinalizar.addEventListener('click', ()=> {
         }
         stockDespues = Math.max(0, Math.floor(stockAntes - qty));
         // Actualizar stock del producto (sin bloquear venta)
-        if(window.INVENTARIO_ACTIVO){
-          prod.stock = stockDespues;
-        } else {
-          stockDespues = stockAntes; // solo reflejo
-        }
+        prod.stock = stockDespues;
       }
     }
 
@@ -2747,9 +2744,11 @@ const ahora = new Date();
     cambio: cobro.cambio, pagos: cobro.pagos
   };
   try{
-    MiTiendaIntegridad.guardarVenta({venta,productos,historial,historyKey:KEY_HISTORY,productsKey:KEY_PRODUCTS,cartKey:KEY_CART});
+    MiTiendaIntegridad.guardarVenta({venta,productos:productosNuevos,historial,historyKey:KEY_HISTORY,productsKey:KEY_PRODUCTS,cartKey:KEY_CART});
   }catch(e){alert(e.message);location.reload();return;}
-  historial.unshift(venta);carrito=[];
+  productos=productosNuevos;historial.unshift(venta);carrito=[];
+  invalidarCacheBusquedaRapida();
+  renderProducts();
   mostrarEstadoAlmacenamiento();
   actualizarBusquedaRapida();
   renderCart();

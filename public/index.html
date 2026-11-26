@@ -2498,6 +2498,7 @@ btnFinalizar.addEventListener('click', ()=> {
   const itemsVenta=carrito.map(it=>({...it,...(esConsumoInterno()?valorItemActual(it):{}),costoUnitario:it.manual?null:costoUnitarioInterno(it)}));
   // Misma lógica que Fullv: registrar existencia de artículos por pieza y a granel.
   for(const it of itemsVenta){
+    if(it.manual)continue;
     const prod=productosNuevos.find(p=>String(p.codigo)===String(it.codigo));
     if(!prod)continue;
     if(esGranel(it) && esGranel(prod)){
@@ -2527,6 +2528,7 @@ btnFinalizar.addEventListener('click', ()=> {
     MiTiendaIntegridad.guardarVenta({venta,productos:productosNuevos,historial,historyKey:KEY_HISTORY,productsKey:KEY_PRODUCTS,cartKey:KEY_CART});
   }catch(e){alert(e.message); location.reload(); return;}
   productos=productosNuevos;historial.unshift(venta);carrito=[];
+  invalidarCacheBusquedaRapida();
   renderProducts();
   mostrarEstadoAlmacenamiento();
   renderBusquedaRapida();
