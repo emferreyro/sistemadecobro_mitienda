@@ -2827,9 +2827,9 @@ function posVentaEtiqueta(v){
 }
 function posVentaColor(v){
   const estado=posVentaEstado(v);
-  if(estado==='cancelacion' || estado==='devolucion') return {borde:'#dc2626',fondo:'rgba(220,38,38,.10)',texto:'#dc2626'};
-  if(estado==='cambio') return {borde:'#eab308',fondo:'rgba(234,179,8,.12)',texto:'#ca8a04'};
-  if(estado==='consumo_interno') return {borde:'#38bdf8',fondo:'rgba(56,189,248,.12)',texto:'#0284c7'};
+  if(estado==='cancelacion' || estado==='devolucion') return {borde:'#f87171',fondo:'rgba(127,29,29,.28)',texto:'#ff6b6b'};
+  if(estado==='cambio') return {borde:'#facc15',fondo:'rgba(120,95,20,.30)',texto:'#facc15'};
+  if(estado==='consumo_interno') return {borde:'#7dd3fc',fondo:'rgba(8,80,120,.28)',texto:'#7dd3fc'};
   return {borde:'',fondo:'',texto:'var(--rojo)'};
 }
 function posVentaAjusteTotal(v){
@@ -2910,7 +2910,7 @@ function posVentaValidarDia(v){
 }
 function posVentaDecorar(card,v){
   const color=posVentaColor(v);
-  if(color.borde){ card.style.borderLeft='4px solid '+color.borde; card.style.backgroundColor=color.fondo; }
+  if(color.borde){ card.style.border='1px solid '+color.borde; card.style.borderLeft='4px solid '+color.borde; card.style.backgroundColor=color.fondo; }
   const titulo=card.querySelector('[data-hist-title]');
   if(titulo) titulo.textContent=posVentaEtiqueta(v)+' #'+v.id;
   const monto=card.querySelector('[data-hist-total]');
@@ -2959,9 +2959,18 @@ function posVentaAbrir(v){
     #posventa-modal .pv-results{display:grid;gap:6px;max-height:220px;overflow:auto}
     #posventa-modal .pv-result{width:100%;text-align:left;border:1px solid var(--border,#8aa);background:var(--panel,#fff);border-radius:8px;padding:8px}
     #posventa-modal .pv-result strong{display:block}
+    #posventa-modal .pv-result{background:var(--panel,#fff)!important;color:var(--text,#222)!important;}
+    #posventa-modal .pv-result .small{color:inherit!important;opacity:1!important}
+    #posventa-modal .pv-result[aria-pressed="true"]{outline:2px solid #16a34a!important}
+    #posventa-modal .histHeaderRow{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:8px}
+    #posventa-modal [data-x]{margin-left:auto!important;width:auto!important}
+    #posventa-modal .pv-footer{position:sticky;bottom:0;background:var(--panel,#fff);color:var(--text,#222);padding:10px 0;display:grid;gap:8px;z-index:2}
+    #posventa-modal [data-res]{font-weight:700;overflow-wrap:anywhere}
+    body.neon #posventa-modal .modal-box{background:#0b1624!important}
+    body.neon #posventa-modal .pv-result,body.neon #posventa-modal .pv-footer{background:#142536!important;color:#e8f4ff!important}
     #posventa-modal .pv-selected{border:1px dashed var(--border,#8aa);border-radius:8px;padding:8px;min-height:44px}
   </style>
-  <div class="histHeaderRow"><strong>Acciones · #${escapeHtml(String(v.id))}</strong><button type="button" class="btn btn-outline" data-x>Cerrar</button></div>
+  <div class="histHeaderRow"><div style="flex:1;min-width:0"><strong>Acciones · #${escapeHtml(String(v.id))}</strong></div><button type="button" class="btn btn-outline" data-x style="margin-left:auto">Cerrar</button></div>
   <div class="pv-grid">
     <label>Movimiento
       <select data-tipo>
@@ -2994,8 +3003,8 @@ function posVentaAbrir(v){
     <label data-pago-label>Forma de pago
       <select data-pago><option>Efectivo</option><option>Tarjeta</option><option>Vales</option></select>
     </label>
-    <div data-res aria-live="polite"></div>
-    <button type="button" class="btn btn-rojo" data-ok>Finalizar operación</button>
+    <div class="pv-footer"><div data-res role="status" aria-live="polite"></div>
+    <button type="button" class="btn btn-rojo" data-ok>Finalizar operación</button></div>
   </div>`;
   const q=s=>box.querySelector(s), tipo=q('[data-tipo]'), motivo=q('[data-motivo]'), dev=q('[data-dev]'), lista=q('[data-lista]');
   if(['Tarjeta','Vales','Efectivo'].includes(v.metodoPago)) q('[data-pago]').value=v.metodoPago;
@@ -3030,17 +3039,26 @@ function posVentaAbrir(v){
       encontrados.forEach(p=>{
         const btn=document.createElement('button'); btn.type='button'; btn.className='pv-result';
         const meta=[p.marca,p.grupo].filter(Boolean).join(' · ');
-        btn.innerHTML='<strong>'+escapeHtml(String(p.codigo||''))+' · '+escapeHtml(p.nombre||'')+'</strong><div class="small">'+escapeHtml(meta)+(meta?' · ':'')+formatMXN(Number(p.precio)||0)+'</div>';
+        const costo = Number.isFinite(Number(costoUnitarioInterno(p))) ? formatMXN(Number(costoUnitarioInterno(p))) : 'N/D';
+        const precioVenta = formatMXN(Number(p.precio)||0)+(esGranel(p)?(' / '+unidadGranel(p)):'');
+        btn.innerHTML='<strong>'+escapeHtml(String(p.codigo||''))+' · '+escapeHtml(p.nombre||'')+'</strong><div class="small">'+escapeHtml(meta)+(meta?' · ':'')+(esGranel(p)?'A granel':'Por pieza')+'</div><div class="small">Precio venta: <strong>'+precioVenta+'</strong> · Costo: <strong>'+costo+'</strong></div>';
         btn.addEventListener('click',()=>{
           state.producto=p;
-          seleccionado.innerHTML='<div style="font-weight:700">'+escapeHtml(String(p.codigo||''))+' · '+escapeHtml(p.nombre||'')+'</div><div class="small">'+escapeHtml(meta)+(meta?' · ':'')+formatMXN(Number(p.precio)||0)+'</div>';
+          for(const el of resultados.children) el.setAttribute('aria-pressed','false');
+          btn.setAttribute('aria-pressed','true');
+          qty.min=esGranel(p)?'0.001':'1'; qty.step=qty.min;
+          resultados.hidden=true;
+          const costoSel = Number.isFinite(Number(costoUnitarioInterno(p))) ? formatMXN(Number(costoUnitarioInterno(p))) : 'N/D';
+          const precioSel = formatMXN(Number(p.precio)||0)+(esGranel(p)?(' / '+unidadGranel(p)):'');
+          seleccionado.innerHTML='<div style="font-weight:700">'+escapeHtml(String(p.codigo||''))+' · '+escapeHtml(p.nombre||'')+'</div><div class="small">'+escapeHtml(meta)+(meta?' · ':'')+(esGranel(p)?'A granel':'Por pieza')+'</div><div class="small">Precio venta: <strong>'+precioSel+'</strong> · Costo: <strong>'+costoSel+'</strong></div>';
           resumen();
         });
         resultados.append(btn);
       });
       resumen();
     }
-    buscador.addEventListener('input',pintarCoincidencias); qty.addEventListener('input',resumen); remove.addEventListener('click',()=>{ row.remove(); resumen(); });
+    buscador.addEventListener('input',()=>{state.producto=null; seleccionado.textContent='Seleccionar producto'; resultados.hidden=false; pintarCoincidencias();});
+    buscador.addEventListener('focus',()=>{resultados.hidden=false;}); qty.addEventListener('input',resumen); remove.addEventListener('click',()=>{ row.remove(); resumen(); });
     row._datos={ get producto(){ return state.producto; }, qty };
     row.append(buscador,seleccionado,resultados,qty,remove);
     lista.append(row); pintarCoincidencias();
@@ -3078,14 +3096,14 @@ function posVentaAbrir(v){
       const x=calcular();
       q('[data-res]').textContent=tipo.value==='consumo_interno' ? 'La venta se marcará como consumo interno.' : (x.total<0?'Devolver al cliente: '+formatMXN(-x.total):x.total>0?'Cobrar diferencia: '+formatMXN(x.total):'Sin diferencia de dinero');
       q('[data-pago-label]').hidden=x.total===0 || tipo.value==='consumo_interno'; q('[data-ok]').disabled=false;
-    }catch(e){ q('[data-res]').textContent=e.message; q('[data-pago-label]').hidden=true; q('[data-ok]').disabled=true; }
+    }catch(e){ q('[data-res]').textContent=e.message; q('[data-pago-label]').hidden=true; q('[data-ok]').disabled=false; }
   }
   tipo.onchange=()=>{ q('[data-nuevos]').hidden=tipo.value!=='cambio'; if(tipo.value==='cambio' && !lista.children.length) crearFilaEntrega(); resumen(); };
   motivo.onchange=()=>{ q('[data-otro]').hidden=motivo.value!=='Otro'; q('[data-apto-wrap]').hidden=motivo.value!=='Otro'; q('[data-apto]').checked=false; resumen(); };
   q('[data-otro]').oninput=resumen; q('[data-apto]').onchange=resumen; dev.oninput=resumen; dev.onchange=resumen; q('[data-add]').onclick=crearFilaEntrega; q('[data-x]').onclick=()=>modal.remove();
   q('[data-ok]').onclick=()=>{ try{
     posVentaValidarDia(v);
-    const razon=motivo.value==='Otro'?q('[data-otro]').value.trim():motivo.value; if(!razon) throw Error('Especifica el motivo.');
+    const razon=motivo.value==='Otro'?q('[data-otro]').value.trim():motivo.value; if(!razon){motivo.focus();throw Error('Selecciona o especifica el motivo antes de finalizar.');}
     const x=calcular();
     const pass=prompt('Clave de administrador para autorizar el movimiento:'); if(pass===null) return; if(pass!==getAdminPassword()) throw Error('Clave incorrecta.');
     if(!confirm(tipo.value==='consumo_interno' ? 'Confirma marcar la venta como consumo interno.' : ('Confirma el movimiento y '+(x.total<0?'la devolución de '+formatMXN(-x.total):x.total>0?'el cobro de '+formatMXN(x.total):'el cambio sin diferencia')+'.'))) return;
@@ -3146,7 +3164,7 @@ function posVentaAbrir(v){
     if(typeof renderBusquedaRapida==='function') renderBusquedaRapida(); else if(typeof actualizarBusquedaRapida==='function') actualizarBusquedaRapida();
     renderHistorial();
     alert('Venta actualizada correctamente.');
-  }catch(e){ alert(e.message); } };
+  }catch(e){ q('[data-res]').textContent=e.message; alert(e.message); } };
   modal.append(box); document.body.append(modal); resumen();
 }
 function renderHistorial(){
