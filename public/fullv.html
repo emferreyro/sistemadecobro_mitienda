@@ -2880,7 +2880,7 @@ function posVentaResumenMovimientos(v){
     const devoluciones=(m.devueltos||[]).map(r=>{
       const origen=(v.items||[])[Number(r.indice)]||{};
       const cant=esGranel(origen)?formatoGranel(Number(r.cantidad)||0,origen):(Number(r.cantidad)||0);
-      return escapeHtml((origen.nombre||'Producto')+' · '+cant+(Number(r.reintegrado||0)>0?' · reintegrado':' · sin reintegrar'));
+      return escapeHtml((origen.nombre||'Producto')+' · '+cant+(Number(r.reintegrado||0)>0?' · reintegrado: '+r.reintegrado+(r.stockAntes!=null?' · Existencia: '+r.stockAntes+' → '+r.stockDespues:''):' · sin reintegrar'));
     }).join('<br>');
     const entregas=(m.entregados||[]).map(e=>escapeHtml((e.nombre||'Producto')+' · '+(esGranel(e)?formatoGranel(Number(e.cantidad)||0,e):(Number(e.cantidad)||0)))).join('<br>');
     const bloqueEntrega=entregas?'<div class="small" style="margin-top:4px"><strong>Se entrega:</strong><br>'+entregas+'</div>':'';
@@ -3116,8 +3116,8 @@ function posVentaAbrir(v){
     const pass=prompt('Clave de administrador para autorizar el movimiento:'); if(pass===null) return; if(pass!==getAdminPassword()) throw Error('Clave incorrecta.');
     if(!confirm(tipo.value==='consumo_interno' ? 'Confirma marcar la venta como consumo interno.' : ('Confirma el movimiento y '+(x.total<0?'la devolución de '+formatMXN(-x.total):x.total>0?'el cobro de '+formatMXN(x.total):'el cambio sin diferencia')+'.'))) return;
     if(localStorage.getItem(KEY_HISTORY)!==historialOriginal || localStorage.getItem(KEY_PRODUCTS)!==catalogoOriginal) throw Error('Los datos cambiaron. Recarga y vuelve a revisar la venta.');
-    const catalogo=productos.map(p=>({...p}));
-    const historialNuevo=JSON.parse(JSON.stringify(historial));
+    const catalogo=JSON.parse(catalogoOriginal||"[]");
+    const historialNuevo=JSON.parse(historialOriginal||"[]");
     const ventaActual=historialNuevo.find(item=>String(item.id)===String(v.id)); if(!ventaActual) throw Error('No se encontró la venta original.');
     posVentaValidarDia(ventaActual);
     const buscar=it=>catalogo.find(p=>String(p.codigo)===String(it.codigo));
@@ -3141,7 +3141,7 @@ function posVentaAbrir(v){
         if(r.it.inventariado && r.it.stockAntes==null) throw Error('No hay existencia original comprobable para '+r.it.nombre+'.');
         if(reintegro>0){ inv=stock(r.it,reintegro,true); if(inv.cantidad!==reintegro) throw Error('El producto ya no tiene control de existencias: '+r.it.nombre); }
       }
-      devueltos.push({indice:r.i,cantidad:r.cantidad,reintegrado:inv.cantidad,solicitoReintegro:r.reintegrar,nombre:r.it.nombre,precio:r.it.precio,importe:r.importe});
+      devueltos.push({indice:r.i,codigo:r.it.codigo,stockAntes:inv.stockAntes??null,stockDespues:inv.stockDespues??null,cantidad:r.cantidad,reintegrado:inv.cantidad,solicitoReintegro:r.reintegrar,nombre:r.it.nombre,precio:r.it.precio,importe:r.importe});
     }
     for(const e of x.entregas){
       const p=e.p, inv=stock(p,-e.cantidad,false);
@@ -3149,6 +3149,7 @@ function posVentaAbrir(v){
     }
     const now=new Date();
     const mov={
+      id:String(ventaActual.id)+":"+now.toISOString()+":"+baseMovs.length,
       tipo: tipo.value==='consumo_interno' ? 'consumo_interno' : (tipo.value==='cambio' ? 'cambio' : 'devolucion'),
       fecha: now.toLocaleString(), fechaISO: now.toISOString(), motivo: razon, total: x.total,
       metodoPago: x.total!==0 ? q('[data-pago]').value : (ventaActual.metodoPago||'Efectivo'),
@@ -3164,9 +3165,10 @@ function posVentaAbrir(v){
     if(tipo.value==='consumo_interno') ventaActual.metodoPago='Consumo interno';
     ventaActual.posventa={ state:estadoFinal, estado:estadoFinal, actualizadoEn:now.toISOString(), ultimoMotivo:razon, movimientos:movimientosFinales };
     posVentaValidarDia(ventaActual);
-    localStorage.setItem(KEY_PRODUCTS, JSON.stringify(catalogo));
-    localStorage.setItem(KEY_HISTORY, JSON.stringify(historialNuevo));
-    productos=catalogo; historial=historialNuevo;
+    let guardado;
+    try{guardado=MiTiendaIntegridad.guardarPosventa({ventaId:ventaActual.id,movimientoId:mov.id,productos:catalogo,historial:historialNuevo,historyKey:KEY_HISTORY,productsKey:KEY_PRODUCTS,cartKey:KEY_CART,historyOriginal:historialOriginal,productsOriginal:catalogoOriginal});}
+    catch(e){alert(e.message);location.reload();return;}
+    productos=guardado.productos; historial=guardado.historial;
     invalidarCacheBusquedaRapida();
     modal.remove(); renderProducts();
     if(typeof renderBusquedaRapida==='function') renderBusquedaRapida(); else if(typeof actualizarBusquedaRapida==='function') actualizarBusquedaRapida();

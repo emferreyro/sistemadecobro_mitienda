@@ -50,12 +50,29 @@ function guardarVenta({venta,productos,historial,historyKey,productsKey,cartKey,
    throw new Error('Hubo un problema real al guardar la venta (posible cuota de almacenamiento llena). No vuelvas a cobrar todavía. Recarga la página para recuperar el estado y revisa el historial antes de intentar otra venta. Detalle: '+e.message);
  }
 }
+function guardarPosventa({ventaId,movimientoId,productos,historial,historyKey,productsKey,cartKey,historyOriginal,productsOriginal}){
+ if(localStorage.getItem(PENDING))throw Error('Hay una operación pendiente. Recarga antes de continuar.');
+ if(localStorage.getItem(historyKey)!==historyOriginal||localStorage.getItem(productsKey)!==productsOriginal)throw Error('Los datos cambiaron. Recarga antes de continuar.');
+ const anteriores=JSON.parse(productsOriginal||'[]');
+ const mapa=new Map(anteriores.map(p=>[String(p.codigo),p]));
+ const cambios=productos.filter(p=>{const a=mapa.get(String(p.codigo));return a&&(a.stock!==p.stock||a.stockGramos!==p.stockGramos);}).map(p=>({codigo:p.codigo,stock:p.stock,stockGramos:p.stockGramos}));
+ const pendiente={id:ventaId,movimientoId,historyKey,productsKey,cartKey,cambios,conservarCarrito:true};
+ const h=JSON.stringify(historial), p=JSON.stringify(productos);
+ localStorage.setItem(PENDING,JSON.stringify(pendiente));
+ try{
+  localStorage.setItem(historyKey,h);
+  localStorage.setItem(productsKey,p);
+  if(localStorage.getItem(historyKey)!==h||localStorage.getItem(productsKey)!==p)throw Error('No coincide el guardado.');
+  localStorage.removeItem(PENDING);
+ }catch(e){throw Error('No repitas el movimiento. Recarga para recuperar la operación y verifica el inventario. '+e.message);}
+ return {productos:JSON.parse(localStorage.getItem(productsKey)),historial:JSON.parse(localStorage.getItem(historyKey))};
+}
 function recuperar({historyKey,productsKey,cartKey}){
  const raw=localStorage.getItem(PENDING);if(!raw)return;
  const p=JSON.parse(raw);
  if(p.historyKey!==historyKey||p.productsKey!==productsKey||p.cartKey!==cartKey)throw new Error('Existe una venta pendiente de otra configuración.');
  const ventas=JSON.parse(localStorage.getItem(historyKey)||'[]');
- const encontrada=ventas.some(v=>String(v.id)===String(p.id));
+ const encontrada=ventas.some(v=>String(v.id)===String(p.id)&&(!p.movimientoId||(v.posventa?.movimientos||[]).some(m=>m.id===p.movimientoId)));
  if(encontrada){
    const prod=JSON.parse(localStorage.getItem(productsKey)||'[]');
    for(const cambio of p.cambios){
@@ -78,6 +95,7 @@ function efectivoCerradoHoy(historial,fecha=fechaClave(new Date())){
 function registrarCierreCaja(historial){
  const hoy=fechaClave(new Date());
  const ventas=(historial||[]).filter(v=>{
+   if(v.metodoPago==='Consumo interno')return false;
    const d=fechaVenta(v);return d&&fechaClave(d)===hoy;
  }).map(v=>({id:v.id,efectivo:Array.isArray(v.pagos)&&v.pagos.length
    ? v.pagos.filter(x=>x.metodo==='Efectivo').reduce((sum,x)=>sum+(Number(x.importe)||0),0)
@@ -89,5 +107,5 @@ function registrarCierreCaja(historial){
  prev.push({fecha:hoy,ventas});
  localStorage.setItem(CLOSED,JSON.stringify(prev));
 }
-window.MiTiendaIntegridad={estado,tamano,siguienteId,guardarVenta,recuperar,efectivoCerradoHoy,registrarCierreCaja};
+window.MiTiendaIntegridad={estado,tamano,siguienteId,guardarVenta,guardarPosventa,recuperar,efectivoCerradoHoy,registrarCierreCaja};
 })();
