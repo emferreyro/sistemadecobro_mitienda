@@ -1,12 +1,12 @@
 /* Mi Tienda POS - Web Windows - cache offline de prueba, v1
  * Guardar documentos/scripts bajo el MISMO origen. No almacenar autorizados.json.
  */
-const CACHE = 'mitienda-windows-web-prueba-v37';
+const CACHE = 'mitienda-windows-web-prueba-v38';
 const CORE = [
   './', './index.html', './fullv.html', './fullv_demo.html',
   './reporte.html', './gencodigo.html',
   './js/acceso.js', './js/guardFullv.js', './js/fp.min.js', './js/pos_integridad.js',
-  './offline_estado.html', './js/bitacora.js', './js/bitacora_vista.js', './conoce_tu_tienda.html'
+  './offline_estado.html', './js/bitacora.js', './js/bitacora_vista.js', './js/conoce_datos.js', './conoce_tu_tienda.html'
 ];
 const LICENSE_RE = /(?:^|\/)autorizados\.json$/i;
 const CACHEABLE = /\.(?:html|js|css|png|svg|jpe?g|webp|ico|woff2?)$/i;
