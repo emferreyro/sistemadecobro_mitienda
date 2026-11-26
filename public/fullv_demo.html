@@ -1075,6 +1075,7 @@ body.dark .history-item[data-posventa-estado="consumo_interno"], body.neon .hist
     </div>
 
     <div id="adminHistControls" style="display:none">
+      <button type="button" class="btn btn-outline" id="btnPosVentaPermiso" title="Configurar autorización de cancelaciones, devoluciones y cambios">🔐 Clave en acciones: Sí</button>
       <button class="btn btn-acumulado" id="btnExportCSV" type="button" title="Respaldar en CSV y borrar las ventas acumuladas tras comprobar el archivo">💾 Guardar y borrar acumulado</button>
     </div>
   </div>
@@ -3075,6 +3076,25 @@ function posVentaDecorar(card,v){
   btn.addEventListener('click',()=>posVentaAbrir(v));
   ticket.before(btn);
 }
+const KEY_POSVENTA_AUTORIZACION = 'mitienda_posventa_requiere_clave_v1';
+function posVentaRequiereClave(){
+  return localStorage.getItem(KEY_POSVENTA_AUTORIZACION)!=='0';
+}
+function posVentaActualizarPermisoUI(){
+  const b=document.getElementById('btnPosVentaPermiso');
+  if(b) b.textContent='🔐 Clave en acciones: '+(posVentaRequiereClave()?'Sí':'No');
+}
+function posVentaConfigurarPermiso(){
+  const actual=posVentaRequiereClave();
+  const clave=prompt('Introduce la clave de administrador para cambiar esta configuración:');
+  if(clave===null)return;
+  if(clave!==getAdminPassword()){alert('Clave incorrecta.');return;}
+  if(!confirm(actual?'¿Permitir cancelaciones, devoluciones y cambios sin solicitar clave?':'¿Solicitar clave de administrador al confirmar cada movimiento?'))return;
+  try{localStorage.setItem(KEY_POSVENTA_AUTORIZACION,actual?'0':'1');posVentaActualizarPermisoUI();}catch(e){alert('No se pudo guardar la configuración: '+e.message);}
+}
+const btnPosVentaPermiso=document.getElementById('btnPosVentaPermiso');
+if(btnPosVentaPermiso){btnPosVentaPermiso.addEventListener('click',posVentaConfigurarPermiso);posVentaActualizarPermisoUI();}
+window.addEventListener('storage',e=>{if(e.key===KEY_POSVENTA_AUTORIZACION||e.key===null)posVentaActualizarPermisoUI();});
 function posVentaAbrir(v){
   if(!posVentaEsDeHoy(v)){alert('Solo puedes realizar acciones en ventas de hoy.');renderHistorial();return;}
   if(v.movimiento || historial.some(m=>String(m.movimiento?.origen)===String(v.id))){alert('Esta venta tiene ajustes de la versión anterior. Consulta al administrador.');return;}
@@ -3241,7 +3261,7 @@ function posVentaAbrir(v){
     posVentaValidarDia(v);
     const razon=motivo.value==='Otro'?q('[data-otro]').value.trim():motivo.value; if(!razon){motivo.focus();throw Error('Selecciona o especifica el motivo antes de finalizar.');}
     const x=calcular();
-    const pass=prompt('Clave de administrador para autorizar el movimiento:'); if(pass===null) return; if(pass!==getAdminPassword()) throw Error('Clave incorrecta.');
+    if(posVentaRequiereClave()){ const pass=prompt('Clave de administrador para autorizar el movimiento:'); if(pass===null) return; if(pass!==getAdminPassword()) throw Error('Clave incorrecta.'); }
     if(!confirm(tipo.value==='consumo_interno' ? 'Confirma marcar la venta como consumo interno.' : ('Confirma el movimiento y '+(x.total<0?'la devolución de '+formatMXN(-x.total):x.total>0?'el cobro de '+formatMXN(x.total):'el cambio sin diferencia')+'.'))) return;
     if(localStorage.getItem(KEY_HISTORY)!==historialOriginal || localStorage.getItem(KEY_PRODUCTS)!==catalogoOriginal) throw Error('Los datos cambiaron. Recarga y vuelve a revisar la venta.');
     const catalogo=JSON.parse(catalogoOriginal||"[]");
