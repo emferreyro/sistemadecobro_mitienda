@@ -684,6 +684,15 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
   #panel-venta.repintar-venta .table, #panel-venta.repintar-venta .total-wrap { outline-color:rgba(127,127,127,.025); }
 }
 </style>
+<style id="posventa-fondos-v31">
+.history-item[data-posventa-estado="cancelacion"], .history-item[data-posventa-estado="devolucion"] { background: #fce1e1 !important; border-color: #d99a9a !important; }
+.history-item[data-posventa-estado="cambio"] { background: #fff2c5 !important; border-color: #d5ba62 !important; }
+.history-item[data-posventa-estado="consumo_interno"] { background: #dceffc !important; border-color: #93bfd9 !important; }
+body.dark .history-item[data-posventa-estado="cancelacion"], body.dark .history-item[data-posventa-estado="devolucion"], body.neon .history-item[data-posventa-estado="cancelacion"], body.neon .history-item[data-posventa-estado="devolucion"] { background: #382027 !important; border-color: #975258 !important; }
+body.dark .history-item[data-posventa-estado="cambio"], body.neon .history-item[data-posventa-estado="cambio"] { background: #39331e !important; border-color: #968044 !important; }
+body.dark .history-item[data-posventa-estado="consumo_interno"], body.neon .history-item[data-posventa-estado="consumo_interno"] { background: #18384b !important; border-color: #52809a !important; }
+.history-item[data-posventa-estado] [data-hist-total] { color: inherit !important; }
+</style>
 </head>
 <body>
 <!-- ===== DEMO: prueba individual 30 días (por dispositivo/navegador) ===== -->
@@ -3036,11 +3045,11 @@ function posVentaValidarDia(v){
 }
 function posVentaDecorar(card,v){
   const color=posVentaColor(v);
-  if(color.borde){ card.style.border='1px solid '+color.borde; card.style.borderLeft='4px solid '+color.borde; card.style.backgroundColor=color.fondo; }
+  if(color.borde){ card.dataset.posventaEstado=posVentaEstado(v); }
   const titulo=card.querySelector('[data-hist-title]');
   if(titulo) titulo.textContent=posVentaEtiqueta(v)+' #'+v.id;
   const monto=card.querySelector('[data-hist-total]');
-  if(monto){ monto.style.color=color.texto; monto.textContent=formatMXN(posVentaEstado(v)==='consumo_interno' ? (Number(v.total)||0) : posVentaMontoNeto(v)); }
+  if(monto){ if(color.borde) monto.style.color='inherit'; monto.textContent=formatMXN(posVentaEstado(v)==='consumo_interno' ? (Number(v.total)||0) : posVentaMontoNeto(v)); }
   const meta=card.querySelector('[data-hist-meta]');
   if(meta){
     const ajuste=posVentaAjusteTotal(v);
