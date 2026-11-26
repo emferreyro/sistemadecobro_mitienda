@@ -600,7 +600,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
   }
   function pagosNetosDeFila(r){
     if(Array.isArray(r.pagos)&&r.pagos.length){
-      return r.pagos.filter(x=>['Efectivo','Tarjeta','Vales'].includes(x.metodo)&&Number.isFinite(Number(x.importe))&&Number(x.importe)>=0)
+      return r.pagos.filter(x=>['Efectivo','Tarjeta','Vales'].includes(x.metodo)&&Number.isFinite(Number(x.importe)))
         .map(x=>({metodo:x.metodo,importe:Number(x.importe)}));
     }
     if(normalizarMetodoPago(r.metodoPago)==='Mixto') return []; // Nunca atribuir un mixto ilegible al efectivo.
@@ -837,13 +837,13 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     MONTHLY_SALES=Array.from(monthly,([period,total])=>({period,total})).sort((a,b)=>a.period.localeCompare(b.period));
     const root=$("ventasChart");root.innerHTML="";
     if(!MONTHLY_SALES.length){root.textContent="Sin ventas para este periodo.";return;}
-    const max=Math.max(...MONTHLY_SALES.map(x=>x.total),1);
+    const max=Math.max(...MONTHLY_SALES.map(x=>Math.abs(x.total)),1);
     for(const {period,total} of MONTHLY_SALES){
       const col=document.createElement('div');col.className='bar-column';
       const value=document.createElement('div');value.className='bar-value';value.textContent=money(total);
       const track=document.createElement('div');track.className='bar-track';
-      const fill=document.createElement('div');fill.className='bar-fill';fill.style.height=Math.max(2,Math.round(145*total/max))+'px';
-      track.appendChild(fill);
+      const fill=document.createElement('div');fill.className='bar-fill';fill.style.height=Math.max(2,Math.round(145*Math.abs(total)/max))+'px';
+      if(total<0){fill.style.background='#b45309';fill.title='Saldo negativo';}track.appendChild(fill);
       const label=document.createElement('div');label.className='bar-label';label.textContent=period;
       col.append(value,track,label);root.appendChild(col);
     }
@@ -971,7 +971,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     const txMap = new Map();
     for(const r of filtered){
       const k = r.ventaId+'|'+isoDate(r.dt);
-      if(!txMap.has(k)) txMap.set(k,{ ventaId:k, dt:r.dt, total:r.total, metodoPago:r.metodoPago });
+      if(!txMap.has(k)) txMap.set(k,{ ventaId:k, dt:r.dt, total:r.total, metodoPago:r.metodoPago,movimiento:r.movimiento });
     }
     TX = Array.from(txMap.values()).sort((a,b)=> a.dt - b.dt);
 
@@ -1048,7 +1048,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
       const pagos=pagosNetosDeFila(r);
       const cargo=Math.max(0,Number(r.cargoBanco)||0);
       const base=(Number(r.subtotalProductos)||((Number(r.total)||0)-cargo));
-      if(base<=0) continue;
+      if(base===0) continue;
       const factor=r.subtotal/base;
       // El desglose ya incluye el cargo en el método realmente registrado.
       // No reasignar el cargo: los cierres antiguos conservan sus importes originales.
@@ -1065,7 +1065,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     $("kCard").textContent = money(cobros.Tarjeta);
     $("kVouchers").textContent = money(cobros.Vales);
     $("kProfit").textContent = money(PROFIT_TOTAL);
-    $("kTx").textContent = TX.length.toLocaleString("es-MX");
+    $("kTx").textContent = TX.filter(x=>!x.movimiento).length.toLocaleString("es-MX");
     const byAmount=ITEMS.slice().sort((a,b)=>b.amount-a.amount);
     $("kTop").textContent = byAmount.length ? `${byAmount[0].item} (${money(byAmount[0].amount)})` : "—";
     const low = byAmount.filter(x=>x.amount>0).sort((a,b)=>a.amount-b.amount)[0];
@@ -1118,6 +1118,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
       for(const it of items){
         rows.push({
           ventaId: String(ventaId),
+          movimiento:v.movimiento?.tipo||'',
           fechaRaw,
           fechaISO,
           total,
@@ -1205,6 +1206,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
         const fileId="cierre:"+key+":";
         const parsed=rows.filter(r=>r.some(c=>String(c||"").trim())).map(r=>({
           ventaId:fileId+String(r[idx["Venta ID"]]??""),
+          movimiento:idx["Movimiento"]===undefined?'':String(r[idx["Movimiento"]]||''),
           fechaRaw:r[idx["Fecha"]],
           total:safeNum(r[idx["Total"]]),
           cargoBanco:idx["Cargo Banco $"]===undefined?0:safeNum(r[idx["Cargo Banco $"]]),
