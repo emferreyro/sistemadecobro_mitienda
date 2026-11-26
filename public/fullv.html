@@ -3035,13 +3035,15 @@ function posVentaAbrir(v){
   function crearFilaEntrega(){
     const row=document.createElement('div'); row.className='pv-card';
     const buscador=document.createElement('input'); buscador.placeholder='Buscar por código, nombre, marca o grupo';
-    const seleccionado=document.createElement('div'); seleccionado.className='pv-selected small'; seleccionado.textContent='Seleccionar producto';
-    const resultados=document.createElement('div'); resultados.className='pv-results';
-    const qty=document.createElement('input'); qty.type='number'; qty.min='0.001'; qty.step='0.001'; qty.value='1';
+    const seleccionado=document.createElement('div'); seleccionado.className='pv-selected small'; seleccionado.hidden=true;
+    const resultados=document.createElement('div'); resultados.className='pv-results'; resultados.hidden=true;
+    const qty=document.createElement('input'); qty.type='number'; qty.min='0.001'; qty.step='0.001'; qty.value='1'; qty.hidden=true; qty.setAttribute('aria-label','Cantidad a entregar');
     const remove=document.createElement('button'); remove.type='button'; remove.className='btn btn-outline'; remove.textContent='Quitar';
     const state={producto:null};
     function pintarCoincidencias(){
-      const encontrados=productos.filter(p=>posVentaCoincideProducto(p,buscador.value)).slice(0, buscador.value.trim()?60:25);
+      if(!buscador.value.trim()){resultados.replaceChildren();resultados.hidden=true;resumen();return;}
+      resultados.hidden=false;
+      const encontrados=productos.filter(p=>posVentaCoincideProducto(p,buscador.value)).slice(0,60);
       resultados.innerHTML='';
       if(!encontrados.length){ const vacio=document.createElement('div'); vacio.className='small'; vacio.textContent='Sin coincidencias.'; resultados.append(vacio); resumen(); return; }
       encontrados.forEach(p=>{
@@ -3051,7 +3053,7 @@ function posVentaAbrir(v){
         const precioVenta = formatMXN(Number(p.precio)||0)+(esGranel(p)?(' / '+unidadGranel(p)):'');
         btn.innerHTML='<strong>'+escapeHtml(String(p.codigo||''))+' · '+escapeHtml(p.nombre||'')+'</strong><div class="small">'+escapeHtml(meta)+(meta?' · ':'')+(esGranel(p)?'A granel':'Por pieza')+'</div><div class="small">Precio venta: <strong>'+precioVenta+'</strong> · Costo: <strong>'+costo+'</strong></div>';
         btn.addEventListener('click',()=>{
-          state.producto=p;
+          state.producto=p; seleccionado.hidden=false; qty.hidden=false;
           for(const el of resultados.children) el.setAttribute('aria-pressed','false');
           btn.setAttribute('aria-pressed','true');
           qty.min=esGranel(p)?'0.001':'1'; qty.step=qty.min;
@@ -3065,8 +3067,8 @@ function posVentaAbrir(v){
       });
       resumen();
     }
-    buscador.addEventListener('input',()=>{state.producto=null; seleccionado.textContent='Seleccionar producto'; resultados.hidden=false; pintarCoincidencias();});
-    buscador.addEventListener('focus',()=>{resultados.hidden=false;}); qty.addEventListener('input',resumen); remove.addEventListener('click',()=>{ row.remove(); resumen(); });
+    buscador.addEventListener('input',()=>{state.producto=null; seleccionado.hidden=true; seleccionado.textContent=''; qty.hidden=true; pintarCoincidencias();});
+    buscador.addEventListener('focus',()=>{if(!state.producto && buscador.value.trim()) pintarCoincidencias();}); qty.addEventListener('input',resumen); remove.addEventListener('click',()=>{ row.remove(); resumen(); });
     row._datos={ get producto(){ return state.producto; }, qty };
     row.append(buscador,seleccionado,resultados,qty,remove);
     lista.append(row); pintarCoincidencias();
