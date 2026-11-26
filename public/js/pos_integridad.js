@@ -26,7 +26,7 @@ function siguienteId(historial){
  const id=Math.max(Date.now(),(Number(localStorage.getItem(LAST_ID))||0)+1,maxActual+1);
  return id;
 }
-function guardarVenta({venta,productos,historial,historyKey,productsKey,cartKey}){
+function guardarVenta({venta,productos,historial,historyKey,productsKey,cartKey,conservarCarrito=false}){
  if(localStorage.getItem(PENDING))throw new Error('Hay una venta pendiente de recuperación. Recarga la aplicación antes de cobrar.');
  // 4 MiB es un aviso de mantenimiento, NO una cuota real del navegador.
  // Permitir la venta mientras localStorage acepte las escrituras; si se agota la cuota,
@@ -35,14 +35,14 @@ function guardarVenta({venta,productos,historial,historyKey,productsKey,cartKey}
  const prodNuevo=JSON.stringify(productos);
  const cambios=productos.filter(p=>venta.items.some(it=>String(it.codigo)===String(p.codigo)))
   .map(p=>({codigo:p.codigo,stock:p.stock,stockGramos:p.stockGramos}));
- const pendiente={id:venta.id,historyKey,productsKey,cartKey,cambios};
+ const pendiente={id:venta.id,historyKey,productsKey,cartKey,cambios,conservarCarrito};
  // Primero se prepara la transacción. Si falla, no se toca el historial ni el inventario.
  localStorage.setItem(PENDING,JSON.stringify(pendiente));
  try{
    // El historial es la fuente de verdad; el resto se recupera si el navegador se interrumpe.
    localStorage.setItem(historyKey,histNuevo);
    localStorage.setItem(productsKey,prodNuevo);
-   localStorage.setItem(cartKey,'[]');
+   if(!conservarCarrito)localStorage.setItem(cartKey,'[]');
    localStorage.setItem(LAST_ID,String(venta.id));
    localStorage.removeItem(PENDING);
  }catch(e){
@@ -64,7 +64,7 @@ function recuperar({historyKey,productsKey,cartKey}){
        if(cambio.stockGramos!==undefined)item.stockGramos=cambio.stockGramos;}
    }
    localStorage.setItem(productsKey,JSON.stringify(prod));
-   localStorage.setItem(cartKey,'[]');
+   if(!p.conservarCarrito)localStorage.setItem(cartKey,'[]');
    localStorage.setItem(LAST_ID,String(Math.max(Number(localStorage.getItem(LAST_ID))||0,Number(p.id)||0)));
  }
  localStorage.removeItem(PENDING);
