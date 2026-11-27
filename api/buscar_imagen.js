@@ -9,7 +9,7 @@ module.exports = async (req,res) => {
   if(!crypto.timingSafeEqual(hash(String(req.headers['x-catalogo-test']||'')),hash(secret))) return res.status(401).json({error:'Clave de prueba incorrecta'});
   let b=req.body; if(typeof b==='string'){try{b=JSON.parse(b)}catch{b=null}}
   const code=String(b?.codigo||''); if(!/^(?:\d{8}|\d{12,14})$/.test(code)) return res.status(400).json({error:'Código inválido'});
-  if(cache.has(code)){try{return res.status(200).json(await cache.get(code))}catch{return res.status(502).json({error:'Proveedor no disponible'})}}
+  if(cache.has(code)&&b?.retry!==true){try{return res.status(200).json(await cache.get(code))}catch{return res.status(502).json({error:'Proveedor no disponible'})}}
   if(calls>=100) return res.status(429).json({error:'Límite de prueba de esta instancia'});
   calls++;
   const work=(async()=>{
