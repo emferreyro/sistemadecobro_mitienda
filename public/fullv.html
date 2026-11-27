@@ -160,7 +160,7 @@ body.dark .notice-inv{background:#2a1215;border-color:#7f1d1d;color:#fecaca;}
 /* Botón de acumulado debajo de Caja, alineado a la derecha y separado del historial */
 .historial-header{margin-bottom:18px;}
 .historial-header .hist-center{display:flex; flex-direction:column; align-items:flex-end; gap:12px;}
-.historial-header .hist-center #adminHistControls{width:100%; justify-content:flex-end; align-items:center;}
+.historial-header .hist-center #adminHistControls{width:100%; justify-content:stretch; align-items:stretch;}
 @media (max-width:900px){.historial-header .hist-center{align-items:flex-end;}}
 /* === 🧾 Caja (Historial) === */
 .historial-header{
@@ -172,7 +172,10 @@ body.dark .notice-inv{background:#2a1215;border-color:#7f1d1d;color:#fecaca;}
 }
 .historial-header .hist-left{flex:1 1 420px; min-width:280px;}
 .historial-header .hist-center{flex:0 0 320px; display:flex; justify-content:center;}
-.historial-header #adminHistControls{flex:0 0 auto; display:flex; gap:10px; justify-content:flex-end; align-items:center;}
+.historial-header #adminHistControls{flex:0 0 auto; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; align-items:stretch;}
+.historial-header #adminHistControls .btn{width:100%; min-width:0; min-height:54px; padding:8px 5px; font-size:12px; line-height:1.25; white-space:normal; text-align:center; box-sizing:border-box;}
+.historial-header #adminHistControls .btn:disabled{opacity:.55;cursor:wait;}
+@media(max-width:360px){.historial-header #adminHistControls{grid-template-columns:1fr;}.historial-header #adminHistControls .btn{min-height:40px;}}
 .cash-card{
   border:1px solid rgba(0,0,0,0.10);
   border-radius:12px;
@@ -420,10 +423,6 @@ body.neon th{ color: rgba(232,244,255,0.80); }
 
 
 /* Botón de respaldo y borrado: visible y legible en todos los temas */
-#btnExportCSV.btn-acumulado{background:#f5e131!important;color:#1f2937!important;border:2px solid #e53935!important;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;min-height:unset;box-shadow:none;cursor:pointer;white-space:normal;line-height:1.25;text-align:center;}
-#btnExportCSV.btn-acumulado:hover{background:#ffe95b!important;}
-#btnExportCSV.btn-acumulado:focus-visible{outline:3px solid #2563eb;outline-offset:3px;}
-#btnExportCSV.btn-acumulado:disabled{opacity:.55;cursor:wait;}
 </style>
 
 <style id="ticket-thermal-override">
@@ -944,10 +943,9 @@ body.dark .history-item[data-posventa-estado="consumo_interno"], body.neon .hist
     </div>
 
     <div id="adminHistControls" style="display:none">
-      <button type="button" class="btn btn-outline" id="btnPosVentaPermiso" title="Configurar autorización de cancelaciones, devoluciones y cambios">🔐 Clave en acciones: Sí</button>
 <button class="btn btn-outline" id="btnCierreTurno" type="button">Cierre de cajero</button>
 <button class="btn btn-outline" id="btnCierreDia" type="button">Cierre del día</button>
-<button class="btn btn-acumulado" id="btnExportCSV" type="button" title="Respaldar un mes terminado y retirar únicamente sus ventas verificadas">💾 Cierre mensual y respaldo</button>
+<button class="btn btn-outline" id="btnExportCSV" type="button" title="Respaldar un mes terminado y retirar únicamente sus ventas verificadas">Cierre mensual y respaldo</button>
     </div>
   </div>
 </div>
@@ -2305,7 +2303,7 @@ limpiarRegistroParaNuevo();prodTipo.value='pieza';prodUnidadGranel.value='kg';[p
   // FULLV: modo admin siempre activo (silencioso)
   isAdmin = true;
   if(adminControls) adminControls.style.display = 'block';
-  if(adminHistControls) adminHistControls.style.display = 'block';
+  if(adminHistControls) adminHistControls.style.display = 'grid';
   if(btnAdminLogout) btnAdminLogout.style.display = 'inline-block';
   renderProducts();
 });
@@ -2893,7 +2891,7 @@ function posVentaEsDeHoy(v, ahora=new Date()){
 function posVentaActualizarAccionesDia(){
   document.querySelectorAll('[data-posventa-accion]').forEach(b=>{
     const venta=historial.find(v=>String(v.id)===b.dataset.posventaAccion);
-    if(!posVentaEsDeHoy(venta)) b.remove();
+    if(!isAdmin || !posVentaEsDeHoy(venta)) b.remove();
   });
 }
 setInterval(posVentaActualizarAccionesDia,15000);
@@ -2927,33 +2925,15 @@ function posVentaDecorar(card,v){
       detalle.appendChild(div);
     }
   }
-  if(!posVentaEsDeHoy(v) || v.metodoPago==='Consumo interno' || v.movimiento || historial.some(m=>String(m.movimiento?.origen)===String(v.id)) || !posVentaDisponibles(v).length) return;
+  if(!isAdmin || !posVentaEsDeHoy(v) || v.metodoPago==='Consumo interno' || v.movimiento || historial.some(m=>String(m.movimiento?.origen)===String(v.id)) || !posVentaDisponibles(v).length) return;
   const ticket=card.querySelector('.btn-ticket'); if(!ticket) return;
   const btn=document.createElement('button');
   btn.type='button'; btn.className='btn btn-outline btn-small'; btn.textContent='Acciones'; btn.dataset.posventaAccion=String(v.id); btn.style.marginRight='6px';
   btn.addEventListener('click',()=>posVentaAbrir(v));
   ticket.before(btn);
 }
-const KEY_POSVENTA_AUTORIZACION = 'mitienda_posventa_requiere_clave_v1';
-function posVentaRequiereClave(){
-  return localStorage.getItem(KEY_POSVENTA_AUTORIZACION)!=='0';
-}
-function posVentaActualizarPermisoUI(){
-  const b=document.getElementById('btnPosVentaPermiso');
-  if(b) b.textContent='🔐 Clave en acciones: '+(posVentaRequiereClave()?'Sí':'No');
-}
-function posVentaConfigurarPermiso(){
-  const actual=posVentaRequiereClave();
-  const clave=prompt('Introduce la clave de administrador para cambiar esta configuración:');
-  if(clave===null)return;
-  if(clave!==getAdminPassword()){alert('Clave incorrecta.');return;}
-  if(!confirm(actual?'¿Permitir cancelaciones, devoluciones y cambios sin solicitar clave?':'¿Solicitar clave de administrador al confirmar cada movimiento?'))return;
-  try{localStorage.setItem(KEY_POSVENTA_AUTORIZACION,actual?'0':'1');posVentaActualizarPermisoUI();}catch(e){alert('No se pudo guardar la configuración: '+e.message);}
-}
-const btnPosVentaPermiso=document.getElementById('btnPosVentaPermiso');
-if(btnPosVentaPermiso){btnPosVentaPermiso.addEventListener('click',posVentaConfigurarPermiso);posVentaActualizarPermisoUI();}
-window.addEventListener('storage',e=>{if(e.key===KEY_POSVENTA_AUTORIZACION||e.key===null)posVentaActualizarPermisoUI();});
 function posVentaAbrir(v){
+  if(!isAdmin)return;
   if(!posVentaEsDeHoy(v)){alert('Solo puedes realizar acciones en ventas de hoy.');renderHistorial();return;}
   if(v.movimiento || historial.some(m=>String(m.movimiento?.origen)===String(v.id))){alert('Esta venta tiene ajustes de la versión anterior. Consulta al administrador.');return;}
   if(document.getElementById('posventa-modal')) return;
@@ -3116,10 +3096,11 @@ function posVentaAbrir(v){
   motivo.onchange=()=>{ q('[data-otro]').hidden=motivo.value!=='Otro'; q('[data-apto-wrap]').hidden=motivo.value!=='Otro'; q('[data-apto]').checked=false; resumen(); };
   q('[data-otro]').oninput=resumen; q('[data-apto]').onchange=resumen; dev.oninput=resumen; dev.onchange=resumen; q('[data-add]').onclick=crearFilaEntrega; q('[data-x]').onclick=()=>modal.remove();
   q('[data-ok]').onclick=()=>{ try{
+    if(!isAdmin)throw Error('Operación exclusiva de Modo Admin.');
     posVentaValidarDia(v);
     const razon=motivo.value==='Otro'?q('[data-otro]').value.trim():motivo.value; if(!razon){motivo.focus();throw Error('Selecciona o especifica el motivo antes de finalizar.');}
     const x=calcular();
-    if(posVentaRequiereClave()){ const pass=prompt('Clave de administrador para autorizar el movimiento:'); if(pass===null) return; if(pass!==getAdminPassword()) throw Error('Clave incorrecta.'); }
+
     if(!confirm(tipo.value==='consumo_interno' ? 'Confirma marcar la venta como consumo interno.' : ('Confirma el movimiento y '+(x.total<0?'la devolución de '+formatMXN(-x.total):x.total>0?'el cobro de '+formatMXN(x.total):'el cambio sin diferencia')+'.'))) return;
     if(localStorage.getItem(KEY_HISTORY)!==historialOriginal || localStorage.getItem(KEY_PRODUCTS)!==catalogoOriginal) throw Error('Los datos cambiaron. Recarga y vuelve a revisar la venta.');
     const catalogo=JSON.parse(catalogoOriginal||"[]");
@@ -3827,6 +3808,7 @@ function seleccionarCSVDeCierre(nombreEsperado){
   });
 }
 async function exportHistorialCSV(){
+  if(!isAdmin)return;
   if(cierreVentasActivo) return;
   if(localStorage.getItem('sistemacobro_venta_pendiente_v1')){alert('Recarga para recuperar la venta pendiente.');return;}
   const actual=cashDateKey().slice(0,7);
@@ -3879,6 +3861,7 @@ async function exportHistorialCSV(){
     if(JSON.stringify(historial) !== historialOriginal || localStorage.getItem(KEY_HISTORY) !== historialOriginal){
       alert('El historial cambió durante el cierre. No se borró ninguna venta; vuelve a intentarlo.'); return;
     }
+    if(!isAdmin)return;
     if(!confirm('RESPALDO VERIFICADO\n\n'+cantidadVentas+' ventas respaldadas correctamente.\n\n¿Confirmas que deseas borrar estas ventas del historial activo?\n\nPodrás consultarlas después importando el CSV en Reporte.')) return;
     // Nunca eliminar el carrito ni el catálogo de productos.
     const restantes=historial.filter(v=>MiTiendaIntegridad.period(v)!==mes);
@@ -3900,6 +3883,7 @@ async function exportHistorialCSV(){
 }
 document.getElementById('btnExportCSV')?.addEventListener('click', exportHistorialCSV);
 function cerrarTurno(tipo){
+ if(!isAdmin)return;
  if(cierreVentasActivo)return;
  try{
   if(document.getElementById('cashInicioInput').dataset.cashEditing){alert('Guarda primero el fondo de caja.');return;}
@@ -4154,7 +4138,7 @@ shortcutHist && shortcutHist.addEventListener('click', ()=> { showPanel(panelHis
 function adminSignedIn(){
   isAdmin = true;
   if(adminControls) adminControls.style.display = 'block';
-  if(adminHistControls) adminHistControls.style.display = 'block';
+  if(adminHistControls) adminHistControls.style.display = 'grid';
   btnAdminLogout.style.display = 'inline-block';
   renderProducts();
   alert('Reg. Modo ADMIN.');
@@ -4162,6 +4146,8 @@ function adminSignedIn(){
 }
 function adminSignedOut(){
   isAdmin = false;
+  document.getElementById('posventa-modal')?.remove();
+  posVentaActualizarAccionesDia();
   if(adminControls) adminControls.style.display = 'none';
   if(adminHistControls) adminHistControls.style.display = 'none';
   btnAdminLogout.style.display = 'none';
