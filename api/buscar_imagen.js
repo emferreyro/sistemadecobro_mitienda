@@ -10,7 +10,7 @@ module.exports = async (req,res) => {
   let b=req.body; if(typeof b==='string'){try{b=JSON.parse(b)}catch{b=null}}
   const code=String(b?.codigo||''); if(!/^(?:\d{8}|\d{12,14})$/.test(code)) return res.status(400).json({error:'Código inválido'});
   if(cache.has(code)){try{return res.status(200).json(await cache.get(code))}catch{return res.status(502).json({error:'Proveedor no disponible'})}}
-  if(calls>=20) return res.status(429).json({error:'Límite de prueba de esta instancia'});
+  if(calls>=100) return res.status(429).json({error:'Límite de prueba de esta instancia'});
   calls++;
   const work=(async()=>{
     const r=await fetch('https://google.serper.dev/images',{method:'POST',headers:{'X-API-KEY':key,'Content-Type':'application/json'},body:JSON.stringify({q:code,gl:'mx',hl:'es',num:10}),signal:AbortSignal.timeout(12000)});
@@ -20,4 +20,3 @@ module.exports = async (req,res) => {
   })(); cache.set(code,work);
   try{return res.status(200).json(await work)}catch{cache.delete(code);return res.status(502).json({error:'Proveedor no disponible'})}
 };
-
