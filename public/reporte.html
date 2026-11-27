@@ -369,11 +369,12 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
   <section class="card">
     <div>
         <div style="font-weight:900">Fuente de datos</div>
-        <div class="small">Este reporte lee automáticamente el historial guardado por MiTienda. Si no existe historial en este dispositivo, puedes cargar un CSV.</div>
+        <div class="small">Este reporte combina el historial local y los CSV cargados. Los cierres nuevos identifican el equipo para evitar duplicados; no cargues CSV antiguos con periodos superpuestos.</div>
       </div>
 
     <hr style="border:none;border-top:1px solid #f3f4f6;margin:14px 0">
 
+    <label style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input type="checkbox" id="includeLocalHistory" checked style="width:auto"> Incluir historial de este equipo</label>
     <label>Cargar CSV (opcional)</label>
     <input id="file" type="file" accept=".csv,text/csv" multiple />
     <div class="hint" style="margin-top:6px">Selecciona varios cierres a la vez o agrega otros después. Los archivos se combinan para la consulta, sin modificar los originales.</div>
@@ -532,6 +533,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
   </section>
 </main>
 
+<script src="js/pos_integridad.js"></script>
 <script>
   // Tema
   const THEME_KEY='sistemacobro_theme_v2';
@@ -597,7 +599,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
       if(!Number.isFinite(importe)||importe<0||resultado.some(x=>x.metodo===tipo)) return null;
       resultado.push({metodo:tipo,importe});
     }
-    return resultado.length===2?resultado:null;
+    return resultado.length>=2&&resultado.length<=3?resultado:null;
   }
   function pagosNetosDeFila(r){
     if(Array.isArray(r.pagos)&&r.pagos.length){
@@ -1110,15 +1112,16 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     }
 
     const rows = [];
-    for(const v of hist){
+    const origen=MiTiendaIntegridad.source();
+    for(const v of MiTiendaIntegridad.expandirVentas(hist)){
       const ventaId = (v.id != null ? v.id : "");
       const fechaRaw = v.fecha || "";
       const fechaISO = v.fechaISO || "";
       const total = safeNum(v.total);
       const items = Array.isArray(v.items) ? v.items : [];
-      for(const it of items){
+      for(const it of items.length?items:[{}]){
         rows.push({
-          ventaId: String(ventaId),
+          ventaId: origen+":"+String(ventaId),
           movimiento:v.movimiento?.tipo||'',
           fechaRaw,
           fechaISO,
@@ -1143,7 +1146,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     }
 
     LOCAL_ROWS = rows;
-    if(CSV_FILES.length) return;
+    if(CSV_FILES.length){refreshSources();return;}
     RAW = LOCAL_ROWS;
     refreshClassificationFilters();
     $("run").disabled = false;
@@ -1161,7 +1164,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
   function renderCsvList(){
     const list = $("csvList"); list.innerHTML = "";
     $("clearCsv").style.display = CSV_FILES.length ? "inline-block" : "none";
-    if(!CSV_FILES.length){ list.textContent="Sin archivos CSV cargados. Se consulta el historial local."; return; }
+    if(!CSV_FILES.length){ list.textContent="Sin archivos CSV cargados."; return; }
     const totalRows = CSV_FILES.reduce((n,f)=>n+f.rows.length,0);
     const title = document.createElement("div");
     title.textContent = CSV_FILES.length + " archivo(s) • " + totalRows + " renglones";
@@ -1180,7 +1183,10 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     }
   }
   function refreshSources(){
-    RAW = CSV_FILES.length ? CSV_FILES.flatMap(f=>f.rows) : LOCAL_ROWS.slice();
+    const seen=new Set();RAW=[];
+    for(const group of [$("includeLocalHistory").checked?LOCAL_ROWS:[],...CSV_FILES.map(f=>f.rows)]){
+      const current=new Set();for(const row of group){if(seen.has(row.ventaId))continue;RAW.push(row);current.add(row.ventaId);}for(const id of current)seen.add(id);
+    }
     ITEMS=[]; TX=[]; M_GROUPS=[]; ITEMS_EXPORT="";
     clearOutputs();
     $("export").disabled=true; $("exportComplete").disabled=true; $("exportChart").disabled=true;
@@ -1206,7 +1212,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
         if(missing.length){errors.push(file.name+": faltan "+missing.join(", "));continue;}
         const fileId="cierre:"+key+":";
         const parsed=rows.filter(r=>r.some(c=>String(c||"").trim())).map(r=>({
-          ventaId:fileId+String(r[idx["Venta ID"]]??""),
+          ventaId:(idx["Origen equipo"]!==undefined&&r[idx["Origen equipo"]]?r[idx["Origen equipo"]]+":":fileId)+String(r[idx["Venta ID"]]??""),
           movimiento:idx["Movimiento"]===undefined?'':String(r[idx["Movimiento"]]||''),
           fechaRaw:r[idx["Fecha"]],
           total:safeNum(r[idx["Total"]]),
@@ -1225,7 +1231,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
           costoUnitario:idx['Costo unitario']===undefined||String(r[idx['Costo unitario']]??'').trim()===''?null:safeNum(r[idx['Costo unitario']]),
           metodoPago:normalizarMetodoPago(idx["Método de pago"]===undefined ? "" : r[idx["Método de pago"]]),
           pagos:leerDesgloseMetodo(idx["Método de pago"]===undefined ? "" : r[idx["Método de pago"]]),
-          dt:null,fechaISO:null
+          dt:idx["Fecha ISO"]!==undefined&&r[idx["Fecha ISO"]]?new Date(r[idx["Fecha ISO"]]):null,fechaISO:idx["Fecha ISO"]!==undefined?r[idx["Fecha ISO"]]:null
         }));
         CSV_FILES.push({name:file.name,key,rows:parsed}); added++;
       }catch(err){errors.push(file.name+": "+err.message);}
@@ -1236,6 +1242,7 @@ body.pink #cashInicioInput {background:#fff!important;color:#622341!important}
     if(errors.length) alert("Algunos archivos no se cargaron:\n"+errors.join("\n"));
   });
   $("clearCsv").addEventListener("click",()=>{CSV_FILES=[];refreshSources();});
+  $("includeLocalHistory").addEventListener("change",refreshSources);
   document.getElementById("run").addEventListener("click", generateReports);
   ['filterMarca','filterGrupo','filterTipo'].forEach(id=>$(id).addEventListener('change',()=>{if(RAW.length)generateReports();}));
 

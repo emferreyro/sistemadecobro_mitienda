@@ -1055,8 +1055,8 @@ body.dark .history-item[data-posventa-estado="consumo_interno"], body.neon .hist
 <div class="panel" id="panel-historial" style="display:none">
 <div class="historial-header">
   <div class="hist-left">
-    <div><strong>Historial de ventas</strong><div class="small">Acumulado de ventas:</div><div class="small" style="margin-top:4px">Hoy: <strong id="historialHoy">$0.00</strong> · Mes: <strong id="historialMes">$0.00</strong> · Total: <strong id="historialAcumulado">$0.00</strong></div><div class="small cobros-hoy-panel" style="margin-top:9px;line-height:1.6">
-  <div><strong>Resumen de cobros hoy:</strong></div>
+    <div><strong>Historial de ventas</strong><div class="small">Acumulado de ventas:</div><div class="small" style="margin-top:4px">Día operativo: <strong id="historialHoy">$0.00</strong> · Mes: <strong id="historialMes">$0.00</strong> · Total: <strong id="historialAcumulado">$0.00</strong> · Semana: <strong id="historialSemana">$0.00</strong><div>Turno: <strong id="historialTurno">$0.00</strong> · Total calendario hoy: <strong id="historialCalendario">$0.00</strong></div></div><div class="small cobros-hoy-panel" style="margin-top:9px;line-height:1.6">
+  <div><strong>Cobros del turno actual:</strong></div>
   <div>Efectivo: <strong id="cobrosHoyEfectivo">$0.00</strong> · Tarjeta: <strong id="cobrosHoyTarjeta">$0.00</strong> · Vales: <strong id="cobrosHoyVales">$0.00</strong></div>
 </div></div>
   </div>
@@ -1076,7 +1076,9 @@ body.dark .history-item[data-posventa-estado="consumo_interno"], body.neon .hist
 
     <div id="adminHistControls" style="display:none">
       <button type="button" class="btn btn-outline" id="btnPosVentaPermiso" title="Configurar autorización de cancelaciones, devoluciones y cambios">🔐 Clave en acciones: Sí</button>
-<button class="btn btn-acumulado" id="btnExportCSV" type="button" title="Respaldar en CSV y borrar las ventas acumuladas tras comprobar el archivo">💾 Guardar y borrar acumulado</button>
+<button class="btn btn-outline" id="btnCierreTurno" type="button">Cierre de cajero</button>
+<button class="btn btn-outline" id="btnCierreDia" type="button">Cierre del día</button>
+<button class="btn btn-acumulado" id="btnExportCSV" type="button" title="Respaldar un mes terminado y retirar únicamente sus ventas verificadas">💾 Cierre mensual y respaldo</button>
     </div>
   </div>
 </div>
@@ -1437,10 +1439,11 @@ function getCashStartToday(){
   migrateLegacyCashIfNeeded();
   const map = readCashStartMap();
   const k = cashDateKey();
-  return Number(map[k]) || 0;
+  return MiTiendaIntegridad.fondo(Number(map[k]) || 0);
 }
 
 function setCashStartToday(amount){
+  if(MiTiendaIntegridad.setFondo(Number(amount)||0)) return;
   migrateLegacyCashIfNeeded();
   const dateKey = cashDateKey();
   const map = readCashStartMap();
@@ -1458,21 +1461,8 @@ function setCashStartToday(amount){
 
 /* Resumen diario por método; los registros antiguos sin método son efectivo. */
 function actualizarCobrosHoy(){
-  const hoy=new Date();
-  const importes={Efectivo:0,Tarjeta:0,Vales:0};
-  historial.forEach(v=>{
-    if(v.metodoPago==='Consumo interno')return;
-    const fecha=parseVentaDate(v);
-    if(!fecha || fecha.getFullYear()!==hoy.getFullYear() || fecha.getMonth()!==hoy.getMonth() || fecha.getDate()!==hoy.getDate()) return;
-    const pagos=posVentaPagosNetos(v);
-    importes.Efectivo += pagos.Efectivo;
-    importes.Tarjeta += pagos.Tarjeta;
-    importes.Vales += pagos.Vales;
-  });
-  for(const [metodo,id] of [['Efectivo','cobrosHoyEfectivo'],['Tarjeta','cobrosHoyTarjeta'],['Vales','cobrosHoyVales']]){
-    const el=document.getElementById(id);
-    if(el) el.textContent=formatMXN(importes[metodo]);
-  }
+ const t=MiTiendaIntegridad.totals(historial,posVentaPagosNetos).turn;
+ for(const [metodo,id] of [['Efectivo','cobrosHoyEfectivo'],['Tarjeta','cobrosHoyTarjeta'],['Vales','cobrosHoyVales']]){const el=document.getElementById(id);if(el)el.textContent=formatMXN(t[metodo]);}
 }
 
 function updateCashUI(){
@@ -1485,14 +1475,7 @@ function updateCashUI(){
     inp.value = (Number(start)||0).toFixed(2).replace(/\.00$/,'');
   }
 
-  const hoy = new Date();
-  const ventasEfectivoHoy = historial.reduce((s,v) => {
-    if(v.metodoPago==='Consumo interno')return s;
-    const fecha = parseVentaDate(v);
-    if(!fecha || fecha.getFullYear() !== hoy.getFullYear() || fecha.getMonth() !== hoy.getMonth() || fecha.getDate() !== hoy.getDate()) return s;
-    return s + (posVentaPagosNetos(v).Efectivo || 0);
-  }, 0);
-  const cierre = start + ventasEfectivoHoy + MiTiendaIntegridad.efectivoCerradoHoy(historial);
+  const cierre = start + MiTiendaIntegridad.totals(historial,posVentaPagosNetos).turn.Efectivo;
   cierreEl.textContent = formatMXN(cierre);
 }
 
@@ -3845,19 +3828,28 @@ function mostrarOpcionesTicket(venta){
 actualizarResumenHistorial();
 
 function parseVentaDate(v){
-  if(!v) return null;
-
-  // Usar fechaISO si existe (formato estándar)
+  // Los registros nuevos incluyen fechaISO, que es la referencia preferente.
   if(v.fechaISO){
-    const dIso = new Date(v.fechaISO);
-    if(!isNaN(dIso.getTime())) return dIso;
+    const d = new Date(v.fechaISO);
+    if(!Number.isNaN(d.getTime())) return d;
   }
-
-  // Compatibilidad con registros antiguos: intentar parsear la cadena 'fecha'
   if(!v.fecha) return null;
-  const d = new Date(v.fecha);
-  if(isNaN(d.getTime())) return null;
-  return d;
+  const texto = String(v.fecha).trim();
+  // Compatibilidad con el historial anterior que guardaba fechas DD/MM/AAAA
+  // y con las variantes de hora local en español de Windows/Edge/Chrome.
+  const mex = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(.*))?$/);
+  if(mex && Number(mex[2]) <= 12 && Number(mex[1]) <= 31){
+    let [, dd, mm, yyyy, hh='0', min='0', ss='0', sufijo=''] = mex;
+    let hora = Number(hh);
+    const marcador = sufijo.toLowerCase().replace(/[.\s]/g,'');
+    if(marcador === 'pm' && hora < 12) hora += 12;
+    if(marcador === 'am' && hora === 12) hora = 0;
+    const fecha = new Date(Number(yyyy), Number(mm)-1, Number(dd), hora, Number(min), Number(ss));
+    if(fecha.getFullYear() === Number(yyyy) && fecha.getMonth() === Number(mm)-1 && fecha.getDate() === Number(dd)) return fecha;
+    return null;
+  }
+  const d = new Date(texto);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 function actualizarResumenHistorial(){
@@ -3893,7 +3885,12 @@ function actualizarResumenHistorial(){
     }
   });
 
-  elHoy.textContent = formatMXN(totalHoy);
+  const t=MiTiendaIntegridad.totals(historial,posVentaPagosNetos);
+  const sum=o=>Object.values(o).reduce((a,b)=>a+b,0);
+  elHoy.textContent = formatMXN(sum(t.day));
+  document.getElementById('historialTurno').textContent=formatMXN(sum(t.turn));
+  document.getElementById('historialCalendario').textContent=formatMXN(sum(t.actual));
+  document.getElementById('historialSemana').textContent=formatMXN(MiTiendaIntegridad.weekTotal(historial,posVentaPagosNetos));
   elMes.textContent = formatMXN(totalMes);
   elTotal.textContent = formatMXN(totalGeneral);
   try{ updateCashUI(); }catch(e){}
@@ -3903,15 +3900,16 @@ function actualizarResumenHistorial(){
 /* CIERRE DE VENTAS: exportación compatible con reporte.html y borrado verificado */
 let cierreVentasActivo = false;
 function crearArchivoCierre(ventas){
-  const columnas = ['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal','Método de pago','Pago recibido','Cambio','Subtotal productos','Cargo Banco (%)','Cargo Banco $','Movimiento','Venta origen','Motivo','Detalle movimiento'];
+  const columnas = ['Venta ID','Fecha','Total','Código','Nombre','Cant','Precio','Subtotal','Método de pago','Pago recibido','Cambio','Subtotal productos','Cargo Banco (%)','Cargo Banco $','Movimiento','Venta origen','Motivo','Detalle movimiento','Origen equipo','Fecha ISO','Registro original JSON'];
   const rows = [columnas];
-  ventas.forEach(v => {
+  const origen=MiTiendaIntegridad.source();
+  MiTiendaIntegridad.expandirVentas(ventas).forEach(v => {
     const metodo = v.metodoPago === 'Consumo interno' ? 'Consumo interno' : v.metodoPago === 'Mixto' ? ('Mixto: '+(v.pagos||[]).map(x=>x.metodo+' '+Number(x.importe).toFixed(2)).join(' + ')) : v.metodoPago === 'Tarjeta' ? 'Tarjeta' : ((v.metodoPago === 'Vales' || v.metodoPago === 'Vale') ? 'Vales' : 'Efectivo');
     const pago = (v.pago == null || v.pago === '') ? '' : v.pago;
     const cambio = (v.cambio == null || v.cambio === '') ? '' : v.cambio;
     const items = Array.isArray(v.items) ? v.items : [];
-    if(!items.length) rows.push([v.id,v.fecha,v.total,'','','','','',metodo,pago,cambio,v.subtotalProductos??v.total-(v.cargoBanco||0),v.cargoBancoPorcentaje||0,v.cargoBanco||0,v.movimiento?.tipo||'',v.movimiento?.origen||'',v.movimiento?.motivo||'',v.movimiento?JSON.stringify(v.movimiento):'']);
-    items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre||'',it.cantidad,it.precio,it.subtotal,metodo,pago,cambio,v.subtotalProductos??v.total-(v.cargoBanco||0),v.cargoBancoPorcentaje||0,v.cargoBanco||0,v.movimiento?.tipo||'',v.movimiento?.origen||'',v.movimiento?.motivo||'',v.movimiento?JSON.stringify(v.movimiento):'']));
+    if(!items.length) rows.push([v.id,v.fecha,v.total,'','','','','',metodo,pago,cambio,v.subtotalProductos??v.total-(v.cargoBanco||0),v.cargoBancoPorcentaje||0,v.cargoBanco||0,v.movimiento?.tipo||'',v.movimiento?.origen||'',v.movimiento?.motivo||'',v.movimiento?JSON.stringify(v.movimiento):'',origen,v.fechaISO||'',JSON.stringify(v)]);
+    items.forEach(it=> rows.push([v.id,v.fecha,v.total,it.codigo||'',it.nombre||'',it.cantidad,it.precio,it.subtotal,metodo,pago,cambio,v.subtotalProductos??v.total-(v.cargoBanco||0),v.cargoBancoPorcentaje||0,v.cargoBanco||0,v.movimiento?.tipo||'',v.movimiento?.origen||'',v.movimiento?.motivo||'',v.movimiento?JSON.stringify(v.movimiento):'',origen,v.fechaISO||'',JSON.stringify(v)]));
   });
   return '\uFEFF' + rows.map(r => r.map(c => '"' + String(c ?? '').replace(/"/g,'""') + '"').join(',')).join('\r\n');
 }
@@ -3956,20 +3954,26 @@ function seleccionarCSVDeCierre(nombreEsperado){
 }
 async function exportHistorialCSV(){
   if(cierreVentasActivo) return;
-  if(!historial.length){ alert('No hay ventas acumuladas para respaldar.'); return; }
-  const cantidadVentas = historial.filter(v=>v.metodoPago!=='Consumo interno').length;
-  const cantidadInternos = historial.length-cantidadVentas;
-  if(!confirm('GUARDAR Y BORRAR ACUMULADO\n\nSe descargará una copia de las '+cantidadVentas+' ventas y '+cantidadInternos+' consumos internos acumulados en un archivo CSV.\n\nDESPUÉS de comprobar el respaldo, se borrará el historial de ventas activo de este equipo. Los productos, inventario y configuraciones NO se borrarán.\n\nPara consultar las ventas cerradas deberás cargar el CSV desde reporte.html.\n\n¿Continuar?')) return;
+  if(localStorage.getItem('sistemacobro_venta_pendiente_v1')){alert('Recarga para recuperar la venta pendiente.');return;}
+  const actual=cashDateKey().slice(0,7);
+  const meses=[...new Set(historial.map(MiTiendaIntegridad.period).filter(m=>m&&m<actual))].sort();
+  if(!meses.length){alert('No hay meses terminados para respaldar. El mes en curso permanece en el historial.');return;}
+  const mes=prompt('Mes a respaldar (AAAA-MM). Disponibles: '+meses.join(', '),meses[0]);
+  if(mes===null)return;
+  if(!meses.includes(mes)){alert('Elige un mes terminado de la lista.');return;}
+  const ventasMes=historial.filter(v=>MiTiendaIntegridad.period(v)===mes);
+  const cantidadVentas=ventasMes.filter(v=>v.metodoPago!=='Consumo interno').length;
+  if(!confirm('Respaldar '+mes+' ('+ventasMes.length+' registros). Solo se retirarán los registros de ese mes después de verificar el CSV. ¿Continuar?'))return;
   cierreVentasActivo = true;
   const btn = document.getElementById('btnExportCSV');
   if(btn) btn.disabled=true;
   try{
     // Una copia inmutable para comparar el historial justo antes de borrarlo.
     const historialOriginal = JSON.stringify(historial);
-    const csv = crearArchivoCierre(JSON.parse(historialOriginal));
+    const csv = crearArchivoCierre(ventasMes);
     const ts = new Date();
     const stamp = ts.getFullYear()+'-'+String(ts.getMonth()+1).padStart(2,'0')+'-'+String(ts.getDate()).padStart(2,'0')+'_'+String(ts.getHours()).padStart(2,'0')+'-'+String(ts.getMinutes()).padStart(2,'0')+'-'+String(ts.getSeconds()).padStart(2,'0');
-    const fname = 'Cierre_ventas_'+stamp+'.csv';
+    const fname = 'Ventas_'+mes+'_'+stamp+'.csv';
     let respaldado = false;
     if('showSaveFilePicker' in window){
       try{
@@ -4003,13 +4007,15 @@ async function exportHistorialCSV(){
     }
     if(!confirm('RESPALDO VERIFICADO\n\n'+cantidadVentas+' ventas respaldadas correctamente.\n\n¿Confirmas que deseas borrar estas ventas del historial activo?\n\nPodrás consultarlas después importando el CSV en Reporte.')) return;
     // Nunca eliminar el carrito ni el catálogo de productos.
-    MiTiendaIntegridad.registrarCierreCaja(historial);
-    localStorage.setItem(KEY_HISTORY,'[]');
-    historial=[];
+    const restantes=historial.filter(v=>MiTiendaIntegridad.period(v)!==mes);
+    if(localStorage.getItem('sistemacobro_venta_pendiente_v1')||localStorage.getItem(KEY_HISTORY)!==historialOriginal)throw Error('El historial cambió antes de retirar el mes.');
+    MiTiendaIntegridad.guardarResumenMes(ventasMes,posVentaPagosNetos,mes);
+    localStorage.setItem(KEY_HISTORY,JSON.stringify(restantes));
+    historial=restantes;
     renderHistorial();
     actualizarResumenHistorial();
     updateCashUI();
-    alert('Acumulado respaldado y borrado. El historial activo quedó vacío. Conserva tu archivo '+fname+' en un lugar seguro.');
+    alert('Mes respaldado. Los demás periodos permanecen en el historial. Conserva tu archivo '+fname+' en un lugar seguro.');
   }catch(err){
     console.error('Error al guardar y borrar acumulado:',err);
     alert('No se completó la operación: '+(err && err.message ? err.message : String(err))+ '\n\nNo se borraron las ventas.');
@@ -4019,6 +4025,23 @@ async function exportHistorialCSV(){
   }
 }
 document.getElementById('btnExportCSV')?.addEventListener('click', exportHistorialCSV);
+function cerrarTurno(tipo){
+ if(cierreVentasActivo)return;
+ try{
+  if(document.getElementById('cashInicioInput').dataset.cashEditing){alert('Guarda primero el fondo de caja.');return;}
+  const t=MiTiendaIntegridad.totals(historial,posVentaPagosNetos), start=getCashStartToday();
+  const esperado=Math.round((start+t.turn.Efectivo)*100)/100;
+  const operador=prompt('Nombre del cajero que entrega la caja:');if(operador===null)return;if(!operador.trim()){alert('Escribe el nombre del cajero.');return;}
+  const raw=prompt('Efectivo esperado: '+formatMXN(esperado)+'\nEfectivo contado:',String(Math.max(0,esperado)));if(raw===null)return;
+  const contado=Number(raw);if(!raw.trim()||!Number.isFinite(contado)||contado<0){alert('Importe inválido.');return;}
+  const nota=prompt('Observaciones (opcional):','');if(nota===null)return;
+  if(!confirm((tipo==='dia'?'Cierre del día':'Cierre de cajero')+'\nDiferencia: '+formatMXN(contado-esperado)+'\nSe conserva todo el historial y el fondo de caja vuelve a cero. ¿Confirmar?'))return;
+  MiTiendaIntegridad.closeShift({hist:historial,net:posVentaPagosNetos,start,type:tipo,counted:contado,operator:operador.trim(),note:nota,historyKey:KEY_HISTORY});
+  actualizarResumenHistorial();alert('Cierre registrado. Captura el nuevo fondo al iniciar otra caja.');
+ }catch(e){alert('No se completó el cierre: '+e.message);}
+}
+document.getElementById('btnCierreTurno').onclick=()=>cerrarTurno('turno');
+document.getElementById('btnCierreDia').onclick=()=>cerrarTurno('dia');
 
 /* BACKUP: Export / Import productos */
 
