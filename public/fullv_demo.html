@@ -757,6 +757,20 @@ body.dark input::placeholder,body.neon input::placeholder { color:#aab9c9; opaci
 }
 }
 </style>
+
+<style id="mitienda-alerta-venta-espera">
+#ventas-pestanas button.espera.espera-alerta {
+  background:linear-gradient(180deg,#fff0b5,#ffb341)!important;
+  color:#492400!important;border-color:#ff9100!important;
+  outline:2px solid #ffab36;outline-offset:1px;
+  animation:mitienda-espera-pulso 1.6s ease-in-out infinite!important;
+}
+@keyframes mitienda-espera-pulso {
+  0%,100% {box-shadow:0 0 3px #ff9b26,inset 0 1px 0 #fff7db;outline-color:#e28b22;}
+  50% {box-shadow:0 0 13px 3px #ff9b26,inset 0 1px 0 #fff7db;outline-color:#ffdb75;}
+}
+@media(prefers-reduced-motion:reduce){#ventas-pestanas button.espera.espera-alerta{animation:none!important;box-shadow:0 0 6px #ff9b26!important;}}
+</style>
 </head>
 <body>
 <!-- ===== DEMO: prueba individual 30 días (por dispositivo/navegador) ===== -->
@@ -1278,13 +1292,43 @@ function cargarVentasEspera(){
     delete estado.pendiente;
     localStorage.setItem(KEY_VENTAS_ESPERA,JSON.stringify(estado));
   }
+  // Las ventas guardadas antes de esta actualización comienzan a contar al recuperarse.
+  let migrado=false;
+  const ahora=Date.now();
+  estado.guardadas.forEach(g=>{
+    if(g?.items?.length&&(!Number.isFinite(g.esperaDesde)||g.esperaDesde<=0||g.esperaDesde>ahora)){
+      g.esperaDesde=ahora;migrado=true;
+    }
+  });
   ventasEspera=estado;
+  if(migrado){try{localStorage.setItem(KEY_VENTAS_ESPERA,JSON.stringify(estado));}catch(e){console.warn('No se pudo guardar la hora de espera.',e);}}
 }
 function camposCobroEspera(){return [metodoPagoInput,pagoInput,cargoBancoPct,metodoMixto1,metodoMixto2,importeMixto1,importeMixto2];}
 function restaurarCobroEspera(valores){
   metodoPagoInput.value='Efectivo';pagoInput.value='';cargoBancoPct.value='';limpiarPagoMixto();
   if(Array.isArray(valores)&&Array.from(metodoPagoInput.options).some(op=>op.value===valores[0]))camposCobroEspera().forEach((el,i)=>{if(typeof valores[i]==='string')el.value=valores[i];});
 }
+// Alerta local de ventas en espera; no modifica importes ni existencias.
+const MS_ALERTA_VENTA_ESPERA=60000;
+function actualizarAlertasVentasEspera(){
+  const zona=document.getElementById('ventas-pestanas');
+  if(!zona)return;
+  const ahora=Date.now();
+  Array.from(zona.children).forEach((btn,i)=>{
+    const guardada=ventasEspera.guardadas[i];
+    const pendiente=i!==ventasEspera.activa&&!!guardada?.items?.length;
+    const transcurrido=pendiente?Math.max(0,ahora-guardada.esperaDesde):0;
+    const alerta=pendiente&&transcurrido>=MS_ALERTA_VENTA_ESPERA;
+    btn.classList.toggle('espera-alerta',alerta);
+    if(pendiente){
+      const minutos=Math.floor(transcurrido/60000);
+      const estado='En espera · '+formatMXN(guardada.total)+(alerta?' · '+minutos+' min pendientes':'');
+      btn.title=estado;btn.setAttribute('aria-label','Venta '+(i+1)+' · '+estado);
+    }
+  });
+}
+setInterval(actualizarAlertasVentasEspera,1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)actualizarAlertasVentasEspera();});
 function pintarVentasEspera(){
   const zona=document.getElementById('ventas-pestanas');
   zona.replaceChildren();
@@ -1299,12 +1343,13 @@ function pintarVentasEspera(){
     btn.title=estado;btn.setAttribute('aria-label',titulo.textContent+' · '+estado);
     btn.append(titulo);btn.addEventListener('click',()=>cambiarVentaEspera(i));zona.appendChild(btn);
   }
+  actualizarAlertasVentasEspera();
 }
 function cambiarVentaEspera(i){
   if(i===ventasEspera.activa||Array.from(document.querySelectorAll('.modal')).some(el=>el.getClientRects().length>0))return;
   const entrante=ventasEspera.guardadas[i];
   const guardadas=ventasEspera.guardadas.slice();
-  guardadas[ventasEspera.activa]=carrito.length?{items:carrito,cobro:camposCobroEspera().map(el=>el.value),total:desgloseCobro().total??currentTotal}:null;
+  guardadas[ventasEspera.activa]=carrito.length?{esperaDesde:Date.now(),items:carrito,cobro:camposCobroEspera().map(el=>el.value),total:desgloseCobro().total??currentTotal}:null;
   guardadas[i]=null;
   const siguiente={activa:i,guardadas,pendiente:entrante?.items||[]};
   try{
