@@ -873,7 +873,7 @@ body.neon { --led-focus-rgb: 45, 212, 255; }
   body:has(#nav-historial.active) #atajos-botones > #shortcut-hist:not(:disabled) {
     outline: 1px solid rgba(var(--led-focus-rgb), .40);
     outline-offset: 1px;
-    animation: mitienda-atajo-led 1.6s ease-in-out infinite;
+    animation: mitienda-atajo-led 3.2s ease-in-out infinite;
   }
   body :is(input:not([type]), input[type="text"], input[type="search"], input[type="number"], input[type="password"], input[type="email"], input[type="tel"], input[type="url"], input[type="date"], input[type="time"], input[type="month"], textarea, select):focus:not(:disabled) {
     outline-width: 2px !important;
@@ -913,7 +913,7 @@ body.neon { --led-focus-rgb: 45, 212, 255; }
   /* Solo el atajo correspondiente a la sección actual respira. */
   body:has(#nav-venta.active) #atajos-botones > #shortcut-venta:not(:disabled),
   body:has(#nav-productos.active) #atajos-botones > #shortcut-productos:not(:disabled),
-  body:has(#nav-historial.active) #atajos-botones > #shortcut-hist:not(:disabled) { animation:mitienda-atajo-led 1.6s ease-in-out infinite; box-shadow:0 0 4px rgba(var(--led-focus-rgb),.35)!important; outline-width:2px; }
+  body:has(#nav-historial.active) #atajos-botones > #shortcut-hist:not(:disabled) { animation:mitienda-atajo-led 3.2s ease-in-out infinite; box-shadow:0 0 4px rgba(var(--led-focus-rgb),.35)!important; outline-width:2px; }
   /* El halo animado usa el contorno y su desplazamiento; compatible con reglas táctiles. */
   @keyframes mitienda-atajo-led {
     0%,100% {outline-color:rgba(var(--led-focus-rgb),.22);outline-offset:1px;}
