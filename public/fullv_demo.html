@@ -796,41 +796,71 @@ body.dark input::placeholder,body.neon input::placeholder { color:#aab9c9; opaci
 </style>
 <style id="mitienda-atajos-foco-luminoso">
 /* Iluminación temática localizada; no altera dimensiones ni eventos. */
-body { --led-focus-rgb: 139, 187, 28; }
-body.pink { --led-focus-rgb: 157, 91, 222; }
+body { --led-focus-rgb: 104, 157, 0; }
+body.pink { --led-focus-rgb: 126, 34, 206; }
 body.dark { --led-focus-rgb: 218, 229, 241; }
 body.neon { --led-focus-rgb: 45, 212, 255; }
 @media screen {
-  body #atajos-botones > button:not(:disabled) {
+  body:has(#nav-venta.active) #atajos-botones > #shortcut-venta:not(:disabled),
+  body:has(#nav-productos.active) #atajos-botones > #shortcut-productos:not(:disabled),
+  body:has(#nav-historial.active) #atajos-botones > #shortcut-hist:not(:disabled) {
     outline: 1px solid rgba(var(--led-focus-rgb), .40);
     outline-offset: 1px;
-    animation: mitienda-atajo-led 4s ease-in-out infinite;
+    animation: mitienda-atajo-led 1.6s ease-in-out infinite;
   }
   body :is(input:not([type]), input[type="text"], input[type="search"], input[type="number"], input[type="password"], input[type="email"], input[type="tel"], input[type="url"], input[type="date"], input[type="time"], input[type="month"], textarea, select):focus:not(:disabled) {
     outline-width: 2px !important;
     outline-style: solid !important;
     outline-color: rgba(var(--led-focus-rgb), .65);
     outline-offset: 1px;
-    animation: mitienda-foco-led 2.8s ease-in-out infinite !important;
+    animation: mitienda-foco-led 1.4s ease-in-out infinite !important;
   }
   @keyframes mitienda-atajo-led {
     0%,100% { outline-color: rgba(var(--led-focus-rgb), .20); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 0 3px rgba(var(--led-focus-rgb), .18); }
-    50% { outline-color: rgba(var(--led-focus-rgb), .58); box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 0 9px rgba(var(--led-focus-rgb), .38); }
+    50% { outline-color: rgba(var(--led-focus-rgb), .95); box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 0 9px rgba(var(--led-focus-rgb), .65); }
   }
   @keyframes mitienda-foco-led {
     0%,100% { outline-color: rgba(var(--led-focus-rgb), .35); box-shadow: 0 0 3px rgba(var(--led-focus-rgb), .20); }
-    50% { outline-color: rgba(var(--led-focus-rgb), .92); box-shadow: 0 0 9px rgba(var(--led-focus-rgb), .38); }
+    50% { outline-color: rgba(var(--led-focus-rgb), .92); box-shadow: 0 0 9px rgba(var(--led-focus-rgb), .65); }
   }
   /* En pantallas táctiles animar solo el contorno, sin sombras adicionales. */
   @media (pointer:coarse), (any-pointer:coarse) {
-    body #atajos-botones > button:not(:disabled) { animation-name: mitienda-atajo-led-tactil; }
+    body:has(#nav-venta.active) #atajos-botones > #shortcut-venta:not(:disabled),
+  body:has(#nav-productos.active) #atajos-botones > #shortcut-productos:not(:disabled),
+  body:has(#nav-historial.active) #atajos-botones > #shortcut-hist:not(:disabled) { animation-name: mitienda-atajo-led-tactil; }
     body :is(input:not([type]), input[type="text"], input[type="search"], input[type="number"], input[type="password"], input[type="email"], input[type="tel"], input[type="url"], input[type="date"], input[type="time"], input[type="month"], textarea, select):focus:not(:disabled) { animation-name: mitienda-foco-led-tactil !important; }
-    @keyframes mitienda-atajo-led-tactil { 0%,100% { outline-color: rgba(var(--led-focus-rgb), .20); } 50% { outline-color: rgba(var(--led-focus-rgb), .58); } }
+    @keyframes mitienda-atajo-led-tactil { 0%,100% { outline-color: rgba(var(--led-focus-rgb), .20); } 50% { outline-color: rgba(var(--led-focus-rgb), .95); } }
     @keyframes mitienda-foco-led-tactil { 0%,100% { outline-color: rgba(var(--led-focus-rgb), .35); } 50% { outline-color: rgba(var(--led-focus-rgb), .92); } }
   }
   @media (prefers-reduced-motion:reduce) {
-    body #atajos-botones > button:not(:disabled),
+    body:has(#nav-venta.active) #atajos-botones > #shortcut-venta:not(:disabled),
+  body:has(#nav-productos.active) #atajos-botones > #shortcut-productos:not(:disabled),
+  body:has(#nav-historial.active) #atajos-botones > #shortcut-hist:not(:disabled),
     body :is(input, textarea, select):focus { animation: none !important; }
+  }
+
+  /* La navegación superior conserva la marca activa, sin halo. */
+  body :is(#nav-venta,#nav-productos,#nav-historial) { animation:none!important; box-shadow:none!important; outline-offset:2px; }
+  body :is(#nav-venta,#nav-productos,#nav-historial).active { outline:1px solid rgba(var(--led-focus-rgb),.85); }
+  body #atajos-botones > button { animation:none; box-shadow:none!important; }
+  /* Solo el atajo correspondiente a la sección actual respira. */
+  body:has(#nav-venta.active) #atajos-botones > #shortcut-venta:not(:disabled),
+  body:has(#nav-productos.active) #atajos-botones > #shortcut-productos:not(:disabled),
+  body:has(#nav-historial.active) #atajos-botones > #shortcut-hist:not(:disabled) { animation:mitienda-atajo-led 1.6s ease-in-out infinite; box-shadow:0 0 4px rgba(var(--led-focus-rgb),.35)!important; outline-width:2px; }
+  /* El halo animado usa el contorno y su desplazamiento; compatible con reglas táctiles. */
+  @keyframes mitienda-atajo-led {
+    0%,100% {outline-color:rgba(var(--led-focus-rgb),.22);outline-offset:1px;}
+    50% {outline-color:rgba(var(--led-focus-rgb),.98);outline-offset:3px;}
+  }
+  @media (pointer:coarse), (any-pointer:coarse) {
+    body:has(#nav-venta.active) #atajos-botones > #shortcut-venta:not(:disabled),
+  body:has(#nav-productos.active) #atajos-botones > #shortcut-productos:not(:disabled),
+  body:has(#nav-historial.active) #atajos-botones > #shortcut-hist:not(:disabled) { animation-name:mitienda-atajo-led-tactil; }
+  }
+  @media(prefers-reduced-motion:reduce) {
+    body:has(#nav-venta.active) #atajos-botones > #shortcut-venta:not(:disabled),
+  body:has(#nav-productos.active) #atajos-botones > #shortcut-productos:not(:disabled),
+  body:has(#nav-historial.active) #atajos-botones > #shortcut-hist:not(:disabled) { animation:none!important; outline-color:rgba(var(--led-focus-rgb),.85); }
   }
 }
 </style>
