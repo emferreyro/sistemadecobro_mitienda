@@ -861,6 +861,46 @@ body.dark input::placeholder,body.neon input::placeholder { color:#aab9c9; opaci
 #historialConsultaVista [hidden],#historialConsultaHoy[hidden],#historialConsultaVista[hidden]{display:none!important}
 @media(max-width:420px){#historialConsultaVista .consulta-fila{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
+<style id="mitienda-atajos-foco-luminoso">
+/* Iluminación temática localizada; no altera dimensiones ni eventos. */
+body { --led-focus-rgb: 139, 187, 28; }
+body.pink { --led-focus-rgb: 157, 91, 222; }
+body.dark { --led-focus-rgb: 218, 229, 241; }
+body.neon { --led-focus-rgb: 45, 212, 255; }
+@media screen {
+  body #atajos-botones > button:not(:disabled) {
+    outline: 1px solid rgba(var(--led-focus-rgb), .40);
+    outline-offset: 1px;
+    animation: mitienda-atajo-led 4s ease-in-out infinite;
+  }
+  body :is(input:not([type]), input[type="text"], input[type="search"], input[type="number"], input[type="password"], input[type="email"], input[type="tel"], input[type="url"], input[type="date"], input[type="time"], input[type="month"], textarea, select):focus:not(:disabled) {
+    outline-width: 2px !important;
+    outline-style: solid !important;
+    outline-color: rgba(var(--led-focus-rgb), .65);
+    outline-offset: 1px;
+    animation: mitienda-foco-led 2.8s ease-in-out infinite !important;
+  }
+  @keyframes mitienda-atajo-led {
+    0%,100% { outline-color: rgba(var(--led-focus-rgb), .20); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 0 3px rgba(var(--led-focus-rgb), .18); }
+    50% { outline-color: rgba(var(--led-focus-rgb), .58); box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 0 9px rgba(var(--led-focus-rgb), .38); }
+  }
+  @keyframes mitienda-foco-led {
+    0%,100% { outline-color: rgba(var(--led-focus-rgb), .35); box-shadow: 0 0 3px rgba(var(--led-focus-rgb), .20); }
+    50% { outline-color: rgba(var(--led-focus-rgb), .92); box-shadow: 0 0 9px rgba(var(--led-focus-rgb), .38); }
+  }
+  /* En pantallas táctiles animar solo el contorno, sin sombras adicionales. */
+  @media (pointer:coarse), (any-pointer:coarse) {
+    body #atajos-botones > button:not(:disabled) { animation-name: mitienda-atajo-led-tactil; }
+    body :is(input:not([type]), input[type="text"], input[type="search"], input[type="number"], input[type="password"], input[type="email"], input[type="tel"], input[type="url"], input[type="date"], input[type="time"], input[type="month"], textarea, select):focus:not(:disabled) { animation-name: mitienda-foco-led-tactil !important; }
+    @keyframes mitienda-atajo-led-tactil { 0%,100% { outline-color: rgba(var(--led-focus-rgb), .20); } 50% { outline-color: rgba(var(--led-focus-rgb), .58); } }
+    @keyframes mitienda-foco-led-tactil { 0%,100% { outline-color: rgba(var(--led-focus-rgb), .35); } 50% { outline-color: rgba(var(--led-focus-rgb), .92); } }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    body #atajos-botones > button:not(:disabled),
+    body :is(input, textarea, select):focus { animation: none !important; }
+  }
+}
+</style>
 </head>
 <body>
 <div class="app">
