@@ -1142,10 +1142,16 @@ body.dark input::placeholder,body.neon input::placeholder { color:#aab9c9; opaci
 <div class="panel" id="panel-historial" style="display:none">
 <div class="historial-header">
   <div class="hist-left">
-    <div><strong>Historial de ventas</strong><div class="small">Acumulado de ventas:</div><div class="small" style="margin-top:4px">Día operativo: <strong id="historialHoy">$0.00</strong> · Mes: <strong id="historialMes">$0.00</strong> · Total: <strong id="historialAcumulado">$0.00</strong> · Semana: <strong id="historialSemana">$0.00</strong><div>Turno: <strong id="historialTurno">$0.00</strong> · Total calendario hoy: <strong id="historialCalendario">$0.00</strong></div></div><div class="small cobros-hoy-panel" style="margin-top:9px;line-height:1.6">
-  <div><strong>Cobros del turno actual:</strong></div>
-  <div>Efectivo: <strong id="cobrosHoyEfectivo">$0.00</strong> · Tarjeta: <strong id="cobrosHoyTarjeta">$0.00</strong> · Vales: <strong id="cobrosHoyVales">$0.00</strong></div>
-</div></div>
+    <div><strong>Historial de ventas</strong><div class="small" style="margin-top:6px;line-height:1.6;display:flex;flex-wrap:wrap;gap:0 10px">
+    <span>Acumulado de hoy: <strong id="historialHoy">$0.00</strong></span>
+    <span>Acumulado de semana: <strong id="historialSemana">$0.00</strong></span>
+    <span>Acumulado de mes: <strong id="historialMes">$0.00</strong></span>
+  </div>
+  <div class="small cobros-hoy-panel" style="margin-top:9px;line-height:1.6">
+    <div><strong>Turno actual: <span id="historialTurno">$0.00</span></strong></div>
+    <div style="display:flex;flex-wrap:wrap;gap:0 10px"><span>Efectivo: <strong id="cobrosHoyEfectivo">$0.00</strong></span><span>Tarjeta: <strong id="cobrosHoyTarjeta">$0.00</strong></span><span>Vales: <strong id="cobrosHoyVales">$0.00</strong></span></div>
+  </div>
+  <div hidden><strong id="historialAcumulado">$0.00</strong><strong id="historialCalendario">$0.00</strong></div></div>
   </div>
 
   <div class="hist-center">
