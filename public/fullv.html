@@ -690,6 +690,71 @@ body.dark .history-item[data-posventa-estado="cambio"], body.neon .history-item[
 body.dark .history-item[data-posventa-estado="consumo_interno"], body.neon .history-item[data-posventa-estado="consumo_interno"] { background: #18384b !important; border-color: #52809a !important; }
 .history-item[data-posventa-estado] [data-hist-total] { color: inherit !important; }
 </style>
+<style id="mitienda-brillos-sutiles">
+/* Acabado visual estático. No altera medidas, colores de texto ni funciones. */
+@media screen {
+body { --glow-accent: rgba(174,130,15,.31); --glow-edge: rgba(255,255,255,.82); --glow-depth: rgba(31,41,55,.13); --glow-wash: rgba(255,249,212,.88); }
+body.dark { --glow-accent: rgba(112,169,255,.24); --glow-edge: rgba(255,255,255,.13); --glow-depth: rgba(0,0,0,.42); --glow-wash: rgba(76,121,185,.13); }
+body.neon { --glow-accent: rgba(45,212,255,.43); --glow-edge: rgba(110,230,255,.20); --glow-depth: rgba(0,0,0,.45); --glow-wash: rgba(45,212,255,.12); }
+body.pink { --glow-accent: rgba(219,39,119,.20); --glow-edge: rgba(255,255,255,.90); --glow-depth: rgba(133,44,88,.13); --glow-wash: rgba(255,255,255,.70); }
+body .app { background-image: radial-gradient(ellipse at 12% 0%, var(--glow-wash), transparent 70%); }
+body .app > header, body .mitienda-header, body header {
+  box-shadow: inset 0 1px 0 var(--glow-edge), 0 3px 12px var(--glow-accent);
+}
+body:not(.pink) header { background-image: linear-gradient(115deg,var(--glow-wash),transparent 62%); }
+body.pink header, body.pink .mitienda-header { background-image: linear-gradient(115deg,rgba(255,255,255,.42),transparent 65%) !important; }
+body .panel, body .cash-card, body .cashBox {
+  box-shadow: inset 0 1px 0 var(--glow-edge), 0 5px 15px var(--glow-depth), 0 0 14px var(--glow-accent);
+}
+body .btn:not(:disabled), body .qty-step:not(:disabled), body .nav button.active:not(:disabled) {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.27), 0 2px 5px var(--glow-depth);
+}
+body .btn-rojo:not(:disabled), body .btn-amarillo:not(:disabled), body .nav button.active:not(:disabled) {
+  background-image: linear-gradient(180deg,rgba(255,255,255,.32),transparent 48%,rgba(0,0,0,.12));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.33), 0 2px 7px var(--glow-accent);
+}
+body.pink .btn-rojo:not(:disabled), body.pink .btn-amarillo:not(:disabled) { background-image: linear-gradient(180deg,rgba(255,255,255,.16),transparent 55%) !important; }
+body .panel input:not([type="checkbox"]):not([type="radio"]):focus, body .panel select:focus, body .panel textarea:focus {
+  box-shadow: 0 0 0 2px var(--glow-accent);
+}
+body .modal-box, body #clasif-admin-dialog, body #bulk-modal .bulk-dialog {
+  box-shadow: inset 0 1px 0 var(--glow-edge), 0 8px 24px var(--glow-depth), 0 0 10px var(--glow-accent);
+}
+@media (hover:hover) and (pointer:fine) {
+  body .btn:not(:disabled):hover { box-shadow: inset 0 1px 0 var(--glow-edge), 0 0 8px var(--glow-accent); }
+}
+/* En equipos táctiles se limita el brillo exterior; sin filtros ni animaciones. */
+@media (pointer:coarse) {
+  body .panel, body .cash-card, body .cashBox { box-shadow: inset 0 1px 0 var(--glow-edge), 0 3px 8px var(--glow-depth); }
+  body .app { background-image: none; }
+}
+}
+</style>
+
+<style id="mitienda-luces-futuristas">
+@media screen {
+body:not(.dark):not(.neon):not(.pink) { --future-edge:#f59e0b; --future-core:#fff3c4; --future-halo:rgba(249,115,22,.48); --future-wash:rgba(251,146,60,.20); --future-ink:#713508; }
+body.pink { --future-edge:#a855f7; --future-core:#f3d9ff; --future-halo:rgba(147,51,234,.48); --future-wash:rgba(168,85,247,.18); --future-ink:#63239b; }
+body.dark { --future-edge:#b9c4d2; --future-core:#ffffff; --future-halo:rgba(220,235,255,.34); --future-wash:rgba(216,228,245,.13); --future-ink:#f1f5f9; }
+body:not(.neon) .app { background-image:radial-gradient(ellipse at 12% 0%,var(--future-wash),transparent 62%),radial-gradient(ellipse at 95% 35%,var(--future-wash),transparent 55%); }
+body:not(.neon) header, body:not(.neon) .mitienda-header { background-image:linear-gradient(115deg,var(--future-wash),transparent 65%),linear-gradient(0deg,var(--future-wash),transparent 38%) !important; border-bottom-color:var(--future-edge)!important; box-shadow:inset 0 -2px 0 var(--future-core),0 3px 4px var(--future-edge),0 7px 20px var(--future-halo); }
+body:not(.neon) .panel, body:not(.neon) .cash-card, body:not(.neon) .cashBox, body:not(.neon) .modal-box { border-color:var(--future-edge)!important; box-shadow:inset 0 1px 0 var(--future-core),inset 0 0 9px var(--future-halo),0 0 4px var(--future-edge),0 0 19px var(--future-halo),0 6px 16px var(--glow-depth); }
+body:not(.neon) .btn:not(:disabled),body:not(.neon) .nav button.active:not(:disabled),body:not(.neon) .qty-step:not(:disabled) { border-color:var(--future-edge)!important; box-shadow:inset 0 1px 0 var(--future-core),0 0 7px var(--future-halo),0 2px 5px var(--glow-depth); }
+body:not(.neon) .nav button.active { color:var(--future-ink)!important; background-image:linear-gradient(180deg,var(--future-core),var(--future-wash))!important; }
+body.dark .nav button.active { background-image:linear-gradient(180deg,#697581,#252c34 55%,#171b21)!important; }
+body:not(.neon) .panel input:focus,body:not(.neon) .panel select:focus,body:not(.neon) .panel textarea:focus { border-color:var(--future-edge)!important; outline-color:var(--future-edge); box-shadow:0 0 0 2px var(--future-halo); }
+body.dark .nav button:not(.active),body.neon .nav button:not(.active) { color:#e5edf7!important; }
+body.dark #panel-venta label,body.dark #panel-venta .small { color:#c5cfdb!important; }
+body.dark #total { color:#ff7777!important; }
+body.dark #cambio:not(.blink-red),body.neon #cambio:not(.blink-red) { color:#57e697; }
+body.neon #btnFinalizar:not(:disabled) { background-image:linear-gradient(180deg,#76ff9d,#20d95a 55%,#12b94a)!important; color:#06110a!important; }
+body.dark input::placeholder,body.neon input::placeholder { color:#aab9c9; opacity:1; }
+@media (pointer:coarse), (any-pointer:coarse) {
+ body:not(.neon) .panel,body:not(.neon) .cash-card,body:not(.neon) .cashBox,body:not(.neon) .modal-box { box-shadow:inset 0 1px 0 var(--future-core),0 0 5px var(--future-halo); }
+ body:not(.neon) header,body:not(.neon) .mitienda-header { box-shadow:inset 0 -1px 0 var(--future-core),0 3px 7px var(--future-halo); }
+}
+}
+</style>
 </head>
 <body>
 <!-- Autorización centralizada en js/guardFullv.js; sin validaciones duplicadas. -->
@@ -4529,45 +4594,6 @@ document.addEventListener('DOMContentLoaded', attach);
   }
 })();
 </script>
-<style id="mitienda-brillos-sutiles">
-/* Acabado visual estático. No altera medidas, colores de texto ni funciones. */
-@media screen {
-body { --glow-accent: rgba(174,130,15,.20); --glow-edge: rgba(255,255,255,.82); --glow-depth: rgba(31,41,55,.13); --glow-wash: rgba(255,249,212,.65); }
-body.dark { --glow-accent: rgba(112,169,255,.24); --glow-edge: rgba(255,255,255,.13); --glow-depth: rgba(0,0,0,.42); --glow-wash: rgba(76,121,185,.13); }
-body.neon { --glow-accent: rgba(45,212,255,.32); --glow-edge: rgba(110,230,255,.20); --glow-depth: rgba(0,0,0,.45); --glow-wash: rgba(45,212,255,.12); }
-body.pink { --glow-accent: rgba(219,39,119,.20); --glow-edge: rgba(255,255,255,.90); --glow-depth: rgba(133,44,88,.13); --glow-wash: rgba(255,255,255,.70); }
-body .app { background-image: radial-gradient(ellipse at 12% 0%, var(--glow-wash), transparent 58%); }
-body .app > header, body .mitienda-header, body header {
-  box-shadow: inset 0 1px 0 var(--glow-edge), 0 3px 12px var(--glow-accent);
-}
-body:not(.pink) header { background-image: linear-gradient(115deg,var(--glow-wash),transparent 62%); }
-body.pink header, body.pink .mitienda-header { background-image: linear-gradient(115deg,rgba(255,255,255,.42),transparent 65%) !important; }
-body .panel, body .cash-card {
-  box-shadow: inset 0 1px 0 var(--glow-edge), 0 4px 13px var(--glow-depth), 0 0 9px var(--glow-accent);
-}
-body .btn:not(:disabled), body .nav button.active:not(:disabled) {
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.27), 0 2px 5px var(--glow-depth);
-}
-body .btn-rojo:not(:disabled), body .btn-amarillo:not(:disabled), body .nav button.active:not(:disabled) {
-  background-image: linear-gradient(180deg,rgba(255,255,255,.13),transparent 52%,rgba(0,0,0,.07));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.33), 0 2px 7px var(--glow-accent);
-}
-body.pink .btn-rojo:not(:disabled), body.pink .btn-amarillo:not(:disabled) { background-image: linear-gradient(180deg,rgba(255,255,255,.16),transparent 55%) !important; }
-body .panel input:not([type="checkbox"]):not([type="radio"]):focus, body .panel select:focus, body .panel textarea:focus {
-  box-shadow: 0 0 0 2px var(--glow-accent);
-}
-body .modal-box, body #clasif-admin-dialog, body #bulk-modal .bulk-dialog {
-  box-shadow: inset 0 1px 0 var(--glow-edge), 0 8px 24px var(--glow-depth), 0 0 10px var(--glow-accent);
-}
-@media (hover:hover) and (pointer:fine) {
-  body .btn:not(:disabled):hover { box-shadow: inset 0 1px 0 var(--glow-edge), 0 0 8px var(--glow-accent); }
-}
-/* En equipos táctiles se limita el brillo exterior; sin filtros ni animaciones. */
-@media (pointer:coarse) {
-  body .panel, body .cash-card { box-shadow: inset 0 1px 0 var(--glow-edge), 0 3px 8px var(--glow-depth); }
-  body .app { background-image: none; }
-}
-}
-</style>
+
 </body>
 </html>
