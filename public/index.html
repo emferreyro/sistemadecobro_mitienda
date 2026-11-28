@@ -802,13 +802,13 @@ body .modal-box, body #clasif-admin-dialog, body #bulk-modal .bulk-dialog {
 
 <style id="mitienda-luces-futuristas">
 @media screen {
-body:not(.dark):not(.neon):not(.pink) { --future-edge:#f59e0b; --future-core:#fff3c4; --future-halo:rgba(249,115,22,.48); --future-wash:rgba(251,146,60,.20); --future-ink:#713508; }
-body.pink { --future-edge:#a855f7; --future-core:#f3d9ff; --future-halo:rgba(147,51,234,.48); --future-wash:rgba(168,85,247,.18); --future-ink:#63239b; }
-body.dark { --future-edge:#b9c4d2; --future-core:#ffffff; --future-halo:rgba(220,235,255,.34); --future-wash:rgba(216,228,245,.13); --future-ink:#f1f5f9; }
+body:not(.dark):not(.neon):not(.pink) { --future-edge:rgba(125,176,24,.48); --future-core:#efffc5; --future-halo:rgba(132,190,30,.25); --future-wash:rgba(168,213,65,.11); --future-ink:#36530b; }
+body.pink { --future-edge:rgba(147,81,217,.42); --future-core:#f4e8ff; --future-halo:rgba(147,51,234,.23); --future-wash:rgba(168,85,247,.09); --future-ink:#63239b; }
+body.dark { --future-edge:rgba(205,218,232,.32); --future-core:rgba(255,255,255,.44); --future-halo:rgba(220,235,255,.17); --future-wash:rgba(216,228,245,.07); --future-ink:#f1f5f9; }
 body:not(.neon) .app { background-image:radial-gradient(ellipse at 12% 0%,var(--future-wash),transparent 62%),radial-gradient(ellipse at 95% 35%,var(--future-wash),transparent 55%); }
-body:not(.neon) header, body:not(.neon) .mitienda-header { background-image:linear-gradient(115deg,var(--future-wash),transparent 65%),linear-gradient(0deg,var(--future-wash),transparent 38%) !important; border-bottom-color:var(--future-edge)!important; box-shadow:inset 0 -2px 0 var(--future-core),0 3px 4px var(--future-edge),0 7px 20px var(--future-halo); }
-body:not(.neon) .panel, body:not(.neon) .cash-card, body:not(.neon) .cashBox, body:not(.neon) .modal-box { border-color:var(--future-edge)!important; box-shadow:inset 0 1px 0 var(--future-core),inset 0 0 9px var(--future-halo),0 0 4px var(--future-edge),0 0 19px var(--future-halo),0 6px 16px var(--glow-depth); }
-body:not(.neon) .btn:not(:disabled),body:not(.neon) .nav button.active:not(:disabled),body:not(.neon) .qty-step:not(:disabled) { border-color:var(--future-edge)!important; box-shadow:inset 0 1px 0 var(--future-core),0 0 7px var(--future-halo),0 2px 5px var(--glow-depth); }
+body:not(.neon) header, body:not(.neon) .mitienda-header { background-image:linear-gradient(115deg,var(--future-wash),transparent 65%),linear-gradient(0deg,var(--future-wash),transparent 38%) !important; border-bottom-color:var(--future-edge)!important; box-shadow:inset 0 -1px 0 var(--future-edge),0 3px 12px var(--future-halo); }
+body:not(.neon) .panel, body:not(.neon) .cash-card, body:not(.neon) .cashBox, body:not(.neon) .modal-box { border-color:var(--future-edge)!important; box-shadow:inset 0 1px 0 var(--future-edge),0 0 14px var(--future-halo),0 5px 15px var(--glow-depth); }
+body:not(.neon) .btn:not(:disabled),body:not(.neon) .nav button.active:not(:disabled),body:not(.neon) .qty-step:not(:disabled) { border-color:var(--future-edge)!important; box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 0 7px var(--future-halo),0 2px 5px var(--glow-depth); }
 body:not(.neon) .nav button.active { color:var(--future-ink)!important; background-image:linear-gradient(180deg,var(--future-core),var(--future-wash))!important; }
 body.dark .nav button.active { background-image:linear-gradient(180deg,#697581,#252c34 55%,#171b21)!important; }
 body:not(.neon) .panel input:focus,body:not(.neon) .panel select:focus,body:not(.neon) .panel textarea:focus { border-color:var(--future-edge)!important; outline-color:var(--future-edge); box-shadow:0 0 0 2px var(--future-halo); }
@@ -819,9 +819,18 @@ body.dark #cambio:not(.blink-red),body.neon #cambio:not(.blink-red) { color:#57e
 body.neon #btnFinalizar:not(:disabled) { background-image:linear-gradient(180deg,#76ff9d,#20d95a 55%,#12b94a)!important; color:#06110a!important; }
 body.dark input::placeholder,body.neon input::placeholder { color:#aab9c9; opacity:1; }
 @media (pointer:coarse), (any-pointer:coarse) {
- body:not(.neon) .panel,body:not(.neon) .cash-card,body:not(.neon) .cashBox,body:not(.neon) .modal-box { box-shadow:inset 0 1px 0 var(--future-core),0 0 5px var(--future-halo); }
- body:not(.neon) header,body:not(.neon) .mitienda-header { box-shadow:inset 0 -1px 0 var(--future-core),0 3px 7px var(--future-halo); }
+ body:not(.neon) .panel,body:not(.neon) .cash-card,body:not(.neon) .cashBox,body:not(.neon) .modal-box { box-shadow:inset 0 1px 0 var(--future-edge),0 0 5px var(--future-halo); }
+ body:not(.neon) header,body:not(.neon) .mitienda-header { box-shadow:inset 0 -1px 0 var(--future-edge),0 3px 7px var(--future-halo); }
 }
+}
+
+@media screen and (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference) {
+ body.neon { --future-halo:rgba(45,212,255,.30); --future-edge:rgba(110,230,255,.20); }
+ body header, body .mitienda-header { animation:mitienda-luz-suave 6s ease-in-out infinite; }
+ @keyframes mitienda-luz-suave {
+  0%,100% { box-shadow:inset 0 -1px 0 var(--future-edge),0 3px 8px var(--future-halo); }
+  50% { box-shadow:inset 0 -1px 0 var(--future-edge),0 3px 15px var(--future-halo); }
+ }
 }
 </style>
 
