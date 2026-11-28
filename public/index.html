@@ -847,6 +847,20 @@ body.dark input::placeholder,body.neon input::placeholder { color:#aab9c9; opaci
 }
 @media(prefers-reduced-motion:reduce){#ventas-pestanas button.espera.espera-alerta{animation:none!important;box-shadow:0 0 6px #ff9b26!important;}}
 </style>
+<style id="historial-consulta-css">
+#historialConsultaBar{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:12px}
+#historialConsultaFecha{font:inherit;color:inherit;background:transparent;border:1px solid currentColor;border-radius:6px;padding:5px;max-width:100%;color-scheme:light dark}
+#panel-historial.consulta-historica > .historial-header,#panel-historial.consulta-historica > .histHeaderRow,#panel-historial.consulta-historica > #history-list{display:none!important}
+#historialConsultaVista{font-size:12px;line-height:1.45}
+#historialConsultaVista .consulta-fila{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;text-align:center;margin:8px 0}
+#historialConsultaVista .consulta-fila span{display:block;overflow-wrap:anywhere}
+#historialConsultaVista .consulta-fila strong{display:block;font-weight:500;font-size:12px;overflow-wrap:anywhere}
+#historialConsultaVista .consulta-turno{border:1px solid currentColor;border-radius:8px;padding:10px;margin:8px 0}
+#historialConsultaVista .consulta-caja{display:flex;flex-wrap:wrap;gap:6px 18px;margin:6px 0}
+#historialConsultaVista .consulta-venta{border-top:1px solid currentColor;padding:8px 0}
+#historialConsultaVista [hidden],#historialConsultaHoy[hidden],#historialConsultaVista[hidden]{display:none!important}
+@media(max-width:420px){#historialConsultaVista .consulta-fila{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -1038,6 +1052,9 @@ body.dark input::placeholder,body.neon input::placeholder { color:#aab9c9; opaci
 
         <!-- HISTORIAL -->
         <div id="panel-historial" class="panel" style="display:none">
+<div id="historialConsultaBar"><label for="historialConsultaFecha">Consultar fecha</label><input type="date" id="historialConsultaFecha" aria-label="Consultar ventas de otra fecha"><button type="button" class="btn btn-outline btn-small" id="historialConsultaHoy" hidden>Regresar a hoy</button></div>
+<div id="historialConsultaVista" hidden aria-live="polite"></div>
+
           <div class="histHeaderRow">
             <div class="histLeft">
               <strong>Historial de ventas</strong>
@@ -1701,6 +1718,7 @@ function actualizarCaja(totalHoy){
 }
 /* NAV */
 function showPanel(panel){
+  if(panel === panelHistorial) consultaHistorialRestaurar();
   [panelVenta, panelProductos, panelHistorial].forEach(p => {if(p!==panel && p.style.display!=='none') p.style.display='none';});
   navVenta.classList.remove('active'); navProductos.classList.remove('active'); navHistorial.classList.remove('active');
   panel.style.display = 'block';
@@ -2835,7 +2853,69 @@ function posVentaDecorar(card,v){
 
 }
 
+
+/* Consulta histórica: solo lectura, independiente de caja activa. */
+function consultaHistorialFecha(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function consultaHistorialHoy(){return consultaHistorialFecha(new Date());}
+function consultaHistorialRestaurar(){
+  const f=document.getElementById('historialConsultaFecha');
+  f.max=consultaHistorialHoy(); f.value=f.max;
+  document.getElementById('panel-historial').classList.remove('consulta-historica');
+  document.getElementById('historialConsultaVista').hidden=true;
+  document.getElementById('historialConsultaHoy').hidden=true;
+}
+function consultaHistorialDatos(fecha){
+  const zero=()=>({Efectivo:0,Tarjeta:0,Vales:0});
+  const sum=p=>Object.values(p).reduce((a,b)=>a+(Number(b)||0),0);
+  const pagos=zero(), eventos=[];
+  const dia=v=>{const d=parseVentaDate(v);return d?consultaHistorialFecha(d):'';};
+  const metodo=m=>m==='Tarjeta'?'Tarjeta':(m==='Vales'||m==='Vale'?'Vales':'Efectivo');
+  const movimientosSeparados=new Set(historial.filter(v=>v.movimiento).map(v=>String(v.movimiento.id||v.id)));
+  function agregar(v,p,titulo,origen){if(dia(v)!==fecha)return; for(const k of Object.keys(pagos))pagos[k]+=Number(p[k])||0; eventos.push({v,p,titulo,origen});}
+  for(const v of historial){
+    if(v.metodoPago==='Consumo interno')continue;
+    if(v.movimiento){const p=zero();p[metodo(v.metodoPago)]=Number(v.total)||0;agregar(v,p,'Movimiento',v.movimiento.origen);continue;}
+    const p=zero();
+    if(Array.isArray(v.pagos)&&v.pagos.length){for(const x of v.pagos)p[metodo(x.metodo)]+=Number(x.importe)||0;}else p[metodo(v.metodoPago)]=Number(v.total)||0;
+    agregar(v,p,'Venta',v.id);
+    for(const m of v.posventa?.movimientos||[]){if(m.tipo==='consumo_interno'||(m.id&&movimientosSeparados.has(String(m.id))))continue;
+      const mp=zero();mp[metodo(m.metodoPago)]=Number(m.total)||0;
+      agregar(m,mp,({cancelacion:'Cancelación',devolucion:'Devolución',cambio:'Cambio'})[m.tipo]||'Movimiento',v.id);
+    }
+  }
+  let records=[],archived;
+  try{records=(JSON.parse(localStorage.getItem('sistemacobro_turnos_v2')||'{}').records||[]).filter(r=>r.fecha===fecha).sort((a,b)=>String(a.at).localeCompare(String(b.at)));}catch(e){}
+  try{archived=JSON.parse(localStorage.getItem('mitienda_resumen_meses_v1')||'{}')[fecha.slice(0,7)]?.[fecha];}catch(e){}
+  return {pagos,eventos,records,archived,total:sum(pagos)};
+}
+function consultaHistorialMostrar(){
+  const f=document.getElementById('historialConsultaFecha'), fecha=f.value;
+  f.max=consultaHistorialHoy();
+  if(!fecha||fecha>=f.max){consultaHistorialRestaurar();return;}
+  const panel=document.getElementById('panel-historial'), vista=document.getElementById('historialConsultaVista');
+  panel.classList.add('consulta-historica'); vista.hidden=false;document.getElementById('historialConsultaHoy').hidden=false;
+  const {pagos,eventos,records,archived,total}=consultaHistorialDatos(fecha);
+  const money=n=>n==null?'Sin registro':formatMXN(Number(n)||0);
+  const esc=s=>escapeHtml(String(s??''));
+  const sum=p=>Object.values(p||{}).reduce((a,b)=>a+(Number(b)||0),0);
+  const fila=(p,t)=>'<div class="consulta-fila">'+[['Total',t],['Efectivo',p.Efectivo],['Tarjeta',p.Tarjeta],['Vales',p.Vales]].map(([k,v])=>'<div><span>'+k+'</span><strong>'+money(v)+'</strong></div>').join('')+'</div>';
+  const cerrado=archived!==undefined&&eventos.length===0;
+  let html='<strong>Historial de ventas</strong><div class="small" style="margin-top:5px">Consulta de '+esc(new Date(fecha+'T12:00:00').toLocaleDateString('es-MX',{dateStyle:'full'}))+' · Solo lectura</div><div style="margin-top:10px;text-align:center">Acumulado del día <strong style="font-weight:500">'+(cerrado?money(archived):eventos.length?money(total):'Sin registros de ventas')+'</strong></div>';
+  if(eventos.length)html+=fila(pagos,total);
+  else if(cerrado)html+='<p>Mes respaldado. El desglose y las ventas se consultan en Reportes con el archivo mensual.</p>';
+  html+='<div style="border-top:1px solid currentColor;margin-top:10px;padding-top:8px"><strong>Caja del día seleccionado</strong></div>';
+  if(!records.length)html+='<p>No hay cierres de turno registrados para esta fecha.</p>';
+  records.forEach((r,i)=>{const p=r.ventas||{}, hora=new Date(r.at||r.id);html+='<div class="consulta-turno"><strong>Turno '+(i+1)+'</strong> · '+esc(r.cajero||'Cajero sin registrar')+' · '+esc(Number.isNaN(hora.getTime())?'':hora.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}))+' · '+(r.tipo==='dia'?'Cierre del día':'Cierre de cajero')+fila(p,r.ventas?sum(p):null)+'<div class="consulta-caja">'+[['Inicio de caja',r.fondo],['Cierre esperado',r.esperado],['Efectivo entregado',r.contado],['Diferencia',r.diferencia]].map(([k,v])=>'<span>'+k+': <strong>'+money(v)+'</strong></span>').join('')+'</div></div>';});
+  if(records.length&&eventos.length){const diff={};for(const k of Object.keys(pagos))diff[k]=Math.round((pagos[k]-records.reduce((a,r)=>a+(Number(r.ventas?.[k])||0),0))*100)/100;if(Object.values(diff).some(n=>n!==0))html+='<div class="consulta-turno">Movimientos no conciliados con los cierres registrados'+fila(diff,sum(diff))+'<span class="small">Pueden corresponder a un turno sin cierre o a ajustes posteriores. No se infiere el fondo de caja.</span></div>';}
+  if(eventos.length){html+='<strong>Movimientos del día</strong>';eventos.sort((a,b)=>(parseVentaDate(b.v)?.getTime()||0)-(parseVentaDate(a.v)?.getTime()||0));for(const e of eventos){const v=e.v;html+='<div class="consulta-venta"><div style="display:flex;justify-content:space-between;gap:8px"><span>'+esc(e.titulo)+' #'+esc(e.origen)+'<br>'+esc(v.fecha||'')+'</span><strong>'+money(sum(e.p))+'</strong></div>';if(v.items?.length)html+='<details><summary>Ver detalles</summary>'+v.items.map(it=>'<div>'+esc(it.nombre||it.codigo)+' · '+esc(it.cantidad)+' · '+money(it.subtotal)+'</div>').join('')+'</details>';html+='</div>';}}
+  vista.innerHTML=html;
+}
+
 function renderHistorial(){
+  const consultaFecha=document.getElementById("historialConsultaFecha");
+  if(consultaFecha && !consultaFecha.value) consultaHistorialRestaurar();
+  if(consultaFecha && consultaFecha.value && consultaFecha.value<consultaHistorialHoy()){consultaHistorialMostrar();return;}
+  if(consultaFecha && consultaFecha.value!==consultaHistorialHoy()) consultaHistorialRestaurar();
   if(typeof actualizarBusquedaRapida==='function') actualizarBusquedaRapida();
   historyList.innerHTML = '';
   const fragmentoHistorial=document.createDocumentFragment();
@@ -3189,6 +3269,8 @@ document.getElementById('btnCashEdit') && document.getElementById('btnCashEdit')
 /* SHORTCUTS & NAV */
 navVenta.addEventListener('click', ()=> showPanel(panelVenta));
 navProductos.addEventListener('click', ()=> showPanel(panelProductos));
+document.getElementById('historialConsultaFecha').addEventListener('change',()=>{consultaHistorialMostrar();if(!document.getElementById('panel-historial').classList.contains('consulta-historica'))renderHistorial();});
+document.getElementById('historialConsultaHoy').addEventListener('click',()=>{consultaHistorialRestaurar();renderHistorial();});
 navHistorial.addEventListener('click', ()=> { showPanel(panelHistorial); renderHistorial(); });
 shortcutVenta && shortcutVenta.addEventListener('click', ()=> showPanel(panelVenta));
 shortcutProd && shortcutProd.addEventListener('click', ()=> showPanel(panelProductos));
